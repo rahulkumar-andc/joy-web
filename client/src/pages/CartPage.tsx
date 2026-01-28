@@ -1,85 +1,90 @@
-import { Layout } from "@/components/Layout";
-import { useCart, useRemoveCartItem, useUpdateCartItem } from "@/hooks/use-cart";
+import { useCart, useUpdateCartItem, useRemoveFromCart } from "@/hooks/use-cart";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Trash2, Minus, Plus } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import { Minus, Plus, Trash2, ArrowRight } from "lucide-react";
 
 export default function CartPage() {
-  const { data: items, isLoading } = useCart();
-  const removeItem = useRemoveCartItem();
-  const updateItem = useUpdateCartItem();
+  const { data: cartItems, isLoading } = useCart();
+  const updateMutation = useUpdateCartItem();
+  const removeMutation = useRemoveFromCart();
 
-  const subtotal = items?.reduce((sum, { item, product }) => 
-    sum + (Number(product.price) * item.quantity), 0) || 0;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+      </div>
+    );
+  }
 
-  const shipping = subtotal > 150 ? 0 : 15;
-  const total = subtotal + shipping;
-
-  if (isLoading) return <div className="p-20 text-center">Loading cart...</div>;
+  const total = cartItems?.reduce((acc, item) => acc + (Number(item.product.price) * item.item.quantity), 0) || 0;
 
   return (
-    <Layout>
-      <div className="container mx-auto px-4 py-12 max-w-6xl">
-        <h1 className="font-display text-4xl mb-12 text-center">Shopping Bag</h1>
+    <div className="min-h-screen bg-background font-body">
+      <Navbar />
 
-        {!items?.length ? (
-          <div className="text-center py-20 bg-secondary/30">
-            <p className="text-lg text-muted-foreground mb-6">Your bag is empty.</p>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <h1 className="font-display text-4xl font-bold text-primary mb-8">Shopping Bag</h1>
+
+        {!cartItems || cartItems.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-border/50">
+            <h2 className="text-2xl font-medium mb-4">Your bag is empty</h2>
+            <p className="text-muted-foreground mb-8">Looks like you haven't added anything yet.</p>
             <Link href="/shop">
-              <Button variant="outline" className="rounded-none uppercase tracking-widest px-8">Continue Shopping</Button>
+              <Button size="lg" className="bg-primary text-white">Continue Shopping</Button>
             </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             {/* Cart Items */}
-            <div className="lg:col-span-2 space-y-8">
-              {items.map(({ item, product }) => (
-                <div key={item.id} className="flex gap-6">
-                  <Link href={`/product/${product.id}`} className="block w-24 sm:w-32 aspect-[3/4] bg-secondary flex-shrink-0">
+            <div className="lg:col-span-2 space-y-6">
+              {cartItems.map((entry) => (
+                <div key={entry.item.id} className="flex gap-6 p-6 bg-white rounded-xl shadow-sm border border-border/50">
+                  <Link href={`/product/${entry.product.id}`} className="w-24 h-32 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
                     <img 
-                      src={product.images?.[0]} 
-                      alt={product.name}
+                      src={entry.product.images[0]} 
+                      alt={entry.product.name} 
                       className="w-full h-full object-cover"
                     />
                   </Link>
-                  <div className="flex-1 flex flex-col justify-between py-1">
+                  <div className="flex-1 flex flex-col justify-between">
                     <div>
-                      <div className="flex justify-between items-start">
-                        <h3 className="font-medium text-lg">
-                          <Link href={`/product/${product.id}`}>{product.name}</Link>
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-display text-lg font-bold text-primary">
+                          <Link href={`/product/${entry.product.id}`}>{entry.product.name}</Link>
                         </h3>
-                        <p className="font-medium">${Number(product.price) * item.quantity}</p>
+                        <span className="font-bold">₹{Number(entry.product.price) * entry.item.quantity}</span>
                       </div>
-                      <div className="text-sm text-muted-foreground mt-1 space-y-1">
-                        {item.size && <p>Size: {item.size}</p>}
-                        {item.color && <p>Color: {item.color}</p>}
+                      <p className="text-sm text-muted-foreground mb-1">{entry.product.brand}</p>
+                      <div className="text-xs text-muted-foreground space-x-3">
+                         {entry.item.size && <span>Size: {entry.item.size}</span>}
+                         {entry.item.color && <span>Color: {entry.item.color}</span>}
                       </div>
                     </div>
 
-                    <div className="flex justify-between items-end">
-                      <div className="flex items-center border">
+                    <div className="flex justify-between items-center mt-4">
+                      <div className="flex items-center border border-border rounded-lg h-9">
                         <button 
-                          className="p-2 hover:bg-secondary"
-                          onClick={() => updateItem.mutate({ id: item.id, quantity: Math.max(1, item.quantity - 1) })}
-                          disabled={updateItem.isPending}
+                          onClick={() => updateMutation.mutate({ id: entry.item.id, quantity: Math.max(1, entry.item.quantity - 1) })}
+                          className="px-3 hover:bg-muted/50 h-full flex items-center justify-center transition-colors"
+                          disabled={entry.item.quantity <= 1}
                         >
-                          <Minus className="h-3 w-3" />
+                          <Minus className="w-3 h-3" />
                         </button>
-                        <span className="w-8 text-center text-sm">{item.quantity}</span>
+                        <span className="w-8 text-center text-sm font-medium">{entry.item.quantity}</span>
                         <button 
-                          className="p-2 hover:bg-secondary"
-                          onClick={() => updateItem.mutate({ id: item.id, quantity: item.quantity + 1 })}
-                          disabled={updateItem.isPending}
+                          onClick={() => updateMutation.mutate({ id: entry.item.id, quantity: entry.item.quantity + 1 })}
+                          className="px-3 hover:bg-muted/50 h-full flex items-center justify-center transition-colors"
                         >
-                          <Plus className="h-3 w-3" />
+                          <Plus className="w-3 h-3" />
                         </button>
                       </div>
                       <button 
-                        onClick={() => removeItem.mutate(item.id)}
-                        className="text-sm text-muted-foreground underline hover:text-red-600 transition-colors"
+                        onClick={() => removeMutation.mutate(entry.item.id)}
+                        className="text-muted-foreground hover:text-destructive transition-colors p-2"
                       >
-                        Remove
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -89,36 +94,37 @@ export default function CartPage() {
 
             {/* Summary */}
             <div className="lg:col-span-1">
-              <div className="bg-secondary/30 p-8 sticky top-24">
-                <h2 className="font-display text-2xl mb-6">Summary</h2>
+              <div className="bg-white p-8 rounded-2xl shadow-sm border border-border/50 sticky top-24">
+                <h3 className="font-display text-xl font-bold mb-6">Order Summary</h3>
                 <div className="space-y-4 mb-6">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>${subtotal.toFixed(2)}</span>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Subtotal</span>
+                    <span>₹{total}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Shipping</span>
-                    <span>{shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}</span>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Shipping</span>
+                    <span>{total > 2000 ? "Free" : "₹100"}</span>
                   </div>
-                  <Separator />
-                  <div className="flex justify-between font-medium text-lg">
+                  <div className="border-t border-dashed border-border pt-4 flex justify-between font-bold text-lg text-primary">
                     <span>Total</span>
-                    <span>${total.toFixed(2)}</span>
+                    <span>₹{total > 2000 ? total : total + 100}</span>
                   </div>
                 </div>
                 <Link href="/checkout">
-                  <Button className="w-full rounded-none h-12 uppercase tracking-widest text-sm">
-                    Checkout
+                  <Button size="lg" className="w-full bg-accent hover:bg-accent/90 text-white shadow-lg shadow-accent/20">
+                    Proceed to Checkout <ArrowRight className="ml-2 w-4 h-4" />
                   </Button>
                 </Link>
-                <div className="mt-4 text-xs text-center text-muted-foreground">
-                  Secure Checkout
+                <div className="mt-6 text-center">
+                  <p className="text-xs text-muted-foreground">Secure Checkout • Money-back Guarantee</p>
                 </div>
               </div>
             </div>
           </div>
         )}
       </div>
-    </Layout>
+
+      <Footer />
+    </div>
   );
 }

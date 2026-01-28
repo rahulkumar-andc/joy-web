@@ -1,127 +1,148 @@
-import { useState } from "react";
-import { Layout } from "@/components/Layout";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useProducts, useCreateProduct, useDeleteProduct } from "@/hooks/use-products";
+import { Navbar } from "@/components/Navbar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
+import { Trash2, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
-import { Plus, Trash2, Edit } from "lucide-react";
+import { Link } from "wouter";
+
+const productSchema = z.object({
+  name: z.string().min(2),
+  description: z.string().min(5),
+  price: z.string(),
+  stockQuantity: z.number().default(100),
+  images: z.string(), // simplified for input as single string, will array-ify
+  categoryId: z.number().optional(),
+});
 
 export default function AdminProducts() {
   const { user } = useAuth();
-  const [, setLocation] = useLocation();
   const { data: products, isLoading } = useProducts();
-  const createProduct = useCreateProduct();
-  const deleteProduct = useDeleteProduct();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const createMutation = useCreateProduct();
+  const deleteMutation = useDeleteProduct();
+  const [isOpen, setIsOpen] = useState(false);
 
-  // Redirect if not admin
-  if (!user || user.role !== "admin") {
-    setLocation("/");
-    return null;
-  }
-
-  // Simple form state for creation
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    price: "",
-    imageUrl: "",
-    category: "",
+  const form = useForm<z.infer<typeof productSchema>>({
+    resolver: zodResolver(productSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      price: "",
+      stockQuantity: 100,
+      images: "",
+    },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    createProduct.mutate({
-      name: formData.name,
-      description: formData.description,
-      price: formData.price, // Will be cast to decimal by backend
-      images: [formData.imageUrl],
-      categoryId: 1, // Hardcoded for simplicity in this demo
-      stockQuantity: 100,
+  if (!user || user.role !== 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center flex-col gap-4">
+        <h1 className="text-2xl font-bold">Access Denied</h1>
+        <p>You need admin privileges to view this page.</p>
+        <Link href="/"><Button>Go Home</Button></Link>
+      </div>
+    );
+  }
+
+  const onSubmit = (data: z.infer<typeof productSchema>) => {
+    // Transform simple input to match API schema
+    createMutation.mutate({
+      ...data,
+      images: [data.images],
+      categoryId: 1, // hardcoded for MVP simplicity if no category select
     }, {
       onSuccess: () => {
-        setIsDialogOpen(false);
-        setFormData({ name: "", description: "", price: "", imageUrl: "", category: "" });
+        setIsOpen(false);
+        form.reset();
       }
     });
   };
 
   return (
-    <Layout>
+    <div className="min-h-screen bg-background font-body">
+      <Navbar />
       <div className="container mx-auto px-4 py-12">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="font-display text-3xl">Product Management</h1>
+          <h1 className="font-display text-3xl font-bold text-primary">Product Management</h1>
           
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-              <Button className="rounded-none"><Plus className="mr-2 h-4 w-4" /> Add Product</Button>
+              <Button className="bg-primary text-white"><Plus className="mr-2 w-4 h-4"/> Add Product</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add New Product</DialogTitle>
+                <DialogTitle>Create New Product</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label>Name</Label>
-                  <Input 
-                    value={formData.name} 
-                    onChange={e => setFormData({...formData, name: e.target.value})} 
-                    required 
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Name</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                      </FormItem>
+                    )}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label>Price</Label>
-                  <Input 
-                    type="number" 
-                    value={formData.price} 
-                    onChange={e => setFormData({...formData, price: e.target.value})} 
-                    required 
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                      </FormItem>
+                    )}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label>Image URL (Unsplash)</Label>
-                  <Input 
-                    value={formData.imageUrl} 
-                    onChange={e => setFormData({...formData, imageUrl: e.target.value})} 
-                    placeholder="https://images.unsplash.com/..."
-                    required 
+                  <div className="grid grid-cols-2 gap-4">
+                     <FormField
+                      control={form.control}
+                      name="price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Price</FormLabel>
+                          <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="stockQuantity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Stock</FormLabel>
+                          <FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="images"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Image URL</FormLabel>
+                        <FormControl><Input placeholder="https://..." {...field} /></FormControl>
+                      </FormItem>
+                    )}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label>Description</Label>
-                  <Textarea 
-                    value={formData.description} 
-                    onChange={e => setFormData({...formData, description: e.target.value})} 
-                    required 
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={createProduct.isPending}>
-                  {createProduct.isPending ? "Creating..." : "Create Product"}
-                </Button>
-              </form>
+                  <Button type="submit" className="w-full" disabled={createMutation.isPending}>
+                    {createMutation.isPending ? "Creating..." : "Create Product"}
+                  </Button>
+                </form>
+              </Form>
             </DialogContent>
           </Dialog>
         </div>
 
-        <div className="border rounded-md">
+        <div className="bg-white rounded-xl shadow-sm border border-border overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
@@ -138,14 +159,19 @@ export default function AdminProducts() {
               ) : products?.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell>
-                    <img src={product.images?.[0]} className="h-10 w-10 object-cover rounded" alt="" />
+                    <img src={product.images[0]} alt={product.name} className="w-10 h-10 object-cover rounded bg-muted" />
                   </TableCell>
                   <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell>${product.price}</TableCell>
+                  <TableCell>₹{product.price}</TableCell>
                   <TableCell>{product.stockQuantity}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => deleteProduct.mutate(product.id)}>
-                      <Trash2 className="h-4 w-4 text-red-500" />
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => deleteMutation.mutate(product.id)}
+                      className="text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -154,6 +180,6 @@ export default function AdminProducts() {
           </Table>
         </div>
       </div>
-    </Layout>
+    </div>
   );
 }

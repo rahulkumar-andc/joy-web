@@ -1,191 +1,180 @@
-import { useState } from "react";
-import { useRoute, Link } from "wouter";
-import { Layout } from "@/components/Layout";
 import { useProduct } from "@/hooks/use-products";
-import { useAddToCart } from "@/hooks/use-cart";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
+import { useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Minus, Plus, Heart } from "lucide-react";
+import { useAddToCart } from "@/hooks/use-cart";
+import { useState } from "react";
+import { Minus, Plus, Star, Truck, ShieldCheck, ArrowLeft } from "lucide-react";
+import { Link } from "wouter";
+import { motion } from "framer-motion";
 
 export default function ProductPage() {
-  const [match, params] = useRoute("/product/:id");
-  const id = parseInt(params?.id || "0");
-  const { data: product, isLoading, isError } = useProduct(id);
-  const addToCart = useAddToCart();
-
+  const [, params] = useRoute("/product/:id");
+  const id = params ? parseInt(params.id) : 0;
+  const { data: product, isLoading } = useProduct(id);
+  const addToCartMutation = useAddToCart();
+  
   const [quantity, setQuantity] = useState(1);
-  const [selectedSize, setSelectedSize] = useState<string>("");
-  const [selectedColor, setSelectedColor] = useState<string>("");
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
 
-  if (isLoading) return <ProductSkeleton />;
-  if (isError || !product) return <div className="p-20 text-center">Product not found</div>;
+  if (isLoading || !product) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+      </div>
+    );
+  }
 
   const handleAddToCart = () => {
-    addToCart.mutate({
-      productId: product.id,
+    addToCartMutation.mutate({ 
+      productId: product.id, 
       quantity,
-      size: selectedSize,
-      color: selectedColor,
+      size: selectedSize || undefined,
+      color: selectedColor || undefined
     });
   };
 
-  const images = product.images?.length > 0 ? product.images : [
-    "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&auto=format&fit=crop"
-  ];
-
   return (
-    <Layout>
-      <div className="container mx-auto px-4 py-12">
+    <div className="min-h-screen bg-background font-body">
+      <Navbar />
+
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <Link href="/shop" className="inline-flex items-center text-muted-foreground hover:text-primary mb-8 transition-colors">
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Shop
+        </Link>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
-          {/* Gallery - In a real app, this would be a proper gallery/carousel */}
-          <div className="space-y-4">
-            <div className="aspect-[3/4] bg-secondary overflow-hidden">
+          {/* Gallery */}
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            className="space-y-4"
+          >
+            <div className="aspect-[3/4] bg-white rounded-2xl overflow-hidden shadow-sm">
               <img 
-                src={images[0]} 
+                src={product.images[0]} 
                 alt={product.name} 
-                className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                className="w-full h-full object-cover"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              {images.slice(1, 3).map((img, idx) => (
-                <div key={idx} className="aspect-[3/4] bg-secondary">
-                  <img src={img} alt="" className="w-full h-full object-cover" />
-                </div>
-              ))}
-            </div>
-          </div>
+            {/* Thumbnails would go here if multiple images */}
+          </motion.div>
 
-          {/* Product Info */}
-          <div className="sticky top-24 self-start space-y-8">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                {product.isNewArrival && <Badge variant="secondary" className="rounded-none uppercase text-[10px] tracking-widest">New Arrival</Badge>}
-                {product.brand && <span className="text-sm font-medium text-muted-foreground uppercase tracking-widest">{product.brand}</span>}
+          {/* Details */}
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <div className="mb-2 text-accent font-medium tracking-wide text-sm uppercase">{product.brand || "LuxeMode"}</div>
+            <h1 className="font-display text-4xl md:text-5xl font-bold text-primary mb-4">{product.name}</h1>
+            
+            <div className="flex items-center gap-4 mb-6">
+              <div className="flex text-yellow-400">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-current" />
+                ))}
               </div>
-              
-              <h1 className="font-display text-4xl lg:text-5xl">{product.name}</h1>
-              
-              <div className="text-2xl font-medium">
-                ${product.price}
-              </div>
-              
-              <p className="text-muted-foreground leading-relaxed">
-                {product.description}
-              </p>
+              <span className="text-muted-foreground text-sm">(45 Reviews)</span>
             </div>
 
-            <div className="space-y-6 pt-6 border-t">
-              {/* Color Selection */}
+            <div className="text-3xl font-bold text-primary mb-8">
+              ₹{product.price}
+              {product.discountPrice && (
+                <span className="ml-3 text-xl text-muted-foreground line-through decoration-destructive">₹{product.discountPrice}</span>
+              )}
+            </div>
+
+            <p className="text-muted-foreground leading-relaxed mb-8 border-b border-border pb-8">
+              {product.description}
+            </p>
+
+            {/* Selectors */}
+            <div className="space-y-6 mb-8">
               {product.colors && product.colors.length > 0 && (
-                <div className="space-y-3">
-                  <Label className="text-xs uppercase tracking-wide font-bold">Color: {selectedColor}</Label>
-                  <RadioGroup value={selectedColor} onValueChange={setSelectedColor} className="flex gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-3">Color</label>
+                  <div className="flex gap-3">
                     {product.colors.map((color) => (
-                      <div key={color} className="flex items-center space-x-2">
-                        <RadioGroupItem value={color} id={`color-${color}`} className="peer sr-only" />
-                        <Label
-                          htmlFor={`color-${color}`}
-                          className={`h-8 px-4 flex items-center justify-center border cursor-pointer hover:bg-secondary transition-colors ${
-                            selectedColor === color ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90" : "border-input"
-                          }`}
-                        >
-                          {color}
-                        </Label>
-                      </div>
+                      <button
+                        key={color}
+                        onClick={() => setSelectedColor(color)}
+                        className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${selectedColor === color ? "border-primary scale-110" : "border-transparent"}`}
+                        style={{ backgroundColor: color.toLowerCase() === 'white' ? '#f0f0f0' : color.toLowerCase() }}
+                        title={color}
+                      >
+                         {selectedColor === color && <div className="w-2 h-2 rounded-full bg-white shadow-sm" />}
+                      </button>
                     ))}
-                  </RadioGroup>
-                </div>
-              )}
-
-              {/* Size Selection */}
-              {product.sizes && product.sizes.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <Label className="text-xs uppercase tracking-wide font-bold">Size: {selectedSize}</Label>
-                    <button className="text-xs underline text-muted-foreground">Size Guide</button>
                   </div>
-                  <RadioGroup value={selectedSize} onValueChange={setSelectedSize} className="flex flex-wrap gap-3">
-                    {product.sizes.map((size) => (
-                      <div key={size} className="flex items-center space-x-2">
-                        <RadioGroupItem value={size} id={`size-${size}`} className="peer sr-only" />
-                        <Label
-                          htmlFor={`size-${size}`}
-                          className={`h-10 min-w-[3rem] px-3 flex items-center justify-center border cursor-pointer hover:bg-secondary transition-colors ${
-                            selectedSize === size ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90" : "border-input"
-                          }`}
-                        >
-                          {size}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
                 </div>
               )}
 
-              {/* Quantity */}
-              <div className="space-y-3">
-                <Label className="text-xs uppercase tracking-wide font-bold">Quantity</Label>
-                <div className="flex items-center border w-fit">
-                  <button 
-                    className="p-3 hover:bg-secondary transition-colors"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </button>
-                  <span className="w-12 text-center font-medium">{quantity}</span>
-                  <button 
-                    className="p-3 hover:bg-secondary transition-colors"
-                    onClick={() => setQuantity(quantity + 1)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
+              {product.sizes && product.sizes.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium mb-3">Size</label>
+                  <div className="flex gap-3">
+                    {product.sizes.map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => setSelectedSize(size)}
+                        className={`w-12 h-12 rounded-lg border flex items-center justify-center font-medium transition-all ${selectedSize === size ? "border-primary bg-primary text-white" : "border-border hover:border-primary/50"}`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            <div className="flex gap-4 pt-6">
+            {/* Actions */}
+            <div className="flex gap-4 mb-8">
+              <div className="flex items-center border border-border rounded-lg">
+                <button 
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="px-4 py-3 hover:bg-muted/50 transition-colors"
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
+                <span className="w-12 text-center font-medium">{quantity}</span>
+                <button 
+                  onClick={() => setQuantity(quantity + 1)}
+                  className="px-4 py-3 hover:bg-muted/50 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
               <Button 
                 size="lg" 
-                className="flex-1 rounded-none h-14 uppercase tracking-widest text-base"
+                className="flex-1 bg-accent hover:bg-accent/90 text-white h-auto text-lg"
                 onClick={handleAddToCart}
-                disabled={addToCart.isPending}
+                disabled={addToCartMutation.isPending}
               >
-                {addToCart.isPending ? "Adding..." : "Add to Cart"}
-              </Button>
-              <Button size="icon" variant="outline" className="h-14 w-14 rounded-none border-input">
-                <Heart className="h-5 w-5" />
+                {addToCartMutation.isPending ? "Adding..." : "Add to Cart"}
               </Button>
             </div>
-            
-            <div className="pt-6 border-t text-sm text-muted-foreground space-y-2">
-              <p>Free standard shipping on orders over $150</p>
-              <p>Returns accepted within 30 days</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Layout>
-  );
-}
 
-function ProductSkeleton() {
-  return (
-    <Layout>
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          <Skeleton className="aspect-[3/4] w-full" />
-          <div className="space-y-8">
-            <Skeleton className="h-8 w-1/3" />
-            <Skeleton className="h-12 w-3/4" />
-            <Skeleton className="h-6 w-20" />
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-14 w-full" />
-          </div>
+            {/* Trust Badges */}
+            <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground bg-warm-beige/50 p-6 rounded-xl">
+              <div className="flex items-center gap-3">
+                <Truck className="w-5 h-5 text-primary" />
+                <span>Free shipping over ₹2000</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="w-5 h-5 text-primary" />
+                <span>2 Year Warranty</span>
+              </div>
+            </div>
+
+          </motion.div>
         </div>
       </div>
-    </Layout>
+      
+      <Footer />
+    </div>
   );
 }

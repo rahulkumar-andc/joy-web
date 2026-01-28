@@ -1,20 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
-import { CartItem, Product } from "@shared/schema";
-
-export type CartItemWithProduct = {
-  item: CartItem;
-  product: Product;
-};
 
 export function useCart() {
-  return useQuery<CartItemWithProduct[]>({
+  return useQuery({
     queryKey: [api.cart.get.path],
     queryFn: async () => {
-      const res = await fetch(api.cart.get.path);
+      const res = await fetch(api.cart.get.path, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch cart");
-      return await res.json();
+      return api.cart.get.responses[200].parse(await res.json());
     },
   });
 }
@@ -29,20 +23,24 @@ export function useAddToCart() {
         method: api.cart.add.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to add to cart");
-      return await res.json();
+      return api.cart.add.responses[200].parse(await res.json());
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.cart.get.path] });
-      toast({ title: "Added to cart", description: "Item added to your shopping bag" });
+      toast({
+        title: "Added to cart",
+        description: "The item has been added to your bag.",
+        className: "bg-white border-none shadow-lg",
+      });
     },
   });
 }
 
 export function useUpdateCartItem() {
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async ({ id, quantity }: { id: number; quantity: number }) => {
       const url = buildUrl(api.cart.update.path, { id });
@@ -50,9 +48,10 @@ export function useUpdateCartItem() {
         method: api.cart.update.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quantity }),
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to update cart");
-      return await res.json();
+      return api.cart.update.responses[200].parse(await res.json());
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.cart.get.path] });
@@ -60,19 +59,46 @@ export function useUpdateCartItem() {
   });
 }
 
-export function useRemoveCartItem() {
+export function useRemoveFromCart() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const url = buildUrl(api.cart.remove.path, { id });
+      const res = await fetch(url, {
+        method: api.cart.remove.method,
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to remove from cart");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.cart.get.path] });
+    },
+  });
+}
+
+export function useCreateOrder() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (id: number) => {
-      const url = buildUrl(api.cart.remove.path, { id });
-      const res = await fetch(url, { method: api.cart.remove.method });
-      if (!res.ok) throw new Error("Failed to remove item");
+    mutationFn: async (data: { shippingAddress: any }) => {
+      const res = await fetch(api.orders.create.path, {
+        method: api.orders.create.method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to create order");
+      return api.orders.create.responses[201].parse(await res.json());
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.cart.get.path] });
-      toast({ title: "Removed", description: "Item removed from cart" });
+      queryClient.invalidateQueries({ queryKey: [api.orders.list.path] });
+      toast({
+        title: "Order placed!",
+        description: "Thank you for shopping with us.",
+        variant: "default",
+      });
     },
   });
 }

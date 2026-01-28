@@ -1,79 +1,82 @@
 import { Link } from "wouter";
-import { Product } from "@shared/schema";
-import { motion } from "framer-motion";
+import { type Product } from "@shared/schema";
+import { ShoppingBag, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag } from "lucide-react";
 import { useAddToCart } from "@/hooks/use-cart";
+import { motion } from "framer-motion";
 
 interface ProductCardProps {
   product: Product;
-  priority?: boolean;
 }
 
-export function ProductCard({ product, priority = false }: ProductCardProps) {
-  const addToCart = useAddToCart();
+export function ProductCard({ product }: ProductCardProps) {
+  const addToCartMutation = useAddToCart();
 
-  // Use the first image or a placeholder
-  const imageUrl = product.images?.[0] || 
-    "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&auto=format&fit=crop";
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent navigation
+    e.stopPropagation();
+    addToCartMutation.mutate({ productId: product.id, quantity: 1 });
+  };
 
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      className="group relative"
+      transition={{ duration: 0.4 }}
+      className="group relative bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300"
     >
-      <div className="relative aspect-[3/4] overflow-hidden bg-secondary">
-        {/* Main Image */}
-        <Link href={`/product/${product.id}`} className="block h-full w-full cursor-pointer">
-          <img
-            src={imageUrl}
-            alt={product.name}
-            loading={priority ? "eager" : "lazy"}
-            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-          />
-        </Link>
-        
-        {/* Quick Add Button */}
-        <div className="absolute bottom-4 right-4 translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-          <Button 
-            size="icon" 
-            className="h-10 w-10 rounded-full shadow-lg"
-            onClick={() => addToCart.mutate({ productId: product.id, quantity: 1 })}
-            disabled={addToCart.isPending}
-          >
-            <ShoppingBag className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Badges */}
-        {product.isNewArrival && (
-          <span className="absolute left-2 top-2 bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-black">
-            New
+      {/* Badges */}
+      <div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
+        {product.discountPrice && (
+          <span className="bg-destructive text-white text-[10px] font-bold px-2 py-1 rounded-sm tracking-wider uppercase">
+            Sale
           </span>
         )}
-        {Number(product.discountPrice) > 0 && (
-          <span className="absolute right-2 top-2 bg-red-600 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
-            Sale
+        {product.isNewArrival && (
+          <span className="bg-accent text-white text-[10px] font-bold px-2 py-1 rounded-sm tracking-wider uppercase">
+            New
           </span>
         )}
       </div>
 
-      <div className="mt-4 space-y-1">
-        <h3 className="text-sm font-medium text-primary">
-          <Link href={`/product/${product.id}`} className="hover:underline decoration-1 underline-offset-4">
+      {/* Image Container */}
+      <Link href={`/product/${product.id}`} className="block relative aspect-[3/4] overflow-hidden bg-gray-100">
+        <img 
+          src={product.images[0]} 
+          alt={product.name}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+        />
+        
+        {/* Hover Overlay Actions */}
+        <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-gradient-to-t from-black/50 to-transparent">
+          <div className="flex gap-2 justify-center">
+            <Button 
+              size="sm" 
+              className="bg-white text-primary hover:bg-accent hover:text-white transition-colors w-full"
+              onClick={handleAddToCart}
+              disabled={addToCartMutation.isPending}
+            >
+              <ShoppingBag className="w-4 h-4 mr-2" />
+              {addToCartMutation.isPending ? "Adding..." : "Add to Cart"}
+            </Button>
+          </div>
+        </div>
+      </Link>
+
+      {/* Info */}
+      <div className="p-4">
+        <div className="text-xs text-muted-foreground mb-1 font-medium">{product.brand || "LuxeMode"}</div>
+        <Link href={`/product/${product.id}`}>
+          <h3 className="font-display text-lg leading-tight mb-2 hover:text-accent transition-colors truncate">
             {product.name}
-          </Link>
-        </h3>
-        <div className="flex items-center gap-2 text-sm">
-          {product.discountPrice ? (
-            <>
-              <span className="font-semibold text-red-600">${product.discountPrice}</span>
-              <span className="text-muted-foreground line-through">${product.price}</span>
-            </>
-          ) : (
-            <span className="font-semibold text-primary">${product.price}</span>
+          </h3>
+        </Link>
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-primary">₹{product.price}</span>
+          {product.discountPrice && (
+            <span className="text-sm text-muted-foreground line-through">₹{product.discountPrice}</span>
           )}
         </div>
       </div>

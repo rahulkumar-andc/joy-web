@@ -5,37 +5,47 @@
 @tailwind utilities;
 
 :root {
-  /* Luxury Monochrome Palette */
-  --background: 0 0% 100%;       /* #FFFFFF */
-  --foreground: 0 0% 10%;        /* #1A1A1A */
-  
+  /* Soft Luxury Palette */
+  --soft-pink: 20 54% 95%;      /* #FCEFE9 */
+  --warm-beige: 30 40% 96%;     /* #F9F5F1 */
+  --dark-brown: 22 20% 24%;     /* #4A3B32 */
+  --accent-orange: 23 72% 68%;  /* #E89F71 */
+  --pure-white: 0 0% 100%;
+  --text-primary: 22 20% 24%;   /* Matches dark brown */
+  --text-secondary: 22 10% 45%;
+
+  /* Mapping to Tailwind/Shadcn variables */
+  --background: 20 54% 95%; /* Soft Pink base */
+  --foreground: 22 20% 24%; /* Dark Brown text */
+
   --card: 0 0% 100%;
-  --card-foreground: 0 0% 10%;
-  
+  --card-foreground: 22 20% 24%;
+
   --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 10%;
-  
-  --primary: 0 0% 10%;           /* #1A1A1A - Almost Black */
-  --primary-foreground: 0 0% 98%;
-  
-  --secondary: 40 20% 96%;       /* #F7F5F2 - Cream/Beige */
-  --secondary-foreground: 0 0% 10%;
-  
-  --muted: 0 0% 96%;
-  --muted-foreground: 0 0% 45%;
-  
-  --accent: 0 0% 10%;
-  --accent-foreground: 0 0% 98%;
-  
-  --destructive: 0 84% 60%;
+  --popover-foreground: 22 20% 24%;
+
+  --primary: 22 20% 24%; /* Dark brown as primary */
+  --primary-foreground: 20 54% 95%;
+
+  --secondary: 30 40% 91%; /* Warm beige darker */
+  --secondary-foreground: 22 20% 24%;
+
+  --muted: 30 20% 96%;
+  --muted-foreground: 22 10% 45%;
+
+  --accent: 23 72% 68%; /* Orange accent */
+  --accent-foreground: 22 20% 24%;
+
+  --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 0 0% 90%;
-  --input: 0 0% 90%;
-  --ring: 0 0% 10%;
-  
-  --radius: 0rem; /* Sharp corners for premium feel */
-  
+  --border: 22 15% 90%;
+  --input: 22 15% 90%;
+  --ring: 23 72% 68%;
+
+  --radius: 0.5rem;
+
+  /* Font variables used in tailwind.config.ts */
   --font-display: 'Playfair Display', serif;
   --font-body: 'DM Sans', sans-serif;
 }
@@ -45,25 +55,24 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased font-body;
+    @apply bg-background text-foreground font-body antialiased;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-display font-medium tracking-tight;
   }
 }
 
-/* Custom Utilities */
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-  
-  .hide-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  
-  .hide-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+/* Custom Scrollbar for a cleaner look */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
 }

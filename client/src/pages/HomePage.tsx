@@ -1,85 +1,131 @@
-import { Layout } from "@/components/Layout";
-import { Button } from "@/components/ui/button";
-import { useProducts } from "@/hooks/use-products";
+import { useHomepage } from "@/hooks/use-products";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
+import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { Truck, ShieldCheck, RefreshCcw, ArrowRight } from "lucide-react";
+import heroImg from "@assets/hero.jpg"; // Assume asset handled or use unsplash
 
 export default function HomePage() {
-  const { data: products, isLoading } = useProducts({ sort: "featured" });
+  const { data: homepageData, isLoading } = useHomepage();
 
-  // Hero section image from Unsplash
-  const heroImage = "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070&auto=format&fit=crop";
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+        </div>
+      </div>
+    );
+  }
 
+  // Fallback hero section if no database data
   return (
-    <Layout>
+    <div className="min-h-screen bg-background font-body">
+      <Navbar />
+
       {/* Hero Section */}
-      <section className="relative h-[85vh] w-full overflow-hidden">
-        <div 
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${heroImage})` }}
-        >
-          <div className="absolute inset-0 bg-black/20" />
+      <section className="relative h-[80vh] w-full overflow-hidden bg-gradient-to-r from-[#FCEFE9] to-[#F8E4D9]">
+        <div className="container mx-auto h-full px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center">
+          <motion.div 
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8 }}
+            className="flex-1 space-y-6 z-10 pt-12 md:pt-0 text-center md:text-left"
+          >
+            <span className="text-accent uppercase tracking-[0.2em] font-bold text-sm">New Collection 2024</span>
+            <h1 className="font-display text-5xl md:text-7xl font-bold text-primary leading-tight">
+              Step into <br /> <span className="text-accent italic">Style</span> & Elegance
+            </h1>
+            <p className="text-muted-foreground text-lg max-w-lg mx-auto md:mx-0">
+              Discover curated luxury fashion pieces that define your personality. Timeless designs for the modern wardrobe.
+            </p>
+            <div className="pt-4">
+              <Link href="/shop">
+                <Button size="lg" className="bg-primary hover:bg-primary/90 text-white px-8 py-6 rounded-full text-md">
+                  Shop Now <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="flex-1 h-full relative hidden md:block"
+          >
+             {/* Model Image - Unsplash */}
+             <div className="absolute inset-0 flex items-end justify-center">
+                <img 
+                  src="https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=2070&auto=format&fit=crop" 
+                  alt="Fashion Model" 
+                  className="h-[90%] object-contain drop-shadow-2xl"
+                />
+             </div>
+          </motion.div>
         </div>
         
-        <div className="container relative h-full flex flex-col justify-center items-center text-center text-white px-4">
-          <motion.h1 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="font-display text-5xl md:text-7xl lg:text-8xl font-medium tracking-tight mb-6"
-          >
-            Summer Edit '24
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-            className="text-lg md:text-xl font-light max-w-lg mb-10 text-white/90"
-          >
-            Discover the new collection defined by effortless elegance and timeless silhouettes.
-          </motion.p>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
-          >
-            <Link href="/shop">
-              <Button size="lg" className="bg-white text-black hover:bg-white/90 px-8 py-6 text-base uppercase tracking-widest rounded-none">
-                Shop Collection
-              </Button>
-            </Link>
-          </motion.div>
+        {/* Decorative circle */}
+        <div className="absolute top-0 right-0 w-2/3 h-full bg-white/30 skew-x-12 translate-x-1/4 pointer-events-none"></div>
+      </section>
+
+      {/* Features Banner */}
+      <section className="bg-white py-12 border-b border-border/50">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { icon: Truck, title: "Free Shipping", desc: "On all orders over ₹2000" },
+              { icon: RefreshCcw, title: "Easy Returns", desc: "30-day money back guarantee" },
+              { icon: ShieldCheck, title: "Secure Payment", desc: "100% protected payments" },
+            ].map((feature, idx) => (
+              <motion.div 
+                key={idx}
+                whileHover={{ y: -5 }}
+                className="flex items-center space-x-4 p-6 rounded-2xl bg-warm-beige border border-border/50 shadow-sm"
+              >
+                <div className="p-3 bg-white rounded-full text-accent shadow-sm">
+                  <feature.icon className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-primary">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground">{feature.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Featured Categories */}
-      <section className="py-24 bg-background">
-        <div className="container px-4">
-          <div className="flex justify-between items-end mb-12">
-            <h2 className="font-display text-4xl">Categories</h2>
+      {/* Trending Categories */}
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-display font-bold text-primary mb-4">Trending Categories</h2>
+            <p className="text-muted-foreground">Explore our most popular collections</p>
           </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { title: "Coats & Jackets", img: "https://images.unsplash.com/photo-1544022613-e87ca75a784a?w=800&q=80", link: "/shop?category=jackets" },
-              { title: "Dresses", img: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=800&q=80", link: "/shop?category=dresses" },
-              { title: "Accessories", img: "https://images.unsplash.com/photo-1511556820780-d912e42b4980?w=800&q=80", link: "/shop?category=accessories" },
-            ].map((cat, i) => (
-              <Link href={cat.link} key={i}>
-                <div className="group relative aspect-[4/5] overflow-hidden cursor-pointer">
-                  <img 
-                    src={cat.img} 
-                    alt={cat.title} 
-                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
-                  <div className="absolute bottom-8 left-8">
-                    <h3 className="text-white font-display text-2xl font-medium flex items-center gap-2">
-                      {cat.title} 
-                      <ArrowRight className="h-5 w-5 opacity-0 -translate-x-2 transition-all group-hover:opacity-100 group-hover:translate-x-0" />
-                    </h3>
-                  </div>
+              { name: "Women's Collection", img: "https://images.unsplash.com/photo-1550614000-4b9519e0037a?q=80&w=800&auto=format&fit=crop", link: "/shop?category=women" },
+              { name: "Men's Collection", img: "https://images.unsplash.com/photo-1617137968427-85924c809a22?q=80&w=800&auto=format&fit=crop", link: "/shop?category=men" },
+              { name: "Accessories", img: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?q=80&w=800&auto=format&fit=crop", link: "/shop?category=accessories" },
+            ].map((cat, idx) => (
+              <Link key={idx} href={cat.link} className="group relative h-96 rounded-2xl overflow-hidden cursor-pointer">
+                <img 
+                  src={cat.img} 
+                  alt={cat.name} 
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
+                <div className="absolute bottom-0 inset-x-0 p-8">
+                  <h3 className="text-2xl font-display font-bold text-white mb-2">{cat.name}</h3>
+                  <span className="inline-flex items-center text-white/90 font-medium group-hover:translate-x-2 transition-transform">
+                    Shop Now <ArrowRight className="ml-2 w-4 h-4" />
+                  </span>
                 </div>
               </Link>
             ))}
@@ -87,68 +133,66 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* New Arrivals Grid */}
-      <section className="py-24 bg-secondary/30">
-        <div className="container px-4">
-          <div className="flex justify-between items-end mb-12">
-            <div>
-              <h2 className="font-display text-4xl mb-2">New Arrivals</h2>
-              <p className="text-muted-foreground">Just in time for the season.</p>
+      {/* Dynamic Sections from DB */}
+      {homepageData?.map((section) => (
+        <section key={section.section.id} className="py-20 bg-white">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-end mb-10">
+              <div>
+                <h2 className="text-3xl md:text-4xl font-display font-bold text-primary mb-2">{section.section.title}</h2>
+                <div className="h-1 w-20 bg-accent rounded-full"></div>
+              </div>
+              <Link href="/shop">
+                <Button variant="outline" className="hidden md:flex">View All</Button>
+              </Link>
             </div>
-            <Link href="/shop">
-              <Button variant="link" className="text-primary hover:no-underline group">
-                View All <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Button>
-            </Link>
-          </div>
-
-          {isLoading ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-10">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="bg-gray-200 aspect-[3/4] mb-4" />
-                  <div className="h-4 bg-gray-200 w-3/4 mb-2" />
-                  <div className="h-4 bg-gray-200 w-1/4" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-10">
-              {products?.slice(0, 4).map((product) => (
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {section.items.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>
-          )}
+          </div>
+        </section>
+      ))}
+
+      {/* Flash Sale Banner */}
+      <section className="py-24 bg-[url('https://images.unsplash.com/photo-1507915135761-41a0a222c709?q=80&w=2071&auto=format&fit=crop')] bg-cover bg-fixed bg-center relative">
+        <div className="absolute inset-0 bg-primary/80" />
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center text-white">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+          >
+            <span className="uppercase tracking-widest text-accent font-bold mb-4 block">Limited Time Offer</span>
+            <h2 className="font-display text-5xl md:text-7xl font-bold mb-6">Flash Sale</h2>
+            <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">Get up to 60% off on selected items. Don't miss out on the season's hottest trends.</p>
+            <div className="flex justify-center gap-4">
+              <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg min-w-[80px]">
+                <span className="block text-3xl font-bold">02</span>
+                <span className="text-xs uppercase">Days</span>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg min-w-[80px]">
+                <span className="block text-3xl font-bold">12</span>
+                <span className="text-xs uppercase">Hours</span>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg min-w-[80px]">
+                <span className="block text-3xl font-bold">45</span>
+                <span className="text-xs uppercase">Mins</span>
+              </div>
+            </div>
+            <div className="mt-10">
+              <Link href="/shop">
+                <Button size="lg" className="bg-white text-primary hover:bg-white/90 px-10">Shop Sale</Button>
+              </Link>
+            </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Editorial/Story */}
-      <section className="py-24 overflow-hidden">
-        <div className="container px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div className="order-2 lg:order-1 relative aspect-square">
-               {/* editorial image portrait */}
-              <img 
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=1200&q=80"
-                alt="Editorial"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="order-1 lg:order-2 space-y-8">
-              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Our Philosophy</span>
-              <h2 className="font-display text-4xl lg:text-5xl leading-tight">
-                Design that transcends <br/> the ordinary.
-              </h2>
-              <p className="text-lg text-muted-foreground leading-relaxed max-w-md">
-                We believe in the power of simplicity. Our collections are crafted with precision, using only the finest materials to ensure longevity and timeless style.
-              </p>
-              <Button variant="outline" className="rounded-none border-primary text-primary px-8 py-6 uppercase tracking-widest hover:bg-primary hover:text-white transition-colors">
-                Read Our Story
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-    </Layout>
+      <Footer />
+    </div>
   );
 }

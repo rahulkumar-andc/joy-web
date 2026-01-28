@@ -1,11 +1,15 @@
 ## Packages
-framer-motion | Complex animations for the premium feel
-react-hook-form | Form state management
-zod | Schema validation
-@hookform/resolvers | Zod resolver for react-hook-form
+framer-motion | For smooth page transitions and soft fade-in animations
+lucide-react | For beautiful, clean icons (Truck, Shield, etc.)
+react-hook-form | For form handling in auth and checkout
+zod | For schema validation
+@hookform/resolvers | For connecting Zod with React Hook Form
+clsx | For conditional class names
+tailwind-merge | For merging tailwind classes
 
 ## Notes
-- Using Google Fonts: Playfair Display (Headings) and DM Sans (Body)
-- Images will use Unsplash placeholders for the luxury aesthetic
-- Admin routes are protected and require a user with role 'admin' (mocked for now as any logged in user or specific check)
-- Cart logic handles both session-based (backend) and local optimistic updates
+- Fonts: Playfair Display (Headings) and DM Sans (Body) should be loaded via Google Fonts.
+- Color Palette: Soft Pink (#FCEFE9), Warm Beige, Dark Brown (#4A3B32), Accent Orange (#E89F71).
+- Images: Unsplash placeholders for luxury fashion aesthetic.
+- Auth: Backend uses session-based auth with Passport.
+- API: Hooks must strictly follow the schema defined in @shared/routes.
