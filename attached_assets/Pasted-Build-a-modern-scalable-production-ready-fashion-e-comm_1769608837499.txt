@@ -1,0 +1,300 @@
+Build a modern, scalable, production-ready fashion e-commerce platform
+focused on Clothes, Shoes, and Lifestyle Accessories.
+
+The system must be easy to manage by Admin/Manager and scalable in future.
+
+STRICT REQUIREMENT:
+Frontend and Backend must be completely separated.
+
+==================================================
+1. FRONTEND (UI / UX)
+==================================================
+
+Tech Stack:
+- React or Next.js (App Router preferred)
+- Tailwind CSS
+- Figma-style modern animations
+- Responsive (Mobile-first)
+- SEO & accessibility friendly
+
+--------------------------------------------------
+CORE USER-FACING PAGES
+--------------------------------------------------
+
+1. Landing Page
+   - Premium fashion aesthetic
+   - Hero section with animated featured products
+   - CTA: Shop Now / Explore Collection
+   - Homepage sections controlled by Admin:
+     • Featured Products
+     • Trending Products
+     • New Arrivals
+     • Best Sellers
+     • Limited Offers
+   - Categories section (Men, Women, Shoes, Accessories)
+   - Reviews & trust badges
+   - Newsletter subscription
+   - Branded footer
+
+2. Shop / Product Listing Page
+   - Grid/List view
+   - Pagination / infinite scroll
+   - Sorting (price, popularity, newest)
+
+3. Search Results Page
+   - Advanced filters (price, size, color, category)
+   - Clear states
+   - “No results found” UX
+
+4. Product Detail Page
+   - Image gallery with zoom
+   - Size & color selection
+   - Stock availability
+   - Add to Cart / Wishlist
+   - Reviews & ratings
+
+5. Wishlist Page
+   - User-specific wishlist
+   - Move items to cart
+   - Persistent across sessions
+
+6. Cart Page
+   - User-specific cart
+   - Quantity update / remove item
+   - Promo codes
+   - Price breakdown
+
+7. Checkout Page
+   - Address selection
+   - Order summary
+   - Secure payment
+   - Terms acceptance
+
+8. Order Success / Failure Pages
+
+--------------------------------------------------
+AUTH & ACCOUNT PAGES
+--------------------------------------------------
+
+9. Login
+10. Signup
+11. Forgot Password
+12. Reset Password (Token-based)
+13. OTP Verification Page
+14. 2FA Setup Page
+15. Account Recovery Page
+
+--------------------------------------------------
+USER DASHBOARD
+--------------------------------------------------
+
+16. User Profile
+17. Order History
+18. Order Tracking
+19. Saved Addresses
+20. Wishlist
+21. Security Settings (password, 2FA)
+
+--------------------------------------------------
+ADMIN / MANAGER PANEL (VERY IMPORTANT)
+--------------------------------------------------
+
+Admin roles:
+- ADMIN → full control
+- MANAGER → product + homepage + inventory
+
+Admin Pages:
+22. Admin Login
+23. Admin Dashboard (analytics)
+24. Product Management (Add / Edit / Delete)
+25. Category Management
+26. Inventory Management
+27. Order Management
+28. User Management
+29. Refund & Return Management
+30. Support Tickets
+31. Admin Activity Logs
+
+--------------------------------------------------
+ADMIN PRODUCT ADD FLOW
+--------------------------------------------------
+
+Admin must be able to:
+- Add product with:
+  • Name
+  • Category
+  • Description
+  • Price & Discount
+  • Sizes & Colors
+  • Stock quantity
+  • Multiple images
+  • Tags / Brand
+
+- Control homepage visibility using flags:
+  • show_on_homepage
+  • is_featured
+  • is_trending
+  • is_best_seller
+  • is_new_arrival
+
+- Assign products to homepage sections
+- Control product order inside sections
+- Enable/disable products without deleting
+
+--------------------------------------------------
+HOMEPAGE CONTROL LOGIC
+--------------------------------------------------
+
+Homepage must NOT be automatic or hardcoded.
+
+Admin decides:
+- Which products appear on homepage
+- Which section they appear in
+- Order of appearance
+
+Frontend fetches homepage data ONLY from backend configuration.
+
+==================================================
+2. BACKEND (API & BUSINESS LOGIC)
+==================================================
+
+Tech Stack:
+- Node.js + Express or NestJS
+- PostgreSQL (single DB initially)
+- REST APIs
+- Secure session cookies
+
+Architecture:
+- Modular monolith
+- Clean separation of:
+  auth, users, products, categories, wishlist,
+  cart, orders, payments, admin, homepage
+
+==================================================
+3. AUTHENTICATION & SECURITY
+==================================================
+
+Auth System:
+- Email + password login/signup
+- Password hashing (bcrypt)
+- JWT access token (short-lived)
+- Refresh token via HttpOnly Secure cookies
+- Session support for guest users
+- Logout clears cookies & sessions
+- Role-based access (USER, MANAGER, ADMIN)
+
+Security:
+- CSRF protection
+- Rate limiting
+- OTP verification
+- Optional 2FA
+- Secure cookie flags
+- Input validation
+
+==================================================
+4. CART & WISHLIST
+==================================================
+
+Cart:
+- Logged-in users → DB-based cart
+- Guest users → session-based cart
+- Cart auto-merges on login
+- Persistent across sessions
+
+Wishlist:
+- User-specific
+- Synced across devices
+
+==================================================
+5. PAYMENT WORKFLOW (MODERN)
+==================================================
+
+Payment Gateways:
+- Razorpay / Stripe compatible
+
+Flow:
+1. Order created (PENDING)
+2. Payment intent generated
+3. User completes payment
+4. Webhook verification
+5. Order marked PAID / FAILED
+6. Inventory updated
+7. Confirmation sent
+
+==================================================
+6. OPERATIONS & TRUST
+==================================================
+
+Operations Pages:
+- Order Tracking
+- Returns Management
+- Support Tickets
+
+Trust Pages:
+- FAQ
+- Reviews
+- About Us
+- Contact Us
+
+Legal Pages:
+- Privacy Policy
+- Terms of Service
+- Refund / Return Policy
+- Shipping Policy
+
+System Pages:
+- Custom 404 Page (Branded)
+
+==================================================
+7. DATABASE DESIGN (SINGLE DB)
+==================================================
+
+Core Tables:
+- users
+- products
+- categories
+- homepage_sections
+- homepage_section_items
+- wishlist_items
+- cart_items
+- orders
+- order_items
+- payments
+- addresses
+- reviews
+- support_tickets
+- admin_logs
+- sessions
+
+Indexes:
+- users.email
+- products.slug
+- orders.user_id
+
+==================================================
+8. BRANDING
+==================================================
+
+- Generate a modern minimal fashion logo
+- Luxury color palette
+- Clean typography
+- Consistent design system
+
+==================================================
+FINAL OBJECTIVE
+==================================================
+
+Build an elite-quality fashion e-commerce platform
+with UX similar to Myntra / Zara,
+easy for admin & manager to control,
+secure, scalable, and production-ready.
+
+Deliver:
+- UI designs
+- Frontend component structure
+- Backend API structure
+- Admin workflows
+- Homepage control system
+- Auth & payment flow
+- Database schema
+- Logo concept
