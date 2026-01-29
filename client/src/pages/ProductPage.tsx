@@ -18,6 +18,7 @@ import { Minus, Plus, ArrowLeft, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { SEO } from "@/components/SEO";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ProductPage() {
   const [, params] = useRoute("/product/:id");
@@ -51,8 +52,18 @@ export default function ProductPage() {
 
   if (isLoading || !product) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+      <div className="min-h-screen bg-background font-body">
+        <Navbar />
+        <div className="container mx-auto px-4 py-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="aspect-[3/4]"><Skeleton className="w-full h-full rounded-2xl" /></div>
+            <div className="space-y-6">
+              <Skeleton className="h-8 w-3/4" />
+              <Skeleton className="h-6 w-1/4" />
+              <Skeleton className="h-32 w-full" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

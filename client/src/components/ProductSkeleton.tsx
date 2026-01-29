@@ -1,19 +1,17 @@
+
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+
 export function ProductSkeleton() {
     return (
-        <div className="group animate-pulse">
-            {/* Image skeleton */}
-            <div className="aspect-[3/4] rounded-2xl skeleton mb-4" />
-
-            {/* Content skeleton */}
-            <div className="space-y-3">
-                {/* Brand */}
-                <div className="h-3 w-16 rounded skeleton" />
-
-                {/* Title */}
-                <div className="h-5 w-3/4 rounded skeleton" />
-
-                {/* Price */}
-                <div className="h-5 w-20 rounded skeleton" />
+        <div className="space-y-4 rounded-xl overflow-hidden">
+            <div className="aspect-[3/4] relative">
+                <Skeleton className="h-full w-full" />
+            </div>
+            <div className="space-y-2 p-4">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-6 w-full" />
+                <Skeleton className="h-4 w-1/4" />
             </div>
         </div>
     );

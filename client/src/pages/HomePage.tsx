@@ -3,6 +3,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
 import { RecentlyViewed } from "@/components/RecentlyViewed";
+import { ProductSkeleton } from "@/components/ProductSkeleton";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { type Product } from "@shared/schema";
@@ -49,7 +50,18 @@ export default function HomePage() {
   const featuredProducts = products?.slice(0, 4) || [];
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+    return (
+      <div className="min-h-screen bg-background font-body">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[...Array(8)].map((_, i) => (
+              <ProductSkeleton key={i} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

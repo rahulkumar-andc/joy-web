@@ -44,8 +44,7 @@ export default function AuthPage() {
   });
 
   const onLogin = (data: any) => {
-    // Adapter for username field required by backend passport local strategy
-    loginMutation.mutate({ username: data.email, password: data.password });
+    loginMutation.mutate({ email: data.email, password: data.password });
   };
 
   const onRegister = (data: any) => {

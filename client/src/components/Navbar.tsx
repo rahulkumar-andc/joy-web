@@ -15,12 +15,14 @@ import {
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { SearchAutocomplete } from "@/components/SearchAutocomplete";
+import { CartSheet } from "@/components/CartSheet";
 
 export function Navbar() {
   const { user, logoutMutation } = useAuth();
   const { data: cartItems } = useCart();
   const { resolvedTheme, setTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [location, navigate] = useLocation();
@@ -96,15 +98,21 @@ export function Navbar() {
               <Heart className="w-5 h-5" />
             </Link>
 
-            {/* Cart */}
-            <Link href="/cart" className="hidden md:flex relative p-2 text-muted-foreground hover:text-primary transition-colors">
-              <ShoppingBag className="w-5 h-5" />
-              {cartCount > 0 && (
-                <span className="absolute top-0 right-0 inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-accent rounded-full">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
+            {/* Cart - Opens Sheet */}
+            <div className="relative">
+              <button
+                onClick={() => setIsCartOpen(true)}
+                className="hidden md:flex relative p-2 text-muted-foreground hover:text-primary transition-colors"
+              >
+                <ShoppingBag className="w-5 h-5" />
+                {cartCount > 0 && (
+                  <span className="absolute top-0 right-0 inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-accent rounded-full">
+                    {cartCount}
+                  </span>
+                )}
+              </button>
+              <CartSheet open={isCartOpen} onOpenChange={setIsCartOpen} />
+            </div>
 
             {/* User Menu */}
             {user ? (
