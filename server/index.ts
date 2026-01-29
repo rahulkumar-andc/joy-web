@@ -1,9 +1,13 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import morgan from "morgan";
+import { logger } from "./logger";
 
 const app = express();
+app.set("trust proxy", 1);
 const httpServer = createServer(app);
 
 declare module "http" {
@@ -21,52 +25,39 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+app.use("/uploads", express.static("uploads"));
 
-export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
+// Replace custom logging middleware with Morgan
+const morganFormat = ":method :url :status :response-time ms";
 
-  console.log(`${formattedTime} [${source}] ${message}`);
-}
+app.use(
+  morgan(morganFormat, {
+    stream: {
+      write: (message) => {
+        const [method, url, status, responseTime] = message.trim().split(" ");
+        const level = parseInt(status) >= 400 ? "warn" : "http";
+        logger.log(level, message.trim());
+      },
+    },
+    skip: (req) => req.url.startsWith("/api/debug"), // Optional skip
+  })
+);
 
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      log(logLine);
-    }
-  });
-
-  next();
-});
+import { apiLimiter, authLimiter } from "./middleware/rate-limit";
 
 (async () => {
+  // Apply rate limits
+  app.use("/api/auth", authLimiter);
+
+  app.use("/api", apiLimiter);
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    console.error("Internal Server Error:", err);
+    logger.error(`Internal Server Error: ${err.message}`, { stack: err.stack });
 
     if (res.headersSent) {
       return next(err);
@@ -97,7 +88,7 @@ app.use((req, res, next) => {
       reusePort: true,
     },
     () => {
-      log(`serving on port ${port}`);
+      logger.info(`serving on port ${port}`);
     },
   );
 })();

@@ -23,7 +23,14 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (user) setLocation("/");
+    if (user) {
+      // Redirect admin users to admin dashboard, regular users to home
+      if (user.role === "admin") {
+        setLocation("/admin");
+      } else {
+        setLocation("/");
+      }
+    }
   }, [user, setLocation]);
 
   const loginForm = useForm<z.infer<typeof authSchema>>({
@@ -48,14 +55,14 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-background font-body flex flex-col">
       <Navbar />
-      
+
       <div className="flex-1 flex items-center justify-center py-20 px-4">
         <Tabs defaultValue="login" className="w-full max-w-md">
           <TabsList className="grid w-full grid-cols-2 mb-8 h-12 bg-white p-1 rounded-full shadow-sm border border-border">
             <TabsTrigger value="login" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white">Login</TabsTrigger>
             <TabsTrigger value="register" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white">Register</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="login">
             <Card className="border-none shadow-lg">
               <CardHeader className="text-center">
@@ -87,9 +94,9 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
-                    <Button 
-                      type="submit" 
-                      className="w-full bg-accent hover:bg-accent/90 text-white mt-4" 
+                    <Button
+                      type="submit"
+                      className="w-full bg-accent hover:bg-accent/90 text-white mt-4"
                       disabled={loginMutation.isPending}
                     >
                       {loginMutation.isPending ? "Logging in..." : "Login"}
@@ -99,7 +106,7 @@ export default function AuthPage() {
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="register">
             <Card className="border-none shadow-lg">
               <CardHeader className="text-center">
@@ -142,8 +149,8 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       className="w-full bg-primary hover:bg-primary/90 text-white mt-4"
                       disabled={registerMutation.isPending}
                     >

@@ -64,8 +64,9 @@ export function Layout({ children }: { children: ReactNode }) {
 
             {/* Logo */}
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-              <Link href="/" className="font-display text-2xl font-bold tracking-tighter">
-                LUMIÈRE
+              <Link href="/" className="flex items-center gap-2">
+                <img src="/logo.png" alt="Steal the Deal" className="h-10 w-10 object-contain" />
+                <span className="font-display text-xl font-bold tracking-tighter">Steal the Deal</span>
               </Link>
             </div>
 
@@ -127,9 +128,12 @@ export function Layout({ children }: { children: ReactNode }) {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 gap-12 md:grid-cols-4">
             <div className="space-y-4">
-              <h3 className="font-display text-lg font-bold">LUMIÈRE</h3>
+              <div className="flex items-center gap-2">
+                <img src="/logo.png" alt="Steal the Deal" className="h-10 w-10 object-contain" />
+                <h3 className="font-display text-lg font-bold">Steal the Deal</h3>
+              </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Elevating everyday fashion with timeless pieces designed for the modern individual.
+                Your one-stop destination for unbeatable deals on quality products.
               </p>
             </div>
             <div>
@@ -152,9 +156,9 @@ export function Layout({ children }: { children: ReactNode }) {
               <h4 className="font-bold uppercase tracking-wider text-xs mb-4">Newsletter</h4>
               <p className="text-sm text-muted-foreground mb-4">Subscribe to receive updates, access to exclusive deals, and more.</p>
               <div className="flex gap-2">
-                <input 
-                  type="email" 
-                  placeholder="Enter your email" 
+                <input
+                  type="email"
+                  placeholder="Enter your email"
                   className="w-full bg-background border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                 />
                 <Button size="sm">Subscribe</Button>
@@ -162,7 +166,7 @@ export function Layout({ children }: { children: ReactNode }) {
             </div>
           </div>
           <div className="mt-16 border-t pt-8 text-center text-xs text-muted-foreground">
-            © 2024 Lumière Fashion. All rights reserved.
+            © 2024 Steal the Deal. All rights reserved.
           </div>
         </div>
       </footer>

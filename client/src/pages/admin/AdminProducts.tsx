@@ -1,4 +1,4 @@
-import { useProducts, useCreateProduct, useDeleteProduct } from "@/hooks/use-products";
+import { useProducts, useCreateProduct, useDeleteProduct, useUpdateProduct } from "@/hooks/use-products";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +9,10 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Pencil, Upload } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
 const productSchema = z.object({
   name: z.string().min(2),
@@ -22,12 +23,17 @@ const productSchema = z.object({
   categoryId: z.number().optional(),
 });
 
-export default function AdminProducts() {
-  const { user } = useAuth();
-  const { data: products, isLoading } = useProducts();
+// This component is now a child of AdminPage
+export function ProductManagement() {
+  const { user, isLoading } = useAuth();
+  const { data: products, isLoading: productsLoading } = useProducts();
   const createMutation = useCreateProduct();
   const deleteMutation = useDeleteProduct();
+  const updateMutation = useUpdateProduct();
+  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
@@ -40,12 +46,22 @@ export default function AdminProducts() {
     },
   });
 
+  // Show loading while checking auth state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Access denied for non-admin users
   if (!user || user.role !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center flex-col gap-4">
         <h1 className="text-2xl font-bold">Access Denied</h1>
         <p>You need admin privileges to view this page.</p>
-        <Link href="/"><Button>Go Home</Button></Link>
+        <Link href="/auth"><Button>Login as Admin</Button></Link>
       </div>
     );
   }
@@ -65,15 +81,62 @@ export default function AdminProducts() {
   };
 
   return (
-    <div className="min-h-screen bg-background font-body">
-      <Navbar />
-      <div className="container mx-auto px-4 py-12">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="font-display text-3xl font-bold text-primary">Product Management</h1>
-          
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold tracking-tight">Products</h2>
+
+        <div className="flex items-center gap-2">
+          {/* Import CSV */}
+          <div>
+            <Input
+              id="csv-upload"
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+
+                const formData = new FormData();
+                formData.append("file", file);
+
+                try {
+                  toast({ title: "Importing...", description: "Please wait." });
+                  const res = await fetch("/api/products/bulk", {
+                    method: "POST",
+                    body: formData,
+                  });
+                  const data = await res.json();
+
+                  if (!res.ok) throw new Error(data.message || "Import failed");
+
+                  toast({
+                    title: "Import Complete",
+                    description: `Imported: ${data.importedCount}, Failed: ${data.failedCount}`
+                  });
+
+                  if (data.failedCount > 0) {
+                    console.error("Failed rows:", data.failedDetails);
+                  }
+
+                  window.location.reload();
+
+                } catch (err: any) {
+                  console.error(err);
+                  toast({ title: "Import failed", description: err.message, variant: "destructive" });
+                }
+                e.target.value = "";
+              }}
+            />
+            <Button variant="outline" onClick={() => document.getElementById("csv-upload")?.click()}>
+              <Upload className="mr-2 w-4 h-4" /> Import CSV
+            </Button>
+          </div>
+
+          {/* Add Product */}
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-primary text-white"><Plus className="mr-2 w-4 h-4"/> Add Product</Button>
+              <Button className="bg-primary text-white"><Plus className="mr-2 w-4 h-4" /> Add Product</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -102,7 +165,7 @@ export default function AdminProducts() {
                     )}
                   />
                   <div className="grid grid-cols-2 gap-4">
-                     <FormField
+                    <FormField
                       control={form.control}
                       name="price"
                       render={({ field }) => (
@@ -112,7 +175,7 @@ export default function AdminProducts() {
                         </FormItem>
                       )}
                     />
-                     <FormField
+                    <FormField
                       control={form.control}
                       name="stockQuantity"
                       render={({ field }) => (
@@ -123,13 +186,45 @@ export default function AdminProducts() {
                       )}
                     />
                   </div>
+                  {/* Image Upload / URL Toggle */}
                   <FormField
                     control={form.control}
                     name="images"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Image URL</FormLabel>
-                        <FormControl><Input placeholder="https://..." {...field} /></FormControl>
+                        <FormLabel>Product Image</FormLabel>
+                        <div className="flex flex-col gap-4">
+                          <div className="flex items-center gap-4">
+                            <FormControl>
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  const formData = new FormData();
+                                  formData.append("image", file);
+                                  try {
+                                    const res = await fetch("/api/upload", { method: "POST", body: formData });
+                                    if (!res.ok) throw new Error("Upload failed");
+                                    const data = await res.json();
+                                    field.onChange(data.url);
+                                    toast({ title: "Image uploaded successfully" });
+                                  } catch (err) {
+                                    toast({ title: "Upload failed", variant: "destructive" });
+                                  }
+                                }}
+                              />
+                            </FormControl>
+                            <span className="text-sm text-gray-500">OR</span>
+                            <FormControl>
+                              <Input placeholder="https://..." {...field} />
+                            </FormControl>
+                          </div>
+                          {field.value && (
+                            <img src={field.value} alt="Preview" className="h-20 w-20 object-cover rounded border" />
+                          )}
+                        </div>
                       </FormItem>
                     )}
                   />
@@ -141,45 +236,64 @@ export default function AdminProducts() {
             </DialogContent>
           </Dialog>
         </div>
+      </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Image</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+      <div className="bg-white rounded-xl shadow-sm border border-border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Image</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Stock</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {productsLoading ? (
+              <TableRow><TableCell colSpan={5} className="text-center h-24">Loading...</TableCell></TableRow>
+            ) : products?.map((product: any) => (
+              <TableRow key={product.id}>
+                <TableCell>
+                  <img src={product.images[0]} alt={product.name} className="w-10 h-10 object-cover rounded bg-muted" />
+                </TableCell>
+                <TableCell className="font-medium">{product.name}</TableCell>
+                <TableCell>₹{product.price}</TableCell>
+                <TableCell>{product.stockQuantity}</TableCell>
+                <TableCell className="text-right space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditingProduct(product);
+                      setIsEditOpen(true);
+                    }}
+                    className="text-primary hover:bg-primary/10"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      deleteMutation.mutate(product.id, {
+                        onSuccess: () => {
+                          toast({ title: "Product deleted", description: `${product.name} has been removed.` });
+                        }
+                      });
+                    }}
+                    className="text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={5} className="text-center h-24">Loading...</TableCell></TableRow>
-              ) : products?.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell>
-                    <img src={product.images[0]} alt={product.name} className="w-10 h-10 object-cover rounded bg-muted" />
-                  </TableCell>
-                  <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell>₹{product.price}</TableCell>
-                  <TableCell>{product.stockQuantity}</TableCell>
-                  <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => deleteMutation.mutate(product.id)}
-                      className="text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
 }
+
+export default ProductManagement;

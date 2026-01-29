@@ -1,10 +1,12 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useCart } from "@/hooks/use-cart";
-import { ShoppingBag, User as UserIcon, LogOut, Menu, X } from "lucide-react";
+import { useTheme } from "@/hooks/use-theme";
+import { ShoppingBag, User as UserIcon, LogOut, Menu, X, Search, Heart, Package, Sun, Moon } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,12 +14,16 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
+import { SearchAutocomplete } from "@/components/SearchAutocomplete";
 
 export function Navbar() {
   const { user, logoutMutation } = useAuth();
   const { data: cartItems } = useCart();
+  const { resolvedTheme, setTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
-  const [location] = useLocation();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+  const [location, navigate] = useLocation();
 
   const cartCount = cartItems?.reduce((acc, item) => acc + item.item.quantity, 0) || 0;
 
@@ -32,10 +38,11 @@ export function Navbar() {
     <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-border">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
-          
+
           {/* Logo */}
-          <Link href="/" className="font-display text-2xl font-bold tracking-tight text-primary">
-            Luxe<span className="text-accent">Mode</span>
+          <Link href="/" className="flex items-center gap-2">
+            <img src="/logo.png" alt="Steal the Deal" className="h-12 w-12 object-contain" />
+            <span className="font-display text-xl font-bold tracking-tight text-primary">Steal the Deal</span>
           </Link>
 
           {/* Desktop Nav */}
@@ -48,9 +55,49 @@ export function Navbar() {
           </div>
 
           {/* Icons & Actions */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            {/* Search */}
+            <div className="hidden md:flex items-center">
+              {showSearch ? (
+                <div className="flex items-center relative z-50">
+                  <div className="w-64">
+                    <SearchAutocomplete
+                      onClose={() => setShowSearch(false)}
+                      className="w-full"
+                    />
+                  </div>
+                  <Button type="button" size="icon" variant="ghost" className="h-9 w-9 ml-1" onClick={() => setShowSearch(false)}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="ghost" size="icon" onClick={() => setShowSearch(true)}>
+                  <Search className="w-5 h-5 text-muted-foreground" />
+                </Button>
+              )}
+            </div>
+
+            {/* Theme Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              className="hidden md:flex"
+            >
+              {resolvedTheme === "dark" ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
+            </Button>
+
+            {/* Wishlist */}
+            <Link href="/wishlist" className="hidden md:flex p-2 text-muted-foreground hover:text-primary transition-colors">
+              <Heart className="w-5 h-5" />
+            </Link>
+
             {/* Cart */}
-            <Link href="/cart" className="relative p-2 text-muted-foreground hover:text-primary transition-colors">
+            <Link href="/cart" className="hidden md:flex relative p-2 text-muted-foreground hover:text-primary transition-colors">
               <ShoppingBag className="w-5 h-5" />
               {cartCount > 0 && (
                 <span className="absolute top-0 right-0 inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-accent rounded-full">
@@ -75,11 +122,35 @@ export function Navbar() {
                     </div>
                   </div>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="flex items-center">
+                      <UserIcon className="mr-2 h-4 w-4" />
+                      <span>My Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/orders" className="flex items-center">
+                      <Package className="mr-2 h-4 w-4" />
+                      <span>My Orders</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/wishlist" className="flex items-center">
+                      <Heart className="mr-2 h-4 w-4" />
+                      <span>Wishlist</span>
+                    </Link>
+                  </DropdownMenuItem>
                   {user.role === 'admin' && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/admin">Admin Dashboard</Link>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin">Admin Dashboard</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin/orders">Manage Orders</Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => logoutMutation.mutate()}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>

@@ -1,25 +1,45 @@
 import { Link } from "wouter";
 import { type Product } from "@shared/schema";
-import { ShoppingBag, Eye } from "lucide-react";
+import { ShoppingBag, Heart, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAddToCart } from "@/hooks/use-cart";
+import { useAddToWishlist, useRemoveFromWishlist, useIsInWishlist } from "@/hooks/use-wishlist";
+import { useAuth } from "@/hooks/use-auth";
 import { motion } from "framer-motion";
 
 interface ProductCardProps {
   product: Product;
+  onQuickView?: (product: Product) => void;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, onQuickView }: ProductCardProps) {
+  const { user } = useAuth();
   const addToCartMutation = useAddToCart();
+  const addToWishlist = useAddToWishlist();
+  const removeFromWishlist = useRemoveFromWishlist();
+  const { data: wishlistStatus } = useIsInWishlist(product.id);
 
   const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent navigation
+    e.preventDefault();
     e.stopPropagation();
     addToCartMutation.mutate({ productId: product.id, quantity: 1 });
   };
 
+  const handleWishlistToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) return; // Could show login prompt
+    if (wishlistStatus?.inWishlist) {
+      removeFromWishlist.mutate(product.id);
+    } else {
+      addToWishlist.mutate(product.id);
+    }
+  };
+
+  const isInWishlist = wishlistStatus?.inWishlist;
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
@@ -40,34 +60,61 @@ export function ProductCard({ product }: ProductCardProps) {
         )}
       </div>
 
+      {/* Wishlist Heart Button */}
+      {user && (
+        <button
+          onClick={handleWishlistToggle}
+          className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white/80 hover:bg-white shadow-sm transition-all"
+        >
+          <Heart
+            className={`w-5 h-5 transition-colors ${isInWishlist ? "fill-red-500 text-red-500" : "text-gray-400 hover:text-red-400"
+              }`}
+          />
+        </button>
+      )}
+
       {/* Image Container */}
       <Link href={`/product/${product.id}`} className="block relative aspect-[3/4] overflow-hidden bg-gray-100">
-        <img 
-          src={product.images[0]} 
+        <img
+          src={product.images[0]}
           alt={product.name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
         />
-        
+
         {/* Hover Overlay Actions */}
         <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-gradient-to-t from-black/50 to-transparent">
           <div className="flex gap-2 justify-center">
-            <Button 
-              size="sm" 
-              className="bg-white text-primary hover:bg-accent hover:text-white transition-colors w-full"
+            <Button
+              size="sm"
+              className="bg-white text-primary hover:bg-accent hover:text-white transition-colors flex-1"
               onClick={handleAddToCart}
               disabled={addToCartMutation.isPending}
             >
               <ShoppingBag className="w-4 h-4 mr-2" />
               {addToCartMutation.isPending ? "Adding..." : "Add to Cart"}
             </Button>
+            {onQuickView && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="bg-white/90 hover:bg-white border-0"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onQuickView(product);
+                }}
+              >
+                <Eye className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
       </Link>
 
       {/* Info */}
       <div className="p-4">
-        <div className="text-xs text-muted-foreground mb-1 font-medium">{product.brand || "LuxeMode"}</div>
+        <div className="text-xs text-muted-foreground mb-1 font-medium">{product.brand || "Steal the Deal"}</div>
         <Link href={`/product/${product.id}`}>
           <h3 className="font-display text-lg leading-tight mb-2 hover:text-accent transition-colors truncate">
             {product.name}

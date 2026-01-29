@@ -6,17 +6,24 @@
 
 :root {
   /* Soft Luxury Palette */
-  --soft-pink: 20 54% 95%;      /* #FCEFE9 */
-  --warm-beige: 30 40% 96%;     /* #F9F5F1 */
-  --dark-brown: 22 20% 24%;     /* #4A3B32 */
-  --accent-orange: 23 72% 68%;  /* #E89F71 */
+  --soft-pink: 20 54% 95%;
+  /* #FCEFE9 */
+  --warm-beige: 30 40% 96%;
+  /* #F9F5F1 */
+  --dark-brown: 22 20% 24%;
+  /* #4A3B32 */
+  --accent-orange: 23 72% 68%;
+  /* #E89F71 */
   --pure-white: 0 0% 100%;
-  --text-primary: 22 20% 24%;   /* Matches dark brown */
+  --text-primary: 22 20% 24%;
+  /* Matches dark brown */
   --text-secondary: 22 10% 45%;
 
   /* Mapping to Tailwind/Shadcn variables */
-  --background: 20 54% 95%; /* Soft Pink base */
-  --foreground: 22 20% 24%; /* Dark Brown text */
+  --background: 20 54% 95%;
+  /* Soft Pink base */
+  --foreground: 22 20% 24%;
+  /* Dark Brown text */
 
   --card: 0 0% 100%;
   --card-foreground: 22 20% 24%;
@@ -24,16 +31,19 @@
   --popover: 0 0% 100%;
   --popover-foreground: 22 20% 24%;
 
-  --primary: 22 20% 24%; /* Dark brown as primary */
+  --primary: 22 20% 24%;
+  /* Dark brown as primary */
   --primary-foreground: 20 54% 95%;
 
-  --secondary: 30 40% 91%; /* Warm beige darker */
+  --secondary: 30 40% 91%;
+  /* Warm beige darker */
   --secondary-foreground: 22 20% 24%;
 
   --muted: 30 20% 96%;
   --muted-foreground: 22 10% 45%;
 
-  --accent: 23 72% 68%; /* Orange accent */
+  --accent: 23 72% 68%;
+  /* Orange accent */
   --accent-foreground: 22 20% 24%;
 
   --destructive: 0 84.2% 60.2%;
@@ -54,10 +64,17 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground font-body antialiased;
   }
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-display font-medium tracking-tight;
   }
 }
@@ -66,13 +83,67 @@
 ::-webkit-scrollbar {
   width: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: hsl(var(--background));
 }
+
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--muted-foreground) / 0.3);
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Dark Mode */
+.dark {
+  --background: 22 20% 10%;
+  --foreground: 30 20% 90%;
+
+  --card: 22 20% 14%;
+  --card-foreground: 30 20% 90%;
+
+  --popover: 22 20% 14%;
+  --popover-foreground: 30 20% 90%;
+
+  --primary: 30 20% 90%;
+  --primary-foreground: 22 20% 10%;
+
+  --secondary: 22 15% 20%;
+  --secondary-foreground: 30 20% 90%;
+
+  --muted: 22 15% 18%;
+  --muted-foreground: 30 10% 60%;
+
+  --accent: 23 72% 68%;
+  --accent-foreground: 22 20% 10%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 22 15% 25%;
+  --input: 22 15% 25%;
+  --ring: 23 72% 68%;
+}
+
+/* Skeleton loading animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--muted-foreground) / 0.1) 50%,
+      hsl(var(--muted)) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }

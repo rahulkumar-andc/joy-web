@@ -1,40 +1,40 @@
-import { useHomepage } from "@/hooks/use-products";
+import { useHomepage, useProducts } from "@/hooks/use-products";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
+import { RecentlyViewed } from "@/components/RecentlyViewed";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import { type Product } from "@shared/schema";
 import { motion } from "framer-motion";
-import { Truck, ShieldCheck, RefreshCcw, ArrowRight } from "lucide-react";
-import heroImg from "@assets/hero.jpg"; // Assume asset handled or use unsplash
+import { Truck, ShieldCheck, RefreshCcw, ArrowRight, Loader2 } from "lucide-react";
+import { FlashSale } from "@/components/FlashSale";
+import { SEO } from "@/components/SEO";
 
 export default function HomePage() {
   const { data: homepageData, isLoading } = useHomepage();
+  const { data: products } = useProducts();
+
+  // Get featured products (first 4 products as fallback when no homepage sections)
+  const featuredProducts = products?.slice(0, 4) || [];
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <Navbar />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
-        </div>
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
 
-  // Fallback hero section if no database data
   return (
     <div className="min-h-screen bg-background font-body">
+      <SEO />
       <Navbar />
 
       {/* Hero Section */}
       <section className="relative h-[80vh] w-full overflow-hidden bg-gradient-to-r from-[#FCEFE9] to-[#F8E4D9]">
         <div className="container mx-auto h-full px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
-            className="flex-1 space-y-6 z-10 pt-12 md:pt-0 text-center md:text-left"
+            className="flex-1 space-y-6 z-10 pt-12 md:pt-0 text-center md:text-left relative"
           >
             <span className="text-accent uppercase tracking-[0.2em] font-bold text-sm">New Collection 2024</span>
             <h1 className="font-display text-5xl md:text-7xl font-bold text-primary leading-tight">
@@ -51,24 +51,24 @@ export default function HomePage() {
               </Link>
             </div>
           </motion.div>
-          
-          <motion.div 
+
+          <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.2 }}
             className="flex-1 h-full relative hidden md:block"
           >
-             {/* Model Image - Unsplash */}
-             <div className="absolute inset-0 flex items-end justify-center">
-                <img 
-                  src="https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=2070&auto=format&fit=crop" 
-                  alt="Fashion Model" 
-                  className="h-[90%] object-contain drop-shadow-2xl"
-                />
-             </div>
+            {/* Model Image - Unsplash */}
+            <div className="absolute inset-0 flex items-end justify-center">
+              <img
+                src="https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=2070&auto=format&fit=crop"
+                alt="Fashion Model"
+                className="h-[90%] object-contain drop-shadow-2xl"
+              />
+            </div>
           </motion.div>
         </div>
-        
+
         {/* Decorative circle */}
         <div className="absolute top-0 right-0 w-2/3 h-full bg-white/30 skew-x-12 translate-x-1/4 pointer-events-none"></div>
       </section>
@@ -82,7 +82,7 @@ export default function HomePage() {
               { icon: RefreshCcw, title: "Easy Returns", desc: "30-day money back guarantee" },
               { icon: ShieldCheck, title: "Secure Payment", desc: "100% protected payments" },
             ].map((feature, idx) => (
-              <motion.div 
+              <motion.div
                 key={idx}
                 whileHover={{ y: -5 }}
                 className="flex items-center space-x-4 p-6 rounded-2xl bg-warm-beige border border-border/50 shadow-sm"
@@ -107,7 +107,7 @@ export default function HomePage() {
             <h2 className="text-3xl md:text-4xl font-display font-bold text-primary mb-4">Trending Categories</h2>
             <p className="text-muted-foreground">Explore our most popular collections</p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               { name: "Women's Collection", img: "https://images.unsplash.com/photo-1550614000-4b9519e0037a?q=80&w=800&auto=format&fit=crop", link: "/shop?category=women" },
@@ -115,9 +115,9 @@ export default function HomePage() {
               { name: "Accessories", img: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?q=80&w=800&auto=format&fit=crop", link: "/shop?category=accessories" },
             ].map((cat, idx) => (
               <Link key={idx} href={cat.link} className="group relative h-96 rounded-2xl overflow-hidden cursor-pointer">
-                <img 
-                  src={cat.img} 
-                  alt={cat.name} 
+                <img
+                  src={cat.img}
+                  alt={cat.name}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
@@ -146,7 +146,7 @@ export default function HomePage() {
                 <Button variant="outline" className="hidden md:flex">View All</Button>
               </Link>
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               {section.items.map((product) => (
                 <ProductCard key={product.id} product={product} />
@@ -155,6 +155,29 @@ export default function HomePage() {
           </div>
         </section>
       ))}
+
+      {/* Featured Products */}
+      {featuredProducts.length > 0 && (
+        <section className="py-20 container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-4">
+            <div>
+              <span className="text-accent font-bold tracking-widest uppercase text-sm">Curated For You</span>
+              <h2 className="font-display text-4xl font-bold mt-2 text-primary">Featured Collection</h2>
+            </div>
+            <Link href="/shop">
+              <Button variant="outline" className="group">
+                View All Products
+                <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {featuredProducts.map((product: Product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Flash Sale Banner */}
       <section className="py-24 bg-[url('https://images.unsplash.com/photo-1507915135761-41a0a222c709?q=80&w=2071&auto=format&fit=crop')] bg-cover bg-fixed bg-center relative">
@@ -189,6 +212,13 @@ export default function HomePage() {
               </Link>
             </div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Recently Viewed */}
+      <section className="py-12 bg-background">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <RecentlyViewed />
         </div>
       </section>
 

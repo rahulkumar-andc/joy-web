@@ -1,14 +1,26 @@
+import { useState } from "react";
 import { useCart, useUpdateCartItem, useRemoveFromCart } from "@/hooks/use-cart";
+import { useValidateCoupon } from "@/hooks/use-coupons";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
-import { Minus, Plus, Trash2, ArrowRight } from "lucide-react";
+import { Minus, Plus, Trash2, ArrowRight, Tag, CheckCircle, XCircle, Loader2 } from "lucide-react";
 
 export default function CartPage() {
   const { data: cartItems, isLoading } = useCart();
   const updateMutation = useUpdateCartItem();
   const removeMutation = useRemoveFromCart();
+  const validateCoupon = useValidateCoupon();
+
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discount: number;
+    message?: string;
+  } | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -18,7 +30,41 @@ export default function CartPage() {
     );
   }
 
-  const total = cartItems?.reduce((acc, item) => acc + (Number(item.product.price) * item.item.quantity), 0) || 0;
+  const subtotal = cartItems?.reduce((acc, item) => acc + (Number(item.product.price) * item.item.quantity), 0) || 0;
+  const shipping = subtotal > 2000 ? 0 : 100;
+  const discount = appliedCoupon?.discount || 0;
+  const total = Math.max(0, subtotal + shipping - discount);
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+
+    setCouponError(null);
+    setAppliedCoupon(null);
+
+    try {
+      const result = await validateCoupon.mutateAsync({
+        code: couponCode.trim(),
+        orderAmount: subtotal,
+      });
+
+      if (result.valid) {
+        setAppliedCoupon({
+          code: couponCode.trim().toUpperCase(),
+          discount: result.discount,
+        });
+        setCouponCode("");
+      } else {
+        setCouponError(result.message || "Invalid coupon");
+      }
+    } catch {
+      setCouponError("Failed to validate coupon");
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponError(null);
+  };
 
   return (
     <div className="min-h-screen bg-background font-body">
@@ -42,9 +88,9 @@ export default function CartPage() {
               {cartItems.map((entry) => (
                 <div key={entry.item.id} className="flex gap-6 p-6 bg-white rounded-xl shadow-sm border border-border/50">
                   <Link href={`/product/${entry.product.id}`} className="w-24 h-32 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
-                    <img 
-                      src={entry.product.images[0]} 
-                      alt={entry.product.name} 
+                    <img
+                      src={entry.product.images[0]}
+                      alt={entry.product.name}
                       className="w-full h-full object-cover"
                     />
                   </Link>
@@ -58,14 +104,14 @@ export default function CartPage() {
                       </div>
                       <p className="text-sm text-muted-foreground mb-1">{entry.product.brand}</p>
                       <div className="text-xs text-muted-foreground space-x-3">
-                         {entry.item.size && <span>Size: {entry.item.size}</span>}
-                         {entry.item.color && <span>Color: {entry.item.color}</span>}
+                        {entry.item.size && <span>Size: {entry.item.size}</span>}
+                        {entry.item.color && <span>Color: {entry.item.color}</span>}
                       </div>
                     </div>
 
                     <div className="flex justify-between items-center mt-4">
                       <div className="flex items-center border border-border rounded-lg h-9">
-                        <button 
+                        <button
                           onClick={() => updateMutation.mutate({ id: entry.item.id, quantity: Math.max(1, entry.item.quantity - 1) })}
                           className="px-3 hover:bg-muted/50 h-full flex items-center justify-center transition-colors"
                           disabled={entry.item.quantity <= 1}
@@ -73,14 +119,14 @@ export default function CartPage() {
                           <Minus className="w-3 h-3" />
                         </button>
                         <span className="w-8 text-center text-sm font-medium">{entry.item.quantity}</span>
-                        <button 
+                        <button
                           onClick={() => updateMutation.mutate({ id: entry.item.id, quantity: entry.item.quantity + 1 })}
                           className="px-3 hover:bg-muted/50 h-full flex items-center justify-center transition-colors"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
                       </div>
-                      <button 
+                      <button
                         onClick={() => removeMutation.mutate(entry.item.id)}
                         className="text-muted-foreground hover:text-destructive transition-colors p-2"
                       >
@@ -96,18 +142,70 @@ export default function CartPage() {
             <div className="lg:col-span-1">
               <div className="bg-white p-8 rounded-2xl shadow-sm border border-border/50 sticky top-24">
                 <h3 className="font-display text-xl font-bold mb-6">Order Summary</h3>
+
+                {/* Coupon Input */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-muted-foreground mb-2">
+                    <Tag className="w-4 h-4 inline mr-1" /> Discount Code
+                  </label>
+                  {appliedCoupon ? (
+                    <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                        <span className="font-medium text-green-700">{appliedCoupon.code}</span>
+                        <span className="text-green-600 text-sm">-₹{appliedCoupon.discount.toFixed(2)}</span>
+                      </div>
+                      <button
+                        onClick={handleRemoveCoupon}
+                        className="text-green-600 hover:text-green-800"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter code"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        className="flex-1"
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={handleApplyCoupon}
+                        disabled={validateCoupon.isPending || !couponCode.trim()}
+                      >
+                        {validateCoupon.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          "Apply"
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                  {couponError && (
+                    <p className="text-xs text-destructive mt-2">{couponError}</p>
+                  )}
+                </div>
+
                 <div className="space-y-4 mb-6">
                   <div className="flex justify-between text-muted-foreground">
                     <span>Subtotal</span>
-                    <span>₹{total}</span>
+                    <span>₹{subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
                     <span>Shipping</span>
-                    <span>{total > 2000 ? "Free" : "₹100"}</span>
+                    <span>{shipping === 0 ? "Free" : `₹${shipping}`}</span>
                   </div>
+                  {discount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Discount</span>
+                      <span>-₹{discount.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="border-t border-dashed border-border pt-4 flex justify-between font-bold text-lg text-primary">
                     <span>Total</span>
-                    <span>₹{total > 2000 ? total : total + 100}</span>
+                    <span>₹{total.toFixed(2)}</span>
                   </div>
                 </div>
                 <Link href="/checkout">

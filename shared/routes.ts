@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { insertUserSchema, insertProductSchema, insertCategorySchema, users, products, categories, cartItems, wishlistItems, orders, homepageSections, reviews } from './schema';
+import {
+  insertUserSchema, insertProductSchema, insertCategorySchema, insertReviewSchema, insertCouponSchema,
+  cartAddSchema, cartUpdateSchema, orderCreateSchema, wishlistAddSchema, profileUpdateSchema, changePasswordSchema, reviewCreateSchema,
+  users, products, categories, cartItems, wishlistItems, orders, homepageSections, reviews, coupons
+} from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -46,6 +50,53 @@ export const api = {
       path: '/api/auth/me',
       responses: {
         200: z.custom<typeof users.$inferSelect | null>(),
+      },
+    },
+    forgotPassword: {
+      method: 'POST' as const,
+      path: '/api/auth/forgot-password',
+      input: z.object({ email: z.string().email() }),
+      responses: {
+        200: z.object({ message: z.string() }),
+        404: errorSchemas.notFound,
+      },
+    },
+    resetPassword: {
+      method: 'POST' as const,
+      path: '/api/auth/reset-password',
+      input: z.object({ token: z.string(), password: z.string().min(6) }),
+      responses: {
+        200: z.object({ message: z.string() }),
+        400: errorSchemas.validation,
+      },
+    },
+  },
+  profile: {
+    get: {
+      method: 'GET' as const,
+      path: '/api/profile',
+      responses: {
+        200: z.custom<typeof users.$inferSelect>(),
+        401: errorSchemas.validation,
+      },
+    },
+    update: {
+      method: 'PATCH' as const,
+      path: '/api/profile',
+      input: profileUpdateSchema,
+      responses: {
+        200: z.custom<typeof users.$inferSelect>(),
+        401: errorSchemas.validation,
+      },
+    },
+    changePassword: {
+      method: 'POST' as const,
+      path: '/api/profile/password',
+      input: changePasswordSchema,
+      responses: {
+        200: z.object({ message: z.string() }),
+        400: errorSchemas.validation,
+        401: errorSchemas.validation,
       },
     },
   },
@@ -131,12 +182,7 @@ export const api = {
     add: {
       method: 'POST' as const,
       path: '/api/cart',
-      input: z.object({
-        productId: z.number(),
-        quantity: z.number().default(1),
-        size: z.string().optional(),
-        color: z.string().optional(),
-      }),
+      input: cartAddSchema,
       responses: {
         200: z.custom<typeof cartItems.$inferSelect>(),
       },
@@ -144,7 +190,7 @@ export const api = {
     update: {
       method: 'PATCH' as const,
       path: '/api/cart/:id',
-      input: z.object({ quantity: z.number() }),
+      input: cartUpdateSchema,
       responses: {
         200: z.custom<typeof cartItems.$inferSelect>(),
       },
@@ -161,9 +207,7 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/orders',
-      input: z.object({
-        shippingAddress: z.any(),
-      }),
+      input: orderCreateSchema,
       responses: {
         201: z.custom<typeof orders.$inferSelect>(),
       },
@@ -175,7 +219,95 @@ export const api = {
         200: z.array(z.custom<typeof orders.$inferSelect>()),
       },
     },
-  }
+  },
+  wishlist: {
+    get: {
+      method: 'GET' as const,
+      path: '/api/wishlist',
+      responses: {
+        200: z.array(z.object({
+          item: z.custom<typeof wishlistItems.$inferSelect>(),
+          product: z.custom<typeof products.$inferSelect>(),
+        })),
+      },
+    },
+    add: {
+      method: 'POST' as const,
+      path: '/api/wishlist',
+      input: wishlistAddSchema,
+      responses: {
+        200: z.custom<typeof wishlistItems.$inferSelect>(),
+      },
+    },
+    remove: {
+      method: 'DELETE' as const,
+      path: '/api/wishlist/:productId',
+      responses: {
+        204: z.void(),
+      },
+    },
+    check: {
+      method: 'GET' as const,
+      path: '/api/wishlist/check/:productId',
+      responses: {
+        200: z.object({ inWishlist: z.boolean() }),
+      },
+    },
+  },
+  reviews: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/products/:productId/reviews',
+      responses: {
+        200: z.array(z.object({
+          review: z.custom<typeof reviews.$inferSelect>(),
+          user: z.object({ name: z.string() }),
+        })),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/products/:productId/reviews',
+      input: reviewCreateSchema,
+      responses: {
+        201: z.custom<typeof reviews.$inferSelect>(),
+        401: errorSchemas.validation,
+      },
+    },
+    avgRating: {
+      method: 'GET' as const,
+      path: '/api/products/:productId/rating',
+      responses: {
+        200: z.object({ rating: z.number(), count: z.number() }),
+      },
+    },
+  },
+  coupons: {
+    validate: {
+      method: 'POST' as const,
+      path: '/api/coupons/validate',
+      input: z.object({ code: z.string(), orderAmount: z.number() }),
+      responses: {
+        200: z.object({ valid: z.boolean(), discount: z.number(), message: z.string().optional() }),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/coupons',
+      input: insertCouponSchema,
+      responses: {
+        201: z.custom<typeof coupons.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    list: {
+      method: 'GET' as const,
+      path: '/api/coupons',
+      responses: {
+        200: z.array(z.custom<typeof coupons.$inferSelect>()),
+      },
+    },
+  },
 };
 
 export function buildUrl(path: string, params?: Record<string, string | number>): string {

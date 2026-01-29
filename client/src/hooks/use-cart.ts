@@ -61,6 +61,8 @@ export function useUpdateCartItem() {
 
 export function useRemoveFromCart() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   return useMutation({
     mutationFn: async (id: number) => {
       const url = buildUrl(api.cart.remove.path, { id });
@@ -72,6 +74,10 @@ export function useRemoveFromCart() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.cart.get.path] });
+      toast({
+        title: "Removed from cart",
+        description: "Item has been removed from your bag.",
+      });
     },
   });
 }

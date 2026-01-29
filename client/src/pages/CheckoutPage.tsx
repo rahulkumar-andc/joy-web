@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { useCart, useCreateOrder } from "@/hooks/use-cart";
+import { useQuery } from "@tanstack/react-query";
+import { Address } from "@shared/schema";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -21,6 +24,11 @@ export default function CheckoutPage() {
   const { data: cartItems } = useCart();
   const createOrderMutation = useCreateOrder();
   const [, setLocation] = useLocation();
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+
+  const { data: savedAddresses } = useQuery<Address[]>({
+    queryKey: ["/api/user/addresses"],
+  });
 
   const form = useForm<z.infer<typeof shippingSchema>>({
     resolver: zodResolver(shippingSchema),
@@ -32,6 +40,15 @@ export default function CheckoutPage() {
       country: "",
     },
   });
+
+  const handleSelectAddress = (addr: Address) => {
+    setSelectedAddressId(addr.id);
+    form.setValue("fullName", addr.fullName);
+    form.setValue("address", addr.addressLine1);
+    form.setValue("city", addr.city);
+    form.setValue("zipCode", addr.zipCode);
+    form.setValue("country", addr.country);
+  };
 
   const onSubmit = (data: z.infer<typeof shippingSchema>) => {
     createOrderMutation.mutate({ shippingAddress: data }, {
@@ -46,7 +63,7 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-background font-body">
       <Navbar />
-      
+
       <div className="container mx-auto px-4 py-16 max-w-4xl">
         <h1 className="font-display text-4xl font-bold text-primary mb-8 text-center">Checkout</h1>
 
@@ -54,6 +71,41 @@ export default function CheckoutPage() {
           {/* Form */}
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-border/50">
             <h2 className="text-xl font-bold mb-6">Shipping Information</h2>
+
+            {/* Address Selection */}
+            {savedAddresses && savedAddresses.length > 0 && (
+              <div className="mb-8">
+                <label className="text-sm font-medium mb-3 block">Saved Addresses</label>
+                <div className="grid grid-cols-1 gap-3 mb-4">
+                  {savedAddresses.map((addr) => (
+                    <div
+                      key={addr.id}
+                      onClick={() => handleSelectAddress(addr)}
+                      className={`p-3 rounded-lg border cursor-pointer hover:border-primary/50 transition-all ${selectedAddressId === addr.id ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border"
+                        }`}
+                    >
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-semibold text-sm">{addr.label}</span>
+                        {selectedAddressId === addr.id && <div className="w-2 h-2 rounded-full bg-primary" />}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{addr.fullName}, {addr.addressLine1}, {addr.city}</p>
+                    </div>
+                  ))}
+                  <div
+                    onClick={() => { setSelectedAddressId(null); form.reset({ fullName: "", address: "", city: "", zipCode: "", country: "" }); }}
+                    className={`p-3 rounded-lg border cursor-pointer hover:border-primary/50 transition-all flex items-center justify-center gap-2 ${selectedAddressId === null ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border"
+                      }`}
+                  >
+                    <span className="text-sm font-medium">Use New Address</span>
+                  </div>
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                  <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-muted-foreground">Or enter details</span></div>
+                </div>
+              </div>
+            )}
+
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
@@ -113,10 +165,10 @@ export default function CheckoutPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <div className="pt-6">
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     className="w-full bg-primary hover:bg-primary/90 text-white h-12 text-lg"
                     disabled={createOrderMutation.isPending}
                   >
@@ -133,9 +185,9 @@ export default function CheckoutPage() {
             <div className="space-y-4 max-h-80 overflow-y-auto mb-6 pr-2">
               {cartItems?.map((entry) => (
                 <div key={entry.item.id} className="flex gap-4">
-                  <img 
-                    src={entry.product.images[0]} 
-                    alt={entry.product.name} 
+                  <img
+                    src={entry.product.images[0]}
+                    alt={entry.product.name}
                     className="w-16 h-20 object-cover rounded-md bg-white"
                   />
                   <div className="flex-1">
@@ -146,19 +198,19 @@ export default function CheckoutPage() {
                 </div>
               ))}
             </div>
-            
+
             <div className="border-t border-primary/10 pt-4 space-y-2">
               <div className="flex justify-between text-sm">
-                 <span>Subtotal</span>
-                 <span>₹{total}</span>
+                <span>Subtotal</span>
+                <span>₹{total}</span>
               </div>
               <div className="flex justify-between text-sm">
-                 <span>Shipping</span>
-                 <span>{total > 2000 ? "Free" : "₹100"}</span>
+                <span>Shipping</span>
+                <span>{total > 2000 ? "Free" : "₹100"}</span>
               </div>
               <div className="flex justify-between font-bold text-lg text-primary pt-2">
-                 <span>Total</span>
-                 <span>₹{total > 2000 ? total : total + 100}</span>
+                <span>Total</span>
+                <span>₹{total > 2000 ? total : total + 100}</span>
               </div>
             </div>
           </div>

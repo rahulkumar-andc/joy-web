@@ -3,12 +3,18 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
+// === SHARED SCHEMAS ===
+// Moved to bottom to avoid hoisting issues
+
 // === USERS ===
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   name: text("name").notNull(),
+  phone: text("phone"),
+  address: text("address"),
+  avatarUrl: text("avatar_url"),
   role: text("role", { enum: ["admin", "manager", "user"] }).default("user").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -115,6 +121,24 @@ export const reviews = pgTable("reviews", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true });
+
+// === COUPONS ===
+export const coupons = pgTable("coupons", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  discountType: text("discount_type", { enum: ["percentage", "fixed"] }).notNull(),
+  discountValue: decimal("discount_value").notNull(),
+  minOrderAmount: decimal("min_order_amount").default("0"),
+  maxUsage: integer("max_usage"),
+  usageCount: integer("usage_count").default(0).notNull(),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCouponSchema = createInsertSchema(coupons).omit({ id: true, createdAt: true, usageCount: true });
+
 // === RELATIONS ===
 export const productsRelations = relations(products, ({ one, many }) => ({
   category: one(categories, {
@@ -171,6 +195,32 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
   }),
 }));
 
+// === PASSWORD RESET TOKENS ===
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// === ADDRESSES ===
+export const addresses = pgTable("addresses", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  label: text("label").notNull(), // e.g., "Home", "Work"
+  fullName: text("full_name").notNull(),
+  addressLine1: text("address_line1").notNull(),
+  city: text("city").notNull(),
+  state: text("state").notNull(),
+  zipCode: text("zip_code").notNull(),
+  country: text("country").notNull(),
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertAddressSchema = createInsertSchema(addresses).omit({ id: true, createdAt: true });
+
 // === TYPES ===
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -185,3 +235,54 @@ export type WishlistItem = typeof wishlistItems.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
+export type InsertReview = z.infer<typeof insertReviewSchema>;
+export type Coupon = typeof coupons.$inferSelect;
+export type InsertCoupon = z.infer<typeof insertCouponSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type Address = typeof addresses.$inferSelect;
+export type InsertAddress = z.infer<typeof insertAddressSchema>;
+
+// === SHARED ZOD SCHEMAS (Defined here to avoid hoisting issues) ===
+export const cartAddSchema = z.object({
+  productId: z.number().int().positive(),
+  quantity: z.number().int().positive().default(1),
+  size: z.string().optional(),
+  color: z.string().optional(),
+});
+
+export const cartUpdateSchema = z.object({
+  quantity: z.number().int().positive(),
+});
+
+export const orderCreateSchema = z.object({
+  shippingAddress: z.object({
+    fullName: z.string().min(1, "Full name is required"),
+    addressLine1: z.string().min(1, "Address line 1 is required"),
+    city: z.string().min(1, "City is required"),
+    state: z.string().min(1, "State is required"),
+    zipCode: z.string().min(1, "Zip code is required"),
+    country: z.string().min(1, "Country is required"),
+  }),
+  couponCode: z.string().optional(),
+});
+
+export const wishlistAddSchema = z.object({
+  productId: z.number().int().positive(),
+});
+
+export const profileUpdateSchema = createInsertSchema(users).pick({
+  name: true,
+  phone: true,
+  address: true,
+  avatarUrl: true,
+}).partial();
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+});
+
+export const reviewCreateSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().optional(),
+});
