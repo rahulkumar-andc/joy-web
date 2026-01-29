@@ -4,6 +4,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import morgan from "morgan";
+import helmet from "helmet";
 import { logger } from "./logger";
 
 const app = express();
@@ -25,6 +26,9 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+app.use(helmet({
+  contentSecurityPolicy: false, // Disabled for now to prevent breaking scripts/images
+}));
 app.use("/uploads", express.static("uploads"));
 
 // Replace custom logging middleware with Morgan
