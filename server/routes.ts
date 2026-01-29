@@ -306,13 +306,13 @@ export async function registerRoutes(
     };
 
     const cacheKey = CacheKeys.PRODUCTS_LIST(page, limit, JSON.stringify(filters));
-    const cached = cacheService.get(cacheKey);
+    const cached = await cacheService.get(cacheKey);
     if (cached) {
       return res.json(cached);
     }
 
     const result = await storage.getProducts(filters);
-    cacheService.set(cacheKey, result, 60); // Cache for 1 minute (stock changes frequently)
+    await cacheService.set(cacheKey, result, 60); // Cache for 1 minute (stock changes frequently)
     res.json(result); // Returns { products, total }
   });
 
@@ -326,7 +326,7 @@ export async function registerRoutes(
     try {
       const input = api.products.create.input.parse(req.body);
       const product = await storage.createProduct(input);
-      cacheService.invalidateProducts(); // Invalidate list cache
+      await cacheService.invalidateProducts(); // Invalidate list cache
       res.status(201).json(product);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -341,7 +341,7 @@ export async function registerRoutes(
       const input = api.products.update.input.parse(req.body);
       const product = await storage.updateProduct(Number(req.params.id), input);
       if (!product) return res.status(404).json({ message: "Product not found" });
-      cacheService.invalidateProducts();
+      await cacheService.invalidateProducts();
       res.json(product);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -353,27 +353,27 @@ export async function registerRoutes(
 
   app.delete(api.products.delete.path, requireAdmin, async (req, res) => {
     await storage.deleteProduct(Number(req.params.id));
-    cacheService.invalidateProducts();
+    await cacheService.invalidateProducts();
     res.status(204).send();
   });
 
   // === CATEGORY ROUTES ===
   app.get(api.categories.list.path, async (req, res) => {
-    const cached = cacheService.get(CacheKeys.CATEGORIES);
+    const cached = await cacheService.get(CacheKeys.CATEGORIES);
     if (cached) return res.json(cached);
 
     const categories = await storage.getCategories();
-    cacheService.set(CacheKeys.CATEGORIES, categories, 3600); // 1 hour
+    await cacheService.set(CacheKeys.CATEGORIES, categories, 3600); // 1 hour
     res.json(categories);
   });
 
   // === HOMEPAGE ROUTES ===
   app.get(api.homepage.get.path, async (req, res) => {
-    const cached = cacheService.get(CacheKeys.HOMEPAGE);
+    const cached = await cacheService.get(CacheKeys.HOMEPAGE);
     if (cached) return res.json(cached);
 
     const homepage = await storage.getHomepageSections();
-    cacheService.set(CacheKeys.HOMEPAGE, homepage, 300); // 5 minutes
+    await cacheService.set(CacheKeys.HOMEPAGE, homepage, 300); // 5 minutes
     res.json(homepage);
   });
 
@@ -644,7 +644,7 @@ export async function registerRoutes(
 
       if (successful.length > 0) {
         await storage.createProductsBulk(successful);
-        cacheService.invalidateProducts();
+        await cacheService.invalidateProducts();
       }
 
       // Cleanup uploaded file
