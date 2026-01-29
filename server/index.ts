@@ -17,6 +17,10 @@ declare module "http" {
   }
 }
 
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "ok", uptime: process.uptime() });
+});
+
 app.use(
   express.json({
     verify: (req, _res, buf) => {
@@ -67,7 +71,12 @@ import { apiLimiter, authLimiter } from "./middleware/rate-limit";
       return next(err);
     }
 
-    return res.status(status).json({ message });
+    // Hide stack trace in production
+    const response = process.env.NODE_ENV === "production"
+      ? { message }
+      : { message, stack: err.stack };
+
+    return res.status(status).json(response);
   });
 
   // importantly only setup vite in development and after
@@ -93,6 +102,18 @@ import { apiLimiter, authLimiter } from "./middleware/rate-limit";
     },
     () => {
       logger.info(`serving on port ${port}`);
-    },
+    }
   );
+
+  // Graceful Shutdown
+  const shutdown = () => {
+    logger.info("SIGTERM/SIGINT received. Shutting down gracefully...");
+    httpServer.close(() => {
+      logger.info("HTTP server closed");
+      process.exit(0);
+    });
+  };
+
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
 })();
