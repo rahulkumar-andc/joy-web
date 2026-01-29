@@ -7,7 +7,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { SizeGuideDialog } from "@/components/SizeGuideDialog";
 import { RecentlyViewed } from "@/components/RecentlyViewed";
-import { useRoute } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { X, Heart, ShoppingBag, Truck, ShieldCheck, Share2, Ruler, Star, ChevronRight, Home } from "lucide-react";
 import { RelatedProducts } from "@/components/RelatedProducts";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import { SEO } from "@/components/SEO";
 
 export default function ProductPage() {
   const [, params] = useRoute("/product/:id");
+  const [, navigate] = useLocation();
   const id = params ? parseInt(params.id) : 0;
   const { data: product, isLoading } = useProduct(id);
   const { data: reviews } = useProductReviews(id);
@@ -57,6 +58,10 @@ export default function ProductPage() {
   }
 
   const handleAddToCart = () => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
     addToCartMutation.mutate({
       productId: product.id,
       quantity,
@@ -66,7 +71,10 @@ export default function ProductPage() {
   };
 
   const handleWishlistToggle = () => {
-    if (!user) return;
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
     if (wishlistStatus?.inWishlist) {
       removeFromWishlist.mutate(product.id);
     } else {
@@ -114,17 +122,15 @@ export default function ProductPage() {
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
-              {user && (
-                <button
-                  onClick={handleWishlistToggle}
-                  className="absolute top-4 right-4 p-3 rounded-full bg-white/90 hover:bg-white shadow-md transition-all"
-                >
-                  <Heart
-                    className={`w-6 h-6 transition-colors ${isInWishlist ? "fill-red-500 text-red-500" : "text-gray-400"
-                      }`}
-                  />
-                </button>
-              )}
+              <button
+                onClick={handleWishlistToggle}
+                className="absolute top-4 right-4 p-3 rounded-full bg-white/90 hover:bg-white shadow-md transition-all"
+              >
+                <Heart
+                  className={`w-6 h-6 transition-colors ${isInWishlist ? "fill-red-500 text-red-500" : "text-gray-400"
+                    }`}
+                />
+              </button>
             </div>
           </motion.div>
 

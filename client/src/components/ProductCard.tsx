@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { type Product } from "@shared/schema";
 import { ShoppingBag, Heart, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ interface ProductCardProps {
 
 export function ProductCard({ product, onQuickView }: ProductCardProps) {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const addToCartMutation = useAddToCart();
   const addToWishlist = useAddToWishlist();
   const removeFromWishlist = useRemoveFromWishlist();
@@ -22,13 +23,20 @@ export function ProductCard({ product, onQuickView }: ProductCardProps) {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
     addToCartMutation.mutate({ productId: product.id, quantity: 1 });
   };
 
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!user) return; // Could show login prompt
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
     if (wishlistStatus?.inWishlist) {
       removeFromWishlist.mutate(product.id);
     } else {
@@ -60,18 +68,16 @@ export function ProductCard({ product, onQuickView }: ProductCardProps) {
         )}
       </div>
 
-      {/* Wishlist Heart Button */}
-      {user && (
-        <button
-          onClick={handleWishlistToggle}
-          className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white/80 hover:bg-white shadow-sm transition-all"
-        >
-          <Heart
-            className={`w-5 h-5 transition-colors ${isInWishlist ? "fill-red-500 text-red-500" : "text-gray-400 hover:text-red-400"
-              }`}
-          />
-        </button>
-      )}
+      {/* Wishlist Heart Button - Always visible, redirects if needed */}
+      <button
+        onClick={handleWishlistToggle}
+        className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white/80 hover:bg-white shadow-sm transition-all"
+      >
+        <Heart
+          className={`w-5 h-5 transition-colors ${isInWishlist ? "fill-red-500 text-red-500" : "text-gray-400 hover:text-red-400"
+            }`}
+        />
+      </button>
 
       {/* Image Container */}
       <Link href={`/product/${product.id}`} className="block relative aspect-[3/4] overflow-hidden bg-gray-100">
