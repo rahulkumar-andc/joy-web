@@ -24,6 +24,12 @@ import ProfilePage from "@/pages/ProfilePage";
 import AdminPage from "@/pages/admin/AdminPage";
 import { BottomNav } from "@/components/BottomNav";
 
+import ContactPage from "@/pages/info/ContactPage";
+import FAQPage from "@/pages/info/FAQPage";
+import PrivacyPage from "@/pages/info/PrivacyPage";
+import TermsPage from "@/pages/info/TermsPage";
+import ShippingPage from "@/pages/info/ShippingPage";
+
 function Router() {
   return (
     <Switch>
@@ -36,6 +42,13 @@ function Router() {
       <Route path="/orders" component={OrdersPage} />
       <Route path="/wishlist" component={WishlistPage} />
       <Route path="/profile" component={ProfilePage} />
+
+      {/* Info Pages */}
+      <Route path="/contact" component={ContactPage} />
+      <Route path="/faq" component={FAQPage} />
+      <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/terms" component={TermsPage} />
+      <Route path="/shipping" component={ShippingPage} />
 
       {/* Admin Routes */}
       <ProtectedRoute path="/admin" component={AdminPage} role="admin" />

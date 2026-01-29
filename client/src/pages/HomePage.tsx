@@ -10,10 +10,40 @@ import { motion } from "framer-motion";
 import { Truck, ShieldCheck, RefreshCcw, ArrowRight, Loader2 } from "lucide-react";
 import { FlashSale } from "@/components/FlashSale";
 import { SEO } from "@/components/SEO";
+import { useState, useEffect } from "react";
 
 export default function HomePage() {
   const { data: homepageData, isLoading } = useHomepage();
   const { data: products } = useProducts();
+
+  // Flash Sale Countdown Logic
+  const calculateTimeLeft = () => {
+    // Set a fixed end date (e.g., 2 days from now) or dynamic
+    const difference = +new Date("2026-02-01") - +new Date();
+    let timeLeft = {};
+
+    if (difference > 0) {
+      timeLeft = {
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((difference / 1000 / 60) % 60),
+      };
+    } else {
+      // Reset or hide
+      timeLeft = { days: 0, hours: 0, minutes: 0 };
+    }
+    return timeLeft;
+  };
+
+  const [timeLeft, setTimeLeft] = useState<{ days?: number, hours?: number, minutes?: number }>(calculateTimeLeft());
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setTimeLeft(calculateTimeLeft());
+    }, 60000); // Update every minute
+
+    return () => clearTimeout(timer);
+  });
 
   // Get featured products (first 4 products as fallback when no homepage sections)
   const featuredProducts = products?.slice(0, 4) || [];
@@ -194,15 +224,15 @@ export default function HomePage() {
             <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">Get up to 60% off on selected items. Don't miss out on the season's hottest trends.</p>
             <div className="flex justify-center gap-4">
               <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg min-w-[80px]">
-                <span className="block text-3xl font-bold">02</span>
+                <span className="block text-3xl font-bold">{timeLeft.days || 0}</span>
                 <span className="text-xs uppercase">Days</span>
               </div>
               <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg min-w-[80px]">
-                <span className="block text-3xl font-bold">12</span>
+                <span className="block text-3xl font-bold">{timeLeft.hours || 0}</span>
                 <span className="text-xs uppercase">Hours</span>
               </div>
               <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg min-w-[80px]">
-                <span className="block text-3xl font-bold">45</span>
+                <span className="block text-3xl font-bold">{timeLeft.minutes || 0}</span>
                 <span className="text-xs uppercase">Mins</span>
               </div>
             </div>
