@@ -1,14 +1,14 @@
 # Project To-Do List
 
 ## 🔴 Immediate Actions (Priority)
-- [ ] **Fix Rate Limiting**: The current rate limiting implementation is not working as expected (test script failed). Needs debugging (likely proxy/headers issue).
-- [ ] **Input Validation**: Implement Zod validation for all API endpoints to prevent invalid data injection.
-- [ ] **Caching**: Implement Redis or in-memory caching for product lists to improve performance.
+- [x] **Fix Rate Limiting**: The current rate limiting implementation is not working as expected (test script failed). Needs debugging (likely proxy/headers issue).
+- [x] **Input Validation**: Implement Zod validation for all API endpoints to prevent invalid data injection.
+- [x] **Caching**: Implement Redis or in-memory caching for product lists to improve performance.
 
 ## 🟡 Phase 4: Security (In Progress)
-- [ ] Advanced Logging (Winston/Morgan)
-- [ ] Helmet.js Security Headers
-- [ ] CSRF Protection
+- [x] Advanced Logging (Winston/Morgan)
+- [x] Helmet.js Security Headers
+- [x] CSRF Protection
 
 ## 🟢 Phase 5: Admin Features
 - [ ] Dashboard Analytics (Charts/Graphs)

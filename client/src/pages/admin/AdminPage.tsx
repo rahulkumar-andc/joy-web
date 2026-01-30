@@ -6,6 +6,8 @@ import { Link } from "wouter";
 import { AnalyticsDashboard } from "./AnalyticsDashboard";
 import { ProductManagement } from "./AdminProducts";
 
+import AdminRefunds from "./AdminRefunds";
+
 export default function AdminPage() {
     const { user, isLoading } = useAuth();
 
@@ -40,6 +42,7 @@ export default function AdminPage() {
                     <TabsList>
                         <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
                         <TabsTrigger value="products">Products</TabsTrigger>
+                        <TabsTrigger value="refunds">Refunds</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="dashboard">
@@ -48,6 +51,10 @@ export default function AdminPage() {
 
                     <TabsContent value="products">
                         <ProductManagement />
+                    </TabsContent>
+
+                    <TabsContent value="refunds">
+                        <AdminRefunds />
                     </TabsContent>
                 </Tabs>
             </div>

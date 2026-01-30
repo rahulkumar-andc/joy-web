@@ -11,6 +11,9 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useLocation } from "wouter";
+import { PaymentMethodSelector } from "@/components/PaymentMethodSelector";
+import { usePayment, loadRazorpayScript } from "@/hooks/use-payment";
+import { useEffect } from "react";
 
 const shippingSchema = z.object({
   fullName: z.string().min(2, "Name is required"),
@@ -50,10 +53,93 @@ export default function CheckoutPage() {
     form.setValue("country", addr.country);
   };
 
+  const { createPaymentOrder, verifyPayment } = usePayment();
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"upi" | "card" | "netbanking">("upi");
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    loadRazorpayScript();
+  }, []);
+
+  const handleDisplayRazorpay = async (orderData: any) => {
+    try {
+      const paymentOrder = await createPaymentOrder({ orderId: orderData.id });
+
+      const options = {
+        key: paymentOrder.key,
+        amount: paymentOrder.amount,
+        currency: paymentOrder.currency,
+        name: "Villen Music",
+        description: "Premium Fashion & Lifestyle",
+        image: "/logo.png", // Ensure this exists or use a placeholder
+        order_id: paymentOrder.razorpayOrderId,
+        handler: async (response: any) => {
+          try {
+            await verifyPayment({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+            setLocation("/order-success");
+          } catch (error) {
+            console.error("Payment verification failed", error);
+            setLocation("/order-failure");
+          }
+        },
+        prefill: {
+          name: form.getValues("fullName"),
+          email: "user@example.com", // Should get from auth/user context
+          contact: "9999999999", // Should get from auth/user context
+        },
+        theme: {
+          color: "#000000",
+        },
+        modal: {
+          ondismiss: () => {
+            setIsProcessing(false);
+          }
+        }
+      };
+
+      const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.open();
+    } catch (error) {
+      console.error("Payment flow failed", error);
+      setIsProcessing(false);
+      setLocation("/order-failure");
+    }
+  };
+
   const onSubmit = (data: z.infer<typeof shippingSchema>) => {
+    setIsProcessing(true);
     createOrderMutation.mutate({ shippingAddress: data }, {
-      onSuccess: () => {
-        setLocation("/"); // Redirect home after success
+      onSuccess: async (orderData) => {
+        try {
+          // Initiate Stripe Checkout
+          const res = await fetch("/api/payments/create-session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              orderId: orderData.id,
+              amount: total > 2000 ? total.toString() : (total + 100).toString()
+            })
+          });
+
+          if (!res.ok) throw new Error("Payment initiation failed");
+
+          const session = await res.json();
+          // Redirect to Stripe Checkout
+          window.location.href = session.url;
+
+        } catch (error) {
+          console.error("Payment error:", error);
+          setIsProcessing(false);
+          // location hook is from wouter
+          setLocation("/order-failure");
+        }
+      },
+      onError: () => {
+        setIsProcessing(false);
       }
     });
   };
@@ -166,13 +252,20 @@ export default function CheckoutPage() {
                   )}
                 />
 
+                <div className="pt-4">
+                  <PaymentMethodSelector
+                    selectedMethod={selectedPaymentMethod}
+                    onSelect={setSelectedPaymentMethod}
+                  />
+                </div>
+
                 <div className="pt-6">
                   <Button
                     type="submit"
                     className="w-full bg-primary hover:bg-primary/90 text-white h-12 text-lg"
                     disabled={createOrderMutation.isPending}
                   >
-                    {createOrderMutation.isPending ? "Processing..." : `Pay ₹${total > 2000 ? total : total + 100}`}
+                    {isProcessing ? "Processing..." : `Pay ₹${total > 2000 ? total : total + 100}`}
                   </Button>
                 </div>
               </form>

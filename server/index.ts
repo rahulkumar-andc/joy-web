@@ -54,12 +54,32 @@ app.use(
 import { apiLimiter, authLimiter } from "./middleware/rate-limit";
 
 (async () => {
+  // Security Check: API Key & Secret Validation
+  if (process.env.NODE_ENV === "production") {
+    const razorpayKey = process.env.RAZORPAY_KEY_ID || "";
+    if (razorpayKey.startsWith("rzp_test_")) {
+      logger.warn("CRITICAL SECURITY WARNING: Using Razorpay TEST keys in PRODUCTION environment!");
+    }
+  }
+
+  // Start background services
+  const { userCleanupService } = await import("./services/cleanupService");
+  userCleanupService.start();
+
   // Apply rate limits
   app.use("/api/auth", authLimiter);
 
   app.use("/api", apiLimiter);
 
   await registerRoutes(httpServer, app);
+
+  // Initialize Background Jobs
+  const { JobService } = await import("./services/jobService");
+  JobService.init();
+
+  // Initialize Hero System
+  const { initHeroSystem } = await import("./modules/hero");
+  await initHeroSystem();
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

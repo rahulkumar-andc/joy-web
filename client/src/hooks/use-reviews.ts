@@ -26,6 +26,8 @@ export function useProductRating(productId: number) {
     });
 }
 
+import { getCookie } from "@/lib/utils";
+
 export function useCreateReview() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
@@ -34,7 +36,10 @@ export function useCreateReview() {
         mutationFn: async ({ productId, rating, comment }: { productId: number; rating: number; comment?: string }) => {
             const res = await fetch(`/api/products/${productId}/reviews`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+                },
                 body: JSON.stringify({ rating, comment }),
                 credentials: "include",
             });

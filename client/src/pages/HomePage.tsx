@@ -12,6 +12,7 @@ import { Truck, ShieldCheck, RefreshCcw, ArrowRight, Loader2 } from "lucide-reac
 import { FlashSale } from "@/components/FlashSale";
 import { SEO } from "@/components/SEO";
 import { useState, useEffect } from "react";
+import { HeroSystem } from "@/modules/hero";
 
 export default function HomePage() {
   const { data: homepageData, isLoading } = useHomepage();
@@ -70,50 +71,7 @@ export default function HomePage() {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative h-[80vh] w-full overflow-hidden bg-gradient-to-r from-[#FCEFE9] to-[#F8E4D9]">
-        <div className="container mx-auto h-full px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
-            className="flex-1 space-y-6 z-10 pt-12 md:pt-0 text-center md:text-left relative"
-          >
-            <span className="text-accent uppercase tracking-[0.2em] font-bold text-sm">New Collection 2024</span>
-            <h1 className="font-display text-5xl md:text-7xl font-bold text-primary leading-tight">
-              Step into <br /> <span className="text-accent italic">Style</span> & Elegance
-            </h1>
-            <p className="text-muted-foreground text-lg max-w-lg mx-auto md:mx-0">
-              Discover curated luxury fashion pieces that define your personality. Timeless designs for the modern wardrobe.
-            </p>
-            <div className="pt-4">
-              <Link href="/shop">
-                <Button size="lg" className="bg-primary hover:bg-primary/90 text-white px-8 py-6 rounded-full text-md">
-                  Shop Now <ArrowRight className="ml-2 w-4 h-4" />
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="flex-1 h-full relative hidden md:block"
-          >
-            {/* Model Image - Unsplash */}
-            <div className="absolute inset-0 flex items-end justify-center">
-              <img
-                src="https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=2070&auto=format&fit=crop"
-                alt="Fashion Model"
-                className="h-[90%] object-contain drop-shadow-2xl"
-              />
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Decorative circle */}
-        <div className="absolute top-0 right-0 w-2/3 h-full bg-white/30 skew-x-12 translate-x-1/4 pointer-events-none"></div>
-      </section>
+      <HeroSystem />
 
       {/* Features Banner */}
       <section className="bg-white py-12 border-b border-border/50">

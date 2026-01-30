@@ -19,7 +19,7 @@ export function RelatedProducts({ currentProductId, category }: RelatedProductsP
     // Randomize the selection to make it feel more dynamic if we have many
     const relatedProducts = products
         ? products
-            .filter((p) => p.id !== currentProductId)
+            .filter((p: Product) => p.id !== currentProductId)
             .sort(() => 0.5 - Math.random()) // Simple shuffle
             .slice(0, 4)
         : [];
@@ -47,7 +47,7 @@ export function RelatedProducts({ currentProductId, category }: RelatedProductsP
         >
             <h2 className="text-2xl font-display font-bold mb-8">You Might Also Like</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {relatedProducts.map((product) => (
+                {relatedProducts.map((product: Product) => (
                     <ProductCard key={product.id} product={product} />
                 ))}
             </div>

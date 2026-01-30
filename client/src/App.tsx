@@ -22,6 +22,10 @@ import AdminProducts from "@/pages/admin/AdminProducts";
 import AdminOrders from "@/pages/admin/AdminOrders";
 import ProfilePage from "@/pages/ProfilePage";
 import AdminPage from "@/pages/admin/AdminPage";
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+import AdminCampaigns from "@/pages/admin/AdminCampaigns";
+import SellerDashboard from "@/pages/seller/SellerDashboard";
+import SellerPage from "@/pages/seller/SellerPage";
 import { BottomNav } from "@/components/BottomNav";
 
 import ContactPage from "@/pages/info/ContactPage";
@@ -29,12 +33,15 @@ import FAQPage from "@/pages/info/FAQPage";
 import PrivacyPage from "@/pages/info/PrivacyPage";
 import TermsPage from "@/pages/info/TermsPage";
 import ShippingPage from "@/pages/info/ShippingPage";
+import OrderSuccessPage from "@/pages/OrderSuccessPage";
+import OrderFailurePage from "@/pages/OrderFailurePage";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
       <Route path="/shop" component={ShopPage} />
+      <Route path="/seller" component={SellerPage} />
       <Route path="/product/:id" component={ProductPage} />
       <Route path="/cart" component={CartPage} />
       <Route path="/checkout" component={CheckoutPage} />
@@ -42,6 +49,8 @@ function Router() {
       <Route path="/orders" component={OrdersPage} />
       <Route path="/wishlist" component={WishlistPage} />
       <Route path="/profile" component={ProfilePage} />
+      <Route path="/order-success" component={OrderSuccessPage} />
+      <Route path="/order-failure" component={OrderFailurePage} />
 
       {/* Info Pages */}
       <Route path="/contact" component={ContactPage} />
@@ -54,6 +63,9 @@ function Router() {
       <ProtectedRoute path="/admin" component={AdminPage} role="admin" />
       <ProtectedRoute path="/admin/products" component={AdminProducts} role="admin" />
       <ProtectedRoute path="/admin/orders" component={AdminOrders} role="admin" />
+      <ProtectedRoute path="/seller/dashboard" component={SellerDashboard} role={["seller", "manager"]} />
+      <ProtectedRoute path="/admin/dashboard" component={AdminDashboard} role={["admin", "manager"]} />
+      <ProtectedRoute path="/admin/campaigns" component={AdminCampaigns} role="admin" />
 
       <Route component={NotFound} />
     </Switch>

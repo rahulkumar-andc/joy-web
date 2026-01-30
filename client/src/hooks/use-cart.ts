@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
 
+import { getCookie } from "@/lib/utils";
+
 export function useCart() {
   return useQuery({
     queryKey: [api.cart.get.path],
@@ -21,7 +23,10 @@ export function useAddToCart() {
     mutationFn: async (data: { productId: number; quantity?: number; size?: string; color?: string }) => {
       const res = await fetch(api.cart.add.path, {
         method: api.cart.add.method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+        },
         body: JSON.stringify(data),
         credentials: "include",
       });
@@ -46,7 +51,10 @@ export function useUpdateCartItem() {
       const url = buildUrl(api.cart.update.path, { id });
       const res = await fetch(url, {
         method: api.cart.update.method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+        },
         body: JSON.stringify({ quantity }),
         credentials: "include",
       });
@@ -68,6 +76,9 @@ export function useRemoveFromCart() {
       const url = buildUrl(api.cart.remove.path, { id });
       const res = await fetch(url, {
         method: api.cart.remove.method,
+        headers: {
+          "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+        },
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to remove from cart");
@@ -90,7 +101,10 @@ export function useCreateOrder() {
     mutationFn: async (data: { shippingAddress: any }) => {
       const res = await fetch(api.orders.create.path, {
         method: api.orders.create.method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+        },
         body: JSON.stringify(data),
         credentials: "include",
       });

@@ -25,7 +25,16 @@ export const api = {
       path: '/api/auth/register',
       input: insertUserSchema,
       responses: {
-        201: z.custom<typeof users.$inferSelect>(),
+        200: z.object({ message: z.string(), userId: z.number() }),
+        400: errorSchemas.validation,
+      },
+    },
+    verifyEmail: {
+      method: 'POST' as const,
+      path: '/api/auth/verify-email',
+      input: z.object({ email: z.string().email(), otp: z.string() }),
+      responses: {
+        200: z.object({ message: z.string() }),
         400: errorSchemas.validation,
       },
     },

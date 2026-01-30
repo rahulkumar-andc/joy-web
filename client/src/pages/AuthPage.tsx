@@ -10,7 +10,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useLocation } from "wouter";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const authSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -19,12 +19,13 @@ const authSchema = z.object({
 });
 
 export default function AuthPage() {
-  const { user, loginMutation, registerMutation } = useAuth();
+  const { user, loginMutation, registerMutation, verifyEmailMutation } = useAuth();
   const [, setLocation] = useLocation();
+  const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("login");
 
   useEffect(() => {
     if (user) {
-      // Redirect admin users to admin dashboard, regular users to home
       if (user.role === "admin") {
         setLocation("/admin");
       } else {
@@ -43,20 +44,83 @@ export default function AuthPage() {
     defaultValues: { email: "", password: "", name: "" },
   });
 
+  const verifyForm = useForm({
+    defaultValues: { otp: "" },
+  });
+
   const onLogin = (data: any) => {
     loginMutation.mutate({ email: data.email, password: data.password });
   };
 
   const onRegister = (data: any) => {
-    registerMutation.mutate(data);
+    registerMutation.mutate(data, {
+      onSuccess: () => {
+        setVerificationEmail(data.email);
+      }
+    });
   };
+
+  const onVerify = (data: any) => {
+    if (!verificationEmail) return;
+    verifyEmailMutation.mutate({ email: verificationEmail, otp: data.otp }, {
+      onSuccess: () => {
+        setVerificationEmail(null);
+        setActiveTab("login");
+        // Prefill login email
+        loginForm.setValue("email", verificationEmail);
+      }
+    });
+  };
+
+  // If verificationEmail is set, show OTP form
+  if (verificationEmail) {
+    return (
+      <div className="min-h-screen bg-background font-body flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center py-20 px-4">
+          <Card className="border-none shadow-lg w-full max-w-md">
+            <CardHeader className="text-center">
+              <CardTitle className="font-display text-3xl text-primary">Verify Email</CardTitle>
+              <CardDescription>Enter the code sent to {verificationEmail}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={verifyForm.handleSubmit(onVerify)} className="space-y-4">
+                <div className="space-y-2">
+                  <FormLabel>Verification Code</FormLabel>
+                  <Input
+                    placeholder="123456"
+                    {...verifyForm.register("otp")}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full bg-primary mt-4"
+                  disabled={verifyEmailMutation.isPending}
+                >
+                  {verifyEmailMutation.isPending ? "Verifying..." : "Verify Code"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full mt-2"
+                  onClick={() => setVerificationEmail(null)}
+                >
+                  Back to Register
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background font-body flex flex-col">
       <Navbar />
 
       <div className="flex-1 flex items-center justify-center py-20 px-4">
-        <Tabs defaultValue="login" className="w-full max-w-md">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-md">
           <TabsList className="grid w-full grid-cols-2 mb-8 h-12 bg-white p-1 rounded-full shadow-sm border border-border">
             <TabsTrigger value="login" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white">Login</TabsTrigger>
             <TabsTrigger value="register" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white">Register</TabsTrigger>
@@ -90,6 +154,9 @@ export default function AuthPage() {
                           <FormLabel>Password</FormLabel>
                           <FormControl><Input type="password" {...field} /></FormControl>
                           <FormMessage />
+                          <Button variant="ghost" className="px-0 font-normal text-xs" onClick={() => setLocation("/forgot-password")}>
+                            Forgot password?
+                          </Button>
                         </FormItem>
                       )}
                     />

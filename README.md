@@ -11,8 +11,29 @@ A full-stack e-commerce application built with **React**, **Express**, and **Pos
 | Frontend   | React 18, Vite, TailwindCSS, Framer Motion      |
 | Backend    | Express 5, Passport (session-based auth)        |
 | Database   | PostgreSQL 16, Drizzle ORM                      |
+| Cache      | Redis (Upstash) - High-performance caching      |
 | Styling    | TailwindCSS, Radix UI Components                |
 | Validation | Zod, React Hook Form                            |
+| PWA        | VitePWA, Workbox                                |
+
+## 🏗️ Backend Architecture Details
+
+### 🐘 PostgreSQL (Primary Database)
+Used for reliable, structured data storage.
+- **Why**: Relations between Users, Orders, and Products require strong consistency and ACID compliance.
+- **Usage**:
+    - **Users**: Authentication, Profile data.
+    - **Catalog**: Products, Categories, Inventory.
+    - **Transactions**: Orders, Payments, Refunds.
+
+### ⚡ Redis (Caching & Performance)
+Used for high-speed data access and limiting server load.
+- **Why**: To reduce database queries for frequently accessed data.
+- **Usage**:
+    - **Homepage**: Caches featured products and layout (`homepage_data`).
+    - **Product Lists**: Caches filtered and sorted product results (`products_*`).
+    - **Session Store**: (Optional/Future) Can be used for faster session management.
+    - **Infrastructure**: Uses **Upstash Redis** (HTTP-based) for serverless compatibility.
 
 ---
 
@@ -161,7 +182,3 @@ Code-Structure/
 - **Fonts:** Playfair Display (Headings), DM Sans (Body)
 
 ---
-
-## 📄 License
-
-MIT License

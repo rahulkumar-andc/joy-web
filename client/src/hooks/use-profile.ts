@@ -13,6 +13,8 @@ export function useProfile() {
     });
 }
 
+import { getCookie } from "@/lib/utils";
+
 export function useUpdateProfile() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
@@ -21,7 +23,10 @@ export function useUpdateProfile() {
         mutationFn: async (data: { name?: string; phone?: string; address?: string }) => {
             const res = await fetch(api.profile.update.path, {
                 method: api.profile.update.method,
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+                },
                 body: JSON.stringify(data),
                 credentials: "include",
             });
@@ -53,7 +58,10 @@ export function useChangePassword() {
         mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
             const res = await fetch(api.profile.changePassword.path, {
                 method: api.profile.changePassword.method,
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+                },
                 body: JSON.stringify(data),
                 credentials: "include",
             });
@@ -86,7 +94,10 @@ export function useForgotPassword() {
         mutationFn: async (email: string) => {
             const res = await fetch(api.auth.forgotPassword.path, {
                 method: api.auth.forgotPassword.method,
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+                },
                 body: JSON.stringify({ email }),
             });
             if (!res.ok) throw new Error("Failed to send reset email");
@@ -115,7 +126,10 @@ export function useResetPassword() {
         mutationFn: async (data: { token: string; password: string }) => {
             const res = await fetch(api.auth.resetPassword.path, {
                 method: api.auth.resetPassword.method,
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+                },
                 body: JSON.stringify(data),
             });
             if (!res.ok) {

@@ -11,7 +11,77 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, Redirect } from "wouter";
-import { User, Lock, Package, Heart, Loader2, Mail, Phone, MapPin } from "lucide-react";
+import { User, Lock, Package, Heart, Loader2, Mail, Phone, MapPin, RotateCcw } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
+
+function RefundsList() {
+    const { data: refunds, isLoading } = useQuery({
+        queryKey: ["/api/refunds"],
+        queryFn: async () => {
+            const res = await fetch("/api/refunds");
+            if (!res.ok) throw new Error("Failed to fetch refunds");
+            return res.json();
+        }
+    });
+
+    if (isLoading) return <div className="text-center py-8"><Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" /></div>;
+
+    if (!refunds?.length) {
+        return (
+            <Card>
+                <CardContent className="py-8 text-center">
+                    <RotateCcw className="w-12 h-12 mx-auto text-muted-foreground mb-4 opacity-50" />
+                    <p className="text-muted-foreground">No refund requests found.</p>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case "pending": return "bg-yellow-100 text-yellow-800";
+            case "approved": return "bg-green-100 text-green-800";
+            case "rejected": return "bg-red-100 text-red-800";
+            case "processing": return "bg-blue-100 text-blue-800";
+            case "completed": return "bg-green-100 text-green-800";
+            default: return "bg-gray-100 text-gray-800";
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>My Refunds</CardTitle>
+                <CardDescription>Track the status of your refund requests.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {refunds.map((refund: any) => (
+                    <div key={refund.id} className="border rounded-lg p-4 flex flex-col md:flex-row justify-between gap-4">
+                        <div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium">Refund #{refund.id}</span>
+                                <Badge className={getStatusColor(refund.status)} variant="outline">
+                                    {refund.status.charAt(0).toUpperCase() + refund.status.slice(1)}
+                                </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">Order #{refund.orderId} • ₹{refund.amount}</p>
+                            <p className="text-sm text-muted-foreground mt-1">Reason: {refund.reason}</p>
+                            {refund.adminNote && (
+                                <p className="text-sm text-amber-600 mt-2 bg-amber-50 p-2 rounded">
+                                    Admin Note: {refund.adminNote}
+                                </p>
+                            )}
+                        </div>
+                        <div className="text-sm text-muted-foreground self-start md:self-end">
+                            {new Date(refund.createdAt).toLocaleDateString()}
+                        </div>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+    );
+}
 
 export default function ProfilePage() {
     const { user, isLoading: authLoading } = useAuth();
@@ -110,6 +180,9 @@ export default function ProfilePage() {
                                 </TabsTrigger>
                                 <TabsTrigger value="addresses" className="flex items-center gap-2">
                                     <MapPin className="w-4 h-4" /> Addresses
+                                </TabsTrigger>
+                                <TabsTrigger value="refunds" className="flex items-center gap-2">
+                                    <RotateCcw className="w-4 h-4" /> Refunds
                                 </TabsTrigger>
                             </TabsList>
 
@@ -268,6 +341,10 @@ export default function ProfilePage() {
 
                             <TabsContent value="addresses">
                                 <AddressBook />
+                            </TabsContent>
+
+                            <TabsContent value="refunds">
+                                <RefundsList />
                             </TabsContent>
                         </Tabs>
                     </div>

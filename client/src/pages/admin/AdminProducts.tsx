@@ -9,9 +9,10 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { Trash2, Plus, Pencil, Upload } from "lucide-react";
+import { Trash2, Plus, Pencil, Upload, Download } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
+import { ImageUpload } from "@/components/ImageUpload";
 import { useToast } from "@/hooks/use-toast";
 
 const productSchema = z.object({
@@ -131,6 +132,27 @@ export function ProductManagement() {
             <Button variant="outline" onClick={() => document.getElementById("csv-upload")?.click()}>
               <Upload className="mr-2 w-4 h-4" /> Import CSV
             </Button>
+            <Button variant="outline" onClick={async () => {
+              try {
+                const res = await fetch("/api/products/export");
+                if (!res.ok) throw new Error("Export failed");
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'products.csv';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                toast({ title: "Export Started", description: "Your download should begin shortly." });
+              } catch (error) {
+                console.error(error);
+                toast({ title: "Export Failed", description: "Could not download products.", variant: "destructive" });
+              }
+            }}>
+              <Download className="mr-2 w-4 h-4" /> Export CSV
+            </Button>
           </div>
 
           {/* Add Product */}
@@ -193,38 +215,12 @@ export function ProductManagement() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Product Image</FormLabel>
-                        <div className="flex flex-col gap-4">
-                          <div className="flex items-center gap-4">
-                            <FormControl>
-                              <Input
-                                type="file"
-                                accept="image/*"
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (!file) return;
-                                  const formData = new FormData();
-                                  formData.append("image", file);
-                                  try {
-                                    const res = await fetch("/api/upload", { method: "POST", body: formData });
-                                    if (!res.ok) throw new Error("Upload failed");
-                                    const data = await res.json();
-                                    field.onChange(data.url);
-                                    toast({ title: "Image uploaded successfully" });
-                                  } catch (err) {
-                                    toast({ title: "Upload failed", variant: "destructive" });
-                                  }
-                                }}
-                              />
-                            </FormControl>
-                            <span className="text-sm text-gray-500">OR</span>
-                            <FormControl>
-                              <Input placeholder="https://..." {...field} />
-                            </FormControl>
-                          </div>
-                          {field.value && (
-                            <img src={field.value} alt="Preview" className="h-20 w-20 object-cover rounded border" />
-                          )}
-                        </div>
+                        <FormControl>
+                          <ImageUpload
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
                       </FormItem>
                     )}
                   />

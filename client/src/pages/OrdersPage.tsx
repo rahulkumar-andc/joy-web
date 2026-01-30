@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Package, ChevronRight, ShoppingBag } from "lucide-react";
+import { Package, ChevronRight, ShoppingBag, RotateCcw } from "lucide-react";
+import { RefundRequestModal } from "@/components/RefundRequestModal";
 
 export default function OrdersPage() {
     const { user } = useAuth();
@@ -20,6 +21,7 @@ export default function OrdersPage() {
         },
         enabled: !!user,
     });
+
 
     if (!user) {
         return (
@@ -91,14 +93,26 @@ export default function OrdersPage() {
                                     </Badge>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="flex justify-between items-center">
+                                    <div className="flex justify-between items-center mt-4">
                                         <div>
                                             <p className="font-medium">₹{order.totalAmount}</p>
                                             <p className="text-sm text-muted-foreground">
                                                 Payment: {order.paymentStatus}
                                             </p>
                                         </div>
-                                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                                        <div className="flex items-center gap-2">
+                                            {order.status === "delivered" && (
+                                                <RefundRequestModal
+                                                    orderId={order.id}
+                                                    trigger={
+                                                        <Button variant="outline" size="sm" className="flex items-center gap-2">
+                                                            <RotateCcw className="w-4 h-4" />
+                                                            Request Refund
+                                                        </Button>
+                                                    }
+                                                />
+                                            )}
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>

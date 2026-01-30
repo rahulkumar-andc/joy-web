@@ -1,18 +1,12 @@
-import Redis from "ioredis";
+import { Redis } from "@upstash/redis";
 import { logger } from "./logger";
 
-if (!process.env.REDIS_URL) {
-    logger.warn("REDIS_URL not set, cache will fail. defaulting to localhost");
-}
-
-const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
-
-redis.on("error", (err) => {
-    logger.error("Redis Client Error", err);
-});
-
-redis.on("connect", () => {
-    logger.info("Redis connected successfully");
+// Initialize Upstash Redis
+// Falls back to a mock/no-op if credentials are missing in dev, usually.
+// But we expect credentials now.
+const redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL || "https://mock.upstash.io",
+    token: process.env.UPSTASH_REDIS_REST_TOKEN || "mock_token",
 });
 
 export const CacheKeys = {
@@ -22,12 +16,13 @@ export const CacheKeys = {
 };
 
 export const cacheService = {
-    // Methods now return Promise because Redis is async
+    // Upstash Redis methods return Promises by default (HTTP requests)
     get: async <T>(key: string): Promise<T | undefined> => {
         try {
             const data = await redis.get(key);
-            if (data) return JSON.parse(data);
-            return undefined;
+            // Upstash auto-parses JSON if it was stored as JSON, or we might need to handle it.
+            // But usually, redis.get<T> works.
+            return data as T;
         } catch (err) {
             logger.error(`Cache get error for key ${key}:`, err);
             return undefined;
@@ -36,8 +31,8 @@ export const cacheService = {
 
     set: async <T>(key: string, value: T, ttlSeconds: number = 300): Promise<boolean> => {
         try {
-            // mode: 'EX' sets expiry in seconds
-            await redis.set(key, JSON.stringify(value), "EX", ttlSeconds);
+            // ex: expiry in seconds
+            await redis.set(key, value, { ex: ttlSeconds });
             return true;
         } catch (err) {
             logger.error(`Cache set error for key ${key}:`, err);
@@ -65,22 +60,23 @@ export const cacheService = {
     // Clear all product related keys
     invalidateProducts: async (): Promise<void> => {
         try {
-            // Use scanStream for safer iteration over keys in production
-            const stream = redis.scanStream({ match: "products_*" });
+            // Upstash REST API scan is available but iterating might be different.
+            // A simple "scan" loop:
+            let cursor = 0;
             const keysToDelete: string[] = [];
 
-            stream.on("data", (resultKeys) => {
-                if (resultKeys.length) {
-                    keysToDelete.push(...resultKeys);
+            do {
+                const [nextCursor, keys] = await redis.scan(cursor, { match: "products_*", count: 100 });
+                cursor = Number(nextCursor);
+                if (keys.length > 0) {
+                    keysToDelete.push(...keys);
                 }
-            });
+            } while (cursor !== 0);
 
-            stream.on("end", async () => {
-                if (keysToDelete.length > 0) {
-                    await redis.del(...keysToDelete);
-                }
-                await redis.del(CacheKeys.HOMEPAGE);
-            });
+            if (keysToDelete.length > 0) {
+                await redis.del(...keysToDelete);
+            }
+            await redis.del(CacheKeys.HOMEPAGE);
         } catch (err) {
             logger.error("Cache invalidation error:", err);
         }

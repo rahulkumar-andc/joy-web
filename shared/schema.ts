@@ -15,7 +15,9 @@ export const users = pgTable("users", {
   phone: text("phone"),
   address: text("address"),
   avatarUrl: text("avatar_url"),
-  role: text("role", { enum: ["admin", "manager", "user"] }).default("user").notNull(),
+  role: text("role", { enum: ["admin", "manager", "seller", "user"] }).default("user").notNull(),
+  walletBalance: decimal("wallet_balance").default("0").notNull(),
+  isVerified: boolean("is_verified").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -53,6 +55,7 @@ export const products = pgTable("products", {
   isBestSeller: boolean("is_best_seller").default(false),
   isNewArrival: boolean("is_new_arrival").default(false),
   createdAt: timestamp("created_at").defaultNow(),
+  sellerId: integer("seller_id").references(() => users.id),
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
@@ -82,6 +85,7 @@ export const cartItems = pgTable("cart_items", {
   quantity: integer("quantity").notNull().default(1),
   size: text("size"),
   color: text("color"),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const wishlistItems = pgTable("wishlist_items", {
@@ -99,6 +103,20 @@ export const orders = pgTable("orders", {
   paymentStatus: text("payment_status", { enum: ["pending", "paid", "failed"] }).default("pending").notNull(),
   shippingAddress: jsonb("shipping_address").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").references(() => orders.id).notNull(),
+  razorpayOrderId: text("razorpay_order_id").notNull(),
+  razorpayPaymentId: text("razorpay_payment_id"),
+  razorpaySignature: text("razorpay_signature"),
+  amount: decimal("amount").notNull(),
+  currency: text("currency").default("INR"),
+  status: text("status", { enum: ["created", "paid", "failed"] }).default("created"),
+  paymentMethod: text("payment_method"), // upi, card, netbanking, wallet
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const orderItems = pgTable("order_items", {
@@ -195,14 +213,20 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
   }),
 }));
 
-// === PASSWORD RESET TOKENS ===
-export const passwordResetTokens = pgTable("password_reset_tokens", {
+// === VERIFICATION TOKENS (OTP & Password Reset) ===
+export const verificationTokens = pgTable("verification_tokens", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id).notNull(),
-  token: text("token").notNull().unique(),
+  identifier: text("identifier").notNull(), // Email
+  token: text("token").notNull(), // Hashed OTP or Token
+  type: text("type", { enum: ["EMAIL_VERIFICATION", "PASSWORD_RESET"] }).notNull(),
   expiresAt: timestamp("expires_at").notNull(),
+  attempts: integer("attempts").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const insertVerificationTokenSchema = createInsertSchema(verificationTokens).omit({ id: true, createdAt: true });
+export type VerificationToken = typeof verificationTokens.$inferSelect;
+export type InsertVerificationToken = z.infer<typeof insertVerificationTokenSchema>;
 
 // === ADDRESSES ===
 export const addresses = pgTable("addresses", {
@@ -238,9 +262,11 @@ export type Review = typeof reviews.$inferSelect;
 export type InsertReview = z.infer<typeof insertReviewSchema>;
 export type Coupon = typeof coupons.$inferSelect;
 export type InsertCoupon = z.infer<typeof insertCouponSchema>;
-export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type Address = typeof addresses.$inferSelect;
 export type InsertAddress = z.infer<typeof insertAddressSchema>;
+export type Payment = typeof payments.$inferSelect;
+export type Refund = typeof refunds.$inferSelect;
+export type InsertRefund = z.infer<typeof insertRefundSchema>;
 
 // === SHARED ZOD SCHEMAS (Defined here to avoid hoisting issues) ===
 export const cartAddSchema = z.object({
@@ -286,3 +312,146 @@ export const reviewCreateSchema = z.object({
   rating: z.number().int().min(1).max(5),
   comment: z.string().optional(),
 });
+
+export const paymentVerifySchema = z.object({
+  razorpayOrderId: z.string(),
+  razorpayPaymentId: z.string(),
+  razorpaySignature: z.string(),
+});
+
+export const refunds = pgTable("refunds", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").references(() => orders.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  reason: text("reason").notNull(),
+  description: text("description"),
+  status: text("status", { enum: ["pending", "approved", "rejected", "processing", "completed"] }).default("pending").notNull(),
+  refundMethod: text("refund_method", { enum: ["original", "wallet"] }).default("original").notNull(),
+  amount: decimal("amount").notNull(),
+  images: text("images").array(),
+  adminNote: text("admin_note"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertRefundSchema = createInsertSchema(refunds).omit({ id: true, createdAt: true, updatedAt: true, status: true, adminNote: true });
+
+export const refundsRelations = relations(refunds, ({ one }) => ({
+  order: one(orders, {
+    fields: [refunds.orderId],
+    references: [orders.id],
+  }),
+  user: one(users, {
+    fields: [refunds.userId],
+    references: [users.id],
+  }),
+}));
+
+export const updateRefundStatusSchema = z.object({
+  status: z.enum(["pending", "approved", "rejected", "processing", "completed"]),
+  adminNote: z.string().optional(),
+});
+
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  action: text("action").notNull(),
+  entityId: text("entity_id"),
+  entityType: text("entity_type"),
+  details: jsonb("details"),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+
+
+export const walletTransactions = pgTable("wallet_transactions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  amount: decimal("amount").notNull(), // Positive for credit, negative for debit
+  type: text("type", { enum: ["refund", "purchase", "deposit", "withdrawal"] }).notNull(),
+  referenceId: text("reference_id"), // e.g., "refund_123", "order_456"
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertWalletTransactionSchema = createInsertSchema(walletTransactions).omit({ id: true, createdAt: true });
+
+export const refundItems = pgTable("refund_items", {
+  id: serial("id").primaryKey(),
+  refundId: integer("refund_id").references(() => refunds.id).notNull(),
+  orderItemId: integer("order_item_id").references(() => orderItems.id).notNull(),
+  quantity: integer("quantity").notNull(),
+  reason: text("reason"),
+});
+
+export const insertRefundItemSchema = createInsertSchema(refundItems).omit({ id: true });
+export type RefundItem = typeof refundItems.$inferSelect;
+
+// === SESSION ===
+export const session = pgTable("session", {
+  sid: text("sid").primaryKey(),
+  sess: jsonb("sess").notNull(),
+  expire: timestamp("expire", { precision: 6 }).notNull(),
+});
+
+// === HERO CAMPAIGNS ===
+export const heroCampaigns = pgTable("hero_campaigns", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  type: text("type", { enum: ["default", "sale", "flash_sale", "festival"] }).default("default").notNull(),
+  priority: integer("priority").default(0).notNull(),
+  isActive: boolean("is_active").default(false).notNull(),
+  startTime: timestamp("start_time"),
+  endTime: timestamp("end_time"),
+
+  // Media Configuration
+  mediaType: text("media_type", { enum: ["image", "video"] }).notNull(),
+  mediaUrl: text("media_url").notNull(),
+
+  // Content Configuration
+  title: text("title").notNull(),
+  subtitle: text("subtitle"),
+  ctaLabel: text("cta_label"),
+  ctaUrl: text("cta_url"),
+
+  // UI Configuration
+  contentAlignment: text("content_alignment", { enum: ["left", "center", "right"] }).default("left").notNull(),
+  textColor: text("text_color").default("#ffffff").notNull(),
+  overlayOpacity: decimal("overlay_opacity").default("0.4").notNull(),
+
+  // Targeting
+  targetAudience: text("target_audience", { enum: ["all", "guest", "user"] }).default("all").notNull(),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertHeroCampaignSchema = createInsertSchema(heroCampaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+}).extend({
+  priority: z.number().int().default(0),
+  overlayOpacity: z.string().default("0.4"),
+  targetAudience: z.enum(["all", "guest", "user"]).default("all"),
+});
+
+export type HeroCampaign = typeof heroCampaigns.$inferSelect;
+export type InsertHeroCampaign = z.infer<typeof insertHeroCampaignSchema>;
+
+// === HERO ANALYTICS ===
+export const heroAnalytics = pgTable("hero_analytics", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").references(() => heroCampaigns.id),
+  eventType: text("event_type", { enum: ["impression", "click"] }).notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+export const insertHeroAnalyticsSchema = createInsertSchema(heroAnalytics);
+export type InsertHeroAnalytics = z.infer<typeof insertHeroAnalyticsSchema>;
+export type HeroAnalytics = typeof heroAnalytics.$inferSelect;

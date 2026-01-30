@@ -2,8 +2,8 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useCart } from "@/hooks/use-cart";
 import { useTheme } from "@/hooks/use-theme";
-import { ShoppingBag, User as UserIcon, LogOut, Menu, X, Search, Heart, Package, Sun, Moon } from "lucide-react";
-import { useState } from "react";
+import { ShoppingBag, User as UserIcon, LogOut, Menu, X, Search, Heart, Package, Sun, Moon, Globe } from "lucide-react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,11 +16,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SearchAutocomplete } from "@/components/SearchAutocomplete";
 import { CartSheet } from "@/components/CartSheet";
+import { useTranslation } from "react-i18next";
 
 export function Navbar() {
   const { user, logoutMutation } = useAuth();
   const { data: cartItems } = useCart();
   const { resolvedTheme, setTheme } = useTheme();
+  const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -30,14 +32,31 @@ export function Navbar() {
   const cartCount = cartItems?.reduce((acc, item) => acc + item.item.quantity, 0) || 0;
 
   const links = [
-    { href: "/", label: "Home" },
-    { href: "/shop", label: "Shop" },
-    { href: "/shop?category=women", label: "Women" },
-    { href: "/shop?category=men", label: "Men" },
+    { href: "/", label: t('nav.home') },
+    { href: "/shop", label: t('nav.shop') },
+    
+    { href: "/seller", label: "Sell" }, // Added Reselling option
   ];
 
+  const toggleLanguage = () => {
+    i18n.changeLanguage(i18n.language === 'en' ? 'hi' : 'en');
+  };
+
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-border">
+    <nav className={`sticky top-0 z-50 transition-all duration-300 border-b ${scrolled
+      ? "bg-white/80 backdrop-blur-md border-border/40 shadow-sm"
+      : "bg-transparent border-transparent"
+      }`}>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
 
@@ -91,6 +110,17 @@ export function Navbar() {
               ) : (
                 <Moon className="w-5 h-5" />
               )}
+            </Button>
+
+            {/* Language Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleLanguage}
+              className="hidden md:flex"
+            >
+              <Globe className="w-5 h-5 text-muted-foreground" />
+              <span className="sr-only">Toggle translation</span>
             </Button>
 
             {/* Wishlist */}

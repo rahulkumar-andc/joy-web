@@ -13,6 +13,8 @@ export function useWishlist() {
     });
 }
 
+import { getCookie } from "@/lib/utils";
+
 export function useAddToWishlist() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
@@ -21,7 +23,10 @@ export function useAddToWishlist() {
         mutationFn: async (productId: number) => {
             const res = await fetch(api.wishlist.add.path, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+                },
                 body: JSON.stringify({ productId }),
                 credentials: "include",
             });
@@ -46,6 +51,9 @@ export function useRemoveFromWishlist() {
         mutationFn: async (productId: number) => {
             const res = await fetch(`/api/wishlist/${productId}`, {
                 method: "DELETE",
+                headers: {
+                    "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+                },
                 credentials: "include",
             });
             if (!res.ok) throw new Error("Failed to remove from wishlist");
