@@ -45,7 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           "Content-Type": "application/json",
           "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
         },
-        body: JSON.stringify(credentials),
+        body: JSON.stringify({
+          username: credentials.email,
+          password: credentials.password,
+        }),
         credentials: "include",
       });
       if (!res.ok) {
