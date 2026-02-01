@@ -307,7 +307,7 @@ export default function ProfilePage() {
                                                     type="password"
                                                     value={newPassword}
                                                     onChange={(e) => setNewPassword(e.target.value)}
-                                                    placeholder="Enter new password (min 6 chars)"
+                                                    placeholder="Min 8 chars, 1 uppercase, 1 number"
                                                 />
                                             </div>
                                             <div className="space-y-2">
@@ -325,7 +325,7 @@ export default function ProfilePage() {
                                             </div>
                                             <Button
                                                 onClick={handleChangePassword}
-                                                disabled={changePassword.isPending || !currentPassword || !newPassword || newPassword !== confirmPassword || newPassword.length < 6}
+                                                disabled={changePassword.isPending || !currentPassword || !newPassword || newPassword !== confirmPassword || newPassword.length < 8}
                                                 className="bg-accent text-white"
                                             >
                                                 {changePassword.isPending ? (

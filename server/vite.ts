@@ -4,7 +4,12 @@ import { type Server } from "http";
 import viteConfig from "../vite.config";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import { nanoid } from "nanoid";
+
+// Polyfill for import.meta.dirname (Node 18 compatibility)
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 
 const viteLogger = createLogger();
 
@@ -31,12 +36,18 @@ export async function setupVite(server: Server, app: Express) {
 
   app.use(vite.middlewares);
 
-  app.use("/{*path}", async (req, res, next) => {
+  //  SPA fallback - serve index.html for all non-API routes
+  app.use(async (req, res, next) => {
     const url = req.originalUrl;
+
+    // Skip API routes - let them 404 naturally if not found
+    if (url.startsWith("/api")) {
+      return next();
+    }
 
     try {
       const clientTemplate = path.resolve(
-        import.meta.dirname,
+        __dirname,
         "..",
         "client",
         "index.html",

@@ -32,6 +32,9 @@ export async function registerRoutes(
     createTableIfMissing: true,
   });
 
+  // Initialize WebSocket Service
+  await import("./services/websocketService").then(m => m.webSocketService.initialize(httpServer));
+
   app.use(
     session({
       store: sessionStore,
@@ -112,13 +115,69 @@ export async function registerRoutes(
   app.use(couponsRouter);
   app.use(commonRouter);
   app.use(refundRouter);
+  const { reconciliationRouter } = await import("./routes/reconciliation");
+  app.use(reconciliationRouter);
+  const { webhookMgmtRouter } = await import("./routes/webhook-management");
+  app.use(webhookMgmtRouter);
   app.use(heroRouter);
   const { sellerRouter } = await import("./routes/seller");
   app.use(sellerRouter);
 
+  // Reseller Module Routes
+  const { resellerRoutes } = await import("./modules/reseller");
+  app.use(resellerRoutes);
+
+  // RBAC Management API
+  const rbacRouter = (await import("./routes/rbac.routes")).default;
+  app.use("/api/admin/rbac", rbacRouter);
+
+  // Phase 3: Search Routes (MeiliSearch)
+  const searchRouter = (await import("./routes/search.routes")).default;
+  app.use("/api/search", searchRouter);
+
+  // Phase 3: Queue Monitoring Routes
+  const queueRouter = (await import("./routes/queue.routes")).default;
+  app.use("/api/admin/queues", queueRouter);
+
+  // Phase 3: Backup Management Routes
+  const backupRouter = (await import("./routes/backup.routes")).default;
+  app.use("/api/admin/backups", backupRouter);
+
+  // Phase 3: Cache Management Routes
+  const cacheRouter = (await import("./routes/cache.routes")).default;
+  app.use("/api/admin/cache", cacheRouter);
+
+  // Conversion Optimization: Guest Cart Routes
+  const { guestCartRouter } = await import("./routes/guest-cart.routes");
+  app.use("/api/guest", guestCartRouter);
+
+  // Conversion Optimization: Delivery Estimation Routes
+  const deliveryRouter = (await import("./routes/delivery.routes")).default;
+  app.use(deliveryRouter);
+
+  // ⚠️ PHASE 2: Coupon Analytics Routes
+  const couponAnalyticsRouter = (await import("./routes/coupon-analytics.routes")).default;
+  app.use(couponAnalyticsRouter);
+
+  // ⚠️ PHASE 2: Image Management Routes (ImageKit)
+  const imageRouter = (await import("./routes/image.routes")).default;
+  app.use(imageRouter);
+
+  // ⚠️ PHASE 2: Compliance Routes (GDPR, Data Retention)
+  const complianceRouter = (await import("./routes/compliance.routes")).default;
+  app.use(complianceRouter);
+
+  // Health Check Routes
+  const healthRouter = (await import("./routes/health.routes")).default;
+  app.use(healthRouter);
+
+  // Audit Analytics & Monitoring Routes
+  const auditAnalyticsRouter = (await import("./routes/audit-analytics.routes")).default;
+  app.use(auditAnalyticsRouter);
 
   // === SEED DATA ===
-  await import("./lib/seeds").then(m => m.seedDatabase());
+  // Move seeding to background or manual script to avoid blocking startup
+  // import("./lib/seeds").then(m => m.seedDatabase()).catch(console.error);
 
   // === ERROR HANDLER ===
   app.use(globalErrorHandler);

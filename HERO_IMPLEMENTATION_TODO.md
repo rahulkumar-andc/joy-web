@@ -19,6 +19,18 @@
 - [x] 3.2 Verify admin UI functionality - AdminCampaigns.tsx ready
 - [x] 3.3 Verify frontend rendering - HeroSystem.tsx ready
 
+## Phase 4: Media Upload System (New) ✅
+- [x] 4.1 Hybrid Media Selection (URL + File Upload)
+- [x] 4.2 Backend Multipart Support (Multer)
+- [x] 4.3 Database Schema Update (`mediaSource`, `mediaFilePath`)
+- [x] 4.4 File Cleanup Logic (Auto-delete on replacement/removal)
+
+## Phase 5: Resilience & Optimization (New) ✅
+- [x] 5.1 Resilient Scheduler (Recursive setTimeout, Idempotency)
+- [x] 5.2 Database Hardening (Timeouts, Backoff)
+- [x] 5.3 Frontend Build Optimization (Split Chunks, SVG Import Fix)
+
+
 ---
 
 ## Summary of Changes Made

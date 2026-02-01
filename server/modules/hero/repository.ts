@@ -1,5 +1,6 @@
+
 import { db } from "../../db";
-import { heroCampaigns, type InsertHeroCampaign, type HeroCampaign } from "@shared/schema";
+import { heroCampaigns, heroAnalytics, campaignReviews, type InsertHeroCampaign, type HeroCampaign, type InsertCampaignReview, type CampaignReview } from "@shared/schema";
 import { eq, desc, and, or, isNull, lte, gte, inArray } from "drizzle-orm";
 
 /**
@@ -65,6 +66,45 @@ export class HeroCampaignRepository {
             .limit(1);
 
         return activeCampaign;
+    }
+
+    /**
+     * Find all active campaigns based on user context and time windows
+     * Used for auto-carousel feature
+     */
+    async findActiveCampaigns(criteria: CampaignSelectionCriteria): Promise<HeroCampaign[]>;
+    async findActiveCampaigns(isLoggedIn: boolean, currentTime?: Date): Promise<HeroCampaign[]>;
+    async findActiveCampaigns(
+        criteriaOrIsLoggedIn: CampaignSelectionCriteria | boolean,
+        currentTime?: Date
+    ): Promise<HeroCampaign[]> {
+        const isLoggedIn = typeof criteriaOrIsLoggedIn === "boolean"
+            ? criteriaOrIsLoggedIn
+            : criteriaOrIsLoggedIn.isLoggedIn;
+        const now = currentTime ?? (typeof criteriaOrIsLoggedIn === "boolean" ? new Date() : criteriaOrIsLoggedIn.currentTime ?? new Date());
+
+        const audienceFilter: TargetAudience[] = isLoggedIn ? ['all', 'user'] : ['all', 'guest'];
+
+        return db
+            .select()
+            .from(heroCampaigns)
+            .where(
+                and(
+                    eq(heroCampaigns.isActive, true),
+                    inArray(heroCampaigns.targetAudience, audienceFilter),
+                    or(
+                        and(
+                            lte(heroCampaigns.startTime, now),
+                            gte(heroCampaigns.endTime, now)
+                        ),
+                        and(
+                            isNull(heroCampaigns.startTime),
+                            isNull(heroCampaigns.endTime)
+                        )
+                    )
+                )
+            )
+            .orderBy(desc(heroCampaigns.priority), desc(heroCampaigns.updatedAt));
     }
 
     /**
@@ -189,8 +229,71 @@ export class HeroCampaignRepository {
 
         return campaigns.length > 0;
     }
+    /**
+     * Get analytics statistics for all campaigns
+     */
+    async getCampaignAnalytics(): Promise<Record<number, { impressions: number; clicks: number }>> {
+        const analytics = await db
+            .select()
+            .from(heroAnalytics);
+
+        const stats: Record<number, { impressions: number; clicks: number }> = {};
+
+        for (const entry of analytics) {
+            // Skip entries with null campaignId
+            if (entry.campaignId === null) continue;
+
+            if (!stats[entry.campaignId]) {
+                stats[entry.campaignId] = { impressions: 0, clicks: 0 };
+            }
+            if (entry.eventType === 'impression') {
+                stats[entry.campaignId].impressions++;
+            } else if (entry.eventType === 'click') {
+                stats[entry.campaignId].clicks++;
+            }
+        }
+
+        return stats;
+    }
+
+    /**
+     * Get latest review for each campaign
+     */
+    async getLatestReviews(): Promise<Record<number, CampaignReview>> {
+        // We want the latest review for each campaign
+        // DISTINCT ON (campaign_id) ORDER BY campaign_id, created_at DESC
+        // Drizzle doesn't support DISTINCT ON easily, so we might fetch all and reduce in memory
+        // or use raw SQL. For now, fetch all reviews is okay if volume is low.
+        // Better: Select distinct on query builder if possible.
+
+        const allReviews = await db
+            .select()
+            .from(campaignReviews)
+            .orderBy(desc(campaignReviews.createdAt));
+
+        const latest: Record<number, CampaignReview> = {};
+
+        for (const review of allReviews) {
+            // Since we ordered by createdAt DESC, the first one we see is the latest
+            if (!latest[review.campaignId]) {
+                latest[review.campaignId] = review;
+            }
+        }
+
+        return latest;
+    }
+
+    /**
+     * Create a new campaign review
+     */
+    async createReview(data: InsertCampaignReview): Promise<CampaignReview> {
+        const [review] = await db
+            .insert(campaignReviews)
+            .values(data)
+            .returning();
+        return review;
+    }
 }
 
 // Singleton instance for dependency injection
 export const heroCampaignRepository = new HeroCampaignRepository();
-

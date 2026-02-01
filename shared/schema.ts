@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, decimal } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, decimal, boolean, timestamp, unique, jsonb, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -19,6 +19,11 @@ export const users = pgTable("users", {
   walletBalance: decimal("wallet_balance").default("0").notNull(),
   isVerified: boolean("is_verified").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
+  // Security enhancements
+  failedLoginAttempts: integer("failed_login_attempts").default(0).notNull(),
+  lockoutUntil: timestamp("lockout_until"),
+  lastLoginAt: timestamp("last_login_at"),
+  lastPasswordChangeAt: timestamp("last_password_change_at"),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
@@ -56,7 +61,11 @@ export const products = pgTable("products", {
   isNewArrival: boolean("is_new_arrival").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   sellerId: integer("seller_id").references(() => users.id),
-});
+}, (table) => ({
+  categoryIdIdx: index("product_category_idx").on(table.categoryId),
+  sellerIdIdx: index("product_seller_idx").on(table.sellerId),
+  featuredIdx: index("product_featured_idx").on(table.isFeatured),
+}));
 
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
 
@@ -94,6 +103,19 @@ export const wishlistItems = pgTable("wishlist_items", {
   productId: integer("product_id").references(() => products.id).notNull(),
 });
 
+// === STOCK RESERVATIONS ===
+export const stockReservations = pgTable("stock_reservations", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").references(() => products.id).notNull(),
+  userId: integer("user_id").references(() => users.id),
+  sessionId: text("session_id"), // For guest checkout
+  quantity: integer("quantity").notNull(),
+  reservedAt: timestamp("reserved_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(), // 15 minutes from reserved_at
+  status: text("status", { enum: ["active", "released", "consumed"] }).default("active").notNull(),
+  orderId: integer("order_id").references(() => orders.id), // Linked on order creation
+});
+
 // === ORDERS ===
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
@@ -101,9 +123,27 @@ export const orders = pgTable("orders", {
   totalAmount: decimal("total_amount").notNull(),
   status: text("status", { enum: ["pending", "paid", "shipped", "delivered", "cancelled"] }).default("pending").notNull(),
   paymentStatus: text("payment_status", { enum: ["pending", "paid", "failed"] }).default("pending").notNull(),
+
+  // Order state machine
+  orderState: text("order_state", {
+    enum: ["CREATED", "PAYMENT_PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUND_PENDING"]
+  }).default("CREATED").notNull(),
+  stateVersion: integer("state_version").default(1).notNull(), // Optimistic locking
+  stateHistory: jsonb("state_history").default([]), // Audit trail
+
+  // Idempotency
+  orderIdempotencyKey: text("order_idempotency_key").unique(),
+
+  // Reseller attribution
+  resellerLinkId: integer("reseller_link_id"),
+  referredByReseller: integer("referred_by_reseller"),
+
   shippingAddress: jsonb("shipping_address").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  userIdIdx: index("order_user_idx").on(table.userId),
+  statusIdx: index("order_status_idx").on(table.status),
+}));
 
 export const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
@@ -114,6 +154,29 @@ export const payments = pgTable("payments", {
   amount: decimal("amount").notNull(),
   currency: text("currency").default("INR"),
   status: text("status", { enum: ["created", "paid", "failed"] }).default("created"),
+
+  // State machine for payment lifecycle
+  paymentState: text("payment_state", {
+    enum: ["CREATED", "INITIATED", "ATTEMPTED", "CAPTURED", "SUCCESS", "FAILED", "REFUNDED", "CANCELLED"]
+  }).default("CREATED").notNull(),
+  stateVersion: integer("state_version").default(1).notNull(), // Optimistic locking
+  stateHistory: jsonb("state_history").default([]), // Audit trail
+
+  // Idempotency & tracking
+  idempotencyKey: text("idempotency_key").unique(),
+  gatewayReference: text("gateway_reference"), // Gateway's unique ID
+  gateway: text("gateway", { enum: ["razorpay", "stripe"] }), // Which gateway was used
+  attemptCount: integer("attempt_count").default(0).notNull(),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  expiresAt: timestamp("expires_at"), // Payment link expiry
+
+  // Reconciliation
+  reconciledAt: timestamp("reconciled_at"),
+  reconciledBy: text("reconciled_by"), // "webhook" | "manual" | "cron"
+  settlementStatus: text("settlement_status", {
+    enum: ["PENDING", "SETTLED", "DELAYED", "FAILED"]
+  }),
+
   paymentMethod: text("payment_method"), // upi, card, netbanking, wallet
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -148,14 +211,29 @@ export const coupons = pgTable("coupons", {
   discountType: text("discount_type", { enum: ["percentage", "fixed"] }).notNull(),
   discountValue: decimal("discount_value").notNull(),
   minOrderAmount: decimal("min_order_amount").default("0"),
-  maxUsage: integer("max_usage"),
+  maxUsage: integer("max_usage"), // Global usage limit
+  maxUsagePerUser: integer("max_usage_per_user").default(1), // Per-user usage limit
   usageCount: integer("usage_count").default(0).notNull(),
   expiresAt: timestamp("expires_at"),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertCouponSchema = createInsertSchema(coupons).omit({ id: true, createdAt: true, usageCount: true });
+export const insertCouponSchema = createInsertSchema(coupons).omit({ id: true, createdAt: true, usageCount: true }).extend({
+  discountValue: z.coerce.string(),
+  minOrderAmount: z.coerce.string().default("0"),
+  expiresAt: z.coerce.date().nullable().optional(),
+});
+
+export const couponUsage = pgTable("coupon_usage", {
+  id: serial("id").primaryKey(),
+  couponId: integer("coupon_id").references(() => coupons.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  orderId: integer("order_id").references(() => orders.id, { onDelete: "set null" }),
+  usedAt: timestamp("used_at").defaultNow(),
+}, (table) => ({
+  uniqueUserCoupon: unique().on(table.couponId, table.userId)
+}));
 
 // === RELATIONS ===
 export const productsRelations = relations(products, ({ one, many }) => ({
@@ -411,7 +489,9 @@ export const heroCampaigns = pgTable("hero_campaigns", {
 
   // Media Configuration
   mediaType: text("media_type", { enum: ["image", "video"] }).notNull(),
+  mediaSource: text("media_source", { enum: ["upload", "url"] }).default("url").notNull(),
   mediaUrl: text("media_url").notNull(),
+  mediaFilePath: text("media_file_path"), // Internal path for uploaded files
 
   // Content Configuration
   title: text("title").notNull(),
@@ -439,6 +519,9 @@ export const insertHeroCampaignSchema = createInsertSchema(heroCampaigns).omit({
   priority: z.number().int().default(0),
   overlayOpacity: z.string().default("0.4"),
   targetAudience: z.enum(["all", "guest", "user"]).default("all"),
+  endTime: z.coerce.date().nullable().optional(),
+  mediaSource: z.enum(["upload", "url"]).default("url"),
+  mediaFilePath: z.string().optional().nullable(),
 });
 
 export type HeroCampaign = typeof heroCampaigns.$inferSelect;
@@ -455,3 +538,110 @@ export const heroAnalytics = pgTable("hero_analytics", {
 export const insertHeroAnalyticsSchema = createInsertSchema(heroAnalytics);
 export type InsertHeroAnalytics = z.infer<typeof insertHeroAnalyticsSchema>;
 export type HeroAnalytics = typeof heroAnalytics.$inferSelect;
+
+// === A/B TESTING ===
+export const campaignVariants = pgTable("campaign_variants", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").references(() => heroCampaigns.id).notNull(),
+  variantName: text("variant_name").notNull(), // e.g., "A", "B", "Control"
+  trafficPercentage: integer("traffic_percentage").default(50).notNull(), // 0-100
+
+  // Variant-specific overrides (null = use parent campaign values)
+  title: text("title"),
+  subtitle: text("subtitle"),
+  ctaLabel: text("cta_label"),
+  ctaUrl: text("cta_url"),
+  mediaUrl: text("media_url"),
+
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCampaignVariantSchema = createInsertSchema(campaignVariants).omit({ id: true, createdAt: true });
+export type CampaignVariant = typeof campaignVariants.$inferSelect;
+export type InsertCampaignVariant = z.infer<typeof insertCampaignVariantSchema>;
+
+// Track variant-level analytics
+export const variantAnalytics = pgTable("variant_analytics", {
+  id: serial("id").primaryKey(),
+  variantId: integer("variant_id").references(() => campaignVariants.id).notNull(),
+  campaignId: integer("campaign_id").references(() => heroCampaigns.id).notNull(),
+  eventType: text("event_type", { enum: ["impression", "click", "conversion"] }).notNull(),
+  sessionId: text("session_id"), // To track unique users
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+export const insertVariantAnalyticsSchema = createInsertSchema(variantAnalytics);
+export type VariantAnalytics = typeof variantAnalytics.$inferSelect;
+
+// === CAMPAIGN SCHEDULING ===
+export const campaignSchedules = pgTable("campaign_schedules", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").references(() => heroCampaigns.id).notNull(),
+
+  // Scheduling
+  activateAt: timestamp("activate_at").notNull(),
+  deactivateAt: timestamp("deactivate_at"),
+
+  // Recurrence
+  recurrenceType: text("recurrence_type", { enum: ["none", "daily", "weekly", "monthly"] }).default("none").notNull(),
+  recurrenceEndDate: timestamp("recurrence_end_date"),
+
+  // Status
+  status: text("status", { enum: ["pending", "activated", "completed", "cancelled"] }).default("pending").notNull(),
+  lastProcessedAt: timestamp("last_processed_at"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCampaignScheduleSchema = createInsertSchema(campaignSchedules).omit({ id: true, createdAt: true, lastProcessedAt: true });
+export type CampaignSchedule = typeof campaignSchedules.$inferSelect;
+export type InsertCampaignSchedule = z.infer<typeof insertCampaignScheduleSchema>;
+
+// === PERSONALIZATION ===
+export const campaignPersonalization = pgTable("campaign_personalization", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").references(() => heroCampaigns.id).notNull(),
+
+  // Geo targeting
+  geoTargets: text("geo_targets").array(), // Country codes: ["IN", "US", "UK"]
+
+  // Cart value targeting
+  minCartValue: decimal("min_cart_value"),
+  maxCartValue: decimal("max_cart_value"),
+
+  // Device targeting
+  deviceTargets: text("device_targets").array(), // ["mobile", "desktop", "tablet"]
+
+  // User segment targeting
+  userSegments: text("user_segments").array(), // ["new", "returning", "vip"]
+
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCampaignPersonalizationSchema = createInsertSchema(campaignPersonalization).omit({ id: true, createdAt: true });
+export type CampaignPersonalization = typeof campaignPersonalization.$inferSelect;
+
+// === CONTENT MODERATION ===
+export const campaignReviews = pgTable("campaign_reviews", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").references(() => heroCampaigns.id).notNull(),
+  reviewerId: integer("reviewer_id").references(() => users.id),
+  status: text("status", { enum: ["pending", "approved", "rejected"] }).default("pending").notNull(),
+  reviewNotes: text("review_notes"),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCampaignReviewSchema = createInsertSchema(campaignReviews).omit({ id: true, createdAt: true, reviewedAt: true });
+export type CampaignReview = typeof campaignReviews.$inferSelect;
+export type InsertCampaignReview = z.infer<typeof insertCampaignReviewSchema>;
+
+// === RE-EXPORT RBAC SCHEMA ===
+export * from "./rbac-schema";
+
+// === RE-EXPORT PAYMENT SCHEMA ===
+export * from "./payment-schema";
+
+// === RE-EXPORT RESELLER SCHEMA ===
+export * from "./reseller-schema";

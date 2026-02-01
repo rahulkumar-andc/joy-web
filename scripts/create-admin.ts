@@ -4,6 +4,7 @@ import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
 import { db } from "../server/db";
 import { users } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 const scryptAsync = promisify(scrypt);
 

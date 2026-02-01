@@ -1,9 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 import { api } from "@shared/routes";
 import { type Order } from "@shared/schema";
-import { Loader2, Search, Check, AlertCircle } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import {
@@ -74,91 +72,87 @@ export default function AdminOrders() {
     };
 
     return (
-        <div className="min-h-screen bg-background font-body">
-            <Navbar />
-            <div className="container mx-auto px-4 py-8">
-                <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-                    <h1 className="text-3xl font-display font-bold text-primary">Order Management</h1>
-                    <div className="relative w-full md:w-64">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search ID, Name, Email..."
-                            className="pl-9"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold tracking-tight">Orders</h2>
+                <div className="relative w-full max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search ID, Name, Email..."
+                        className="pl-9"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                </div>
+            </div>
+
+            {isLoading ? (
+                <div className="flex justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                </div>
+            ) : (
+                <div className="bg-white rounded-lg border border-border overflow-hidden shadow-sm">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-muted/50 text-muted-foreground uppercase text-xs">
+                                <tr>
+                                    <th className="px-6 py-3">Order ID</th>
+                                    <th className="px-6 py-3">Customer</th>
+                                    <th className="px-6 py-3">Date</th>
+                                    <th className="px-6 py-3">Total</th>
+                                    <th className="px-6 py-3">Payment</th>
+                                    <th className="px-6 py-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                                {filteredOrders?.map((order) => (
+                                    <tr key={order.id} className="hover:bg-muted/30">
+                                        <td className="px-6 py-4 font-medium text-primary">#{order.id}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="font-medium text-foreground">{order.user.name}</div>
+                                            <div className="text-xs text-muted-foreground">{order.user.email}</div>
+                                        </td>
+                                        <td className="px-6 py-4 text-muted-foreground">
+                                            {new Date(order.createdAt!).toLocaleDateString()}
+                                        </td>
+                                        <td className="px-6 py-4 font-bold">₹{order.totalAmount}</td>
+                                        <td className="px-6 py-4">
+                                            <Badge variant="outline" className={order.paymentStatus === 'paid' ? 'border-green-500 text-green-700' : 'border-yellow-500 text-yellow-700'}>
+                                                {order.paymentStatus}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <Select
+                                                defaultValue={order.status}
+                                                onValueChange={(val) => updateStatus.mutate({ id: order.id, status: val })}
+                                                disabled={updateStatus.isPending}
+                                            >
+                                                <SelectTrigger className={`w-[130px] h-8 ${getStatusColor(order.status)} border-0`}>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="pending">Pending</SelectItem>
+                                                    <SelectItem value="paid">Paid</SelectItem>
+                                                    <SelectItem value="shipped">Shipped</SelectItem>
+                                                    <SelectItem value="delivered">Delivered</SelectItem>
+                                                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {filteredOrders?.length === 0 && (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
+                                            No orders found
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-
-                {isLoading ? (
-                    <div className="flex justify-center py-12">
-                        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-                    </div>
-                ) : (
-                    <div className="bg-white rounded-lg border border-border overflow-hidden shadow-sm">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-muted/50 text-muted-foreground uppercase text-xs">
-                                    <tr>
-                                        <th className="px-6 py-3">Order ID</th>
-                                        <th className="px-6 py-3">Customer</th>
-                                        <th className="px-6 py-3">Date</th>
-                                        <th className="px-6 py-3">Total</th>
-                                        <th className="px-6 py-3">Payment</th>
-                                        <th className="px-6 py-3">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border">
-                                    {filteredOrders?.map((order) => (
-                                        <tr key={order.id} className="hover:bg-muted/30">
-                                            <td className="px-6 py-4 font-medium text-primary">#{order.id}</td>
-                                            <td className="px-6 py-4">
-                                                <div className="font-medium text-foreground">{order.user.name}</div>
-                                                <div className="text-xs text-muted-foreground">{order.user.email}</div>
-                                            </td>
-                                            <td className="px-6 py-4 text-muted-foreground">
-                                                {new Date(order.createdAt!).toLocaleDateString()}
-                                            </td>
-                                            <td className="px-6 py-4 font-bold">₹{order.totalAmount}</td>
-                                            <td className="px-6 py-4">
-                                                <Badge variant="outline" className={order.paymentStatus === 'paid' ? 'border-green-500 text-green-700' : 'border-yellow-500 text-yellow-700'}>
-                                                    {order.paymentStatus}
-                                                </Badge>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <Select
-                                                    defaultValue={order.status}
-                                                    onValueChange={(val) => updateStatus.mutate({ id: order.id, status: val })}
-                                                    disabled={updateStatus.isPending}
-                                                >
-                                                    <SelectTrigger className={`w-[130px] h-8 ${getStatusColor(order.status)} border-0`}>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="pending">Pending</SelectItem>
-                                                        <SelectItem value="paid">Paid</SelectItem>
-                                                        <SelectItem value="shipped">Shipped</SelectItem>
-                                                        <SelectItem value="delivered">Delivered</SelectItem>
-                                                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {filteredOrders?.length === 0 && (
-                                        <tr>
-                                            <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
-                                                No orders found
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-            </div>
-            <Footer />
+            )}
         </div>
     );
 }

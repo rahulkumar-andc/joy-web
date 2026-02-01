@@ -55,6 +55,14 @@ export class CouponRepository {
     async getAll(): Promise<Coupon[]> {
         return await db.select().from(coupons).orderBy(desc(coupons.createdAt));
     }
+
+    async delete(id: number): Promise<boolean> {
+        const [updated] = await db.update(coupons)
+            .set({ isActive: false })
+            .where(eq(coupons.id, id))
+            .returning();
+        return !!updated;
+    }
 }
 
 export const couponRepository = new CouponRepository();

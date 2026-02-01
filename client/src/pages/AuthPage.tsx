@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useEffect, useState } from "react";
 
 const authSchema = z.object({
@@ -21,8 +21,12 @@ const authSchema = z.object({
 export default function AuthPage() {
   const { user, loginMutation, registerMutation, verifyEmailMutation } = useAuth();
   const [, setLocation] = useLocation();
-  const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("login");
+  const searchString = useSearch();
+  const searchParams = new URLSearchParams(searchString);
+  const verifyEmail = searchParams.get("verify_email");
+  const mode = searchParams.get("mode");
+
+  const [activeTab, setActiveTab] = useState<string>("login");
 
   useEffect(() => {
     if (user) {
@@ -33,6 +37,16 @@ export default function AuthPage() {
       }
     }
   }, [user, setLocation]);
+
+  // Handle URL-based tab/mode switching
+  useEffect(() => {
+    if (mode === "register") {
+      setActiveTab("register");
+    } else if (mode === "login") {
+      setActiveTab("login");
+    }
+  }, [mode]);
+
 
   const loginForm = useForm<z.infer<typeof authSchema>>({
     resolver: zodResolver(authSchema.omit({ name: true })),
@@ -55,25 +69,26 @@ export default function AuthPage() {
   const onRegister = (data: any) => {
     registerMutation.mutate(data, {
       onSuccess: () => {
-        setVerificationEmail(data.email);
+        // Redirect to verify flow -> Fixes "Blank Screen" by forcing a route change
+        setLocation(`/auth?mode=verify&verify_email=${encodeURIComponent(data.email)}`);
       }
     });
   };
 
   const onVerify = (data: any) => {
-    if (!verificationEmail) return;
-    verifyEmailMutation.mutate({ email: verificationEmail, otp: data.otp }, {
+    if (!verifyEmail) return;
+    verifyEmailMutation.mutate({ email: verifyEmail, otp: data.otp }, {
       onSuccess: () => {
-        setVerificationEmail(null);
-        setActiveTab("login");
+        // Redirect to login -> Logic flow complete
+        setLocation("/auth?mode=login");
         // Prefill login email
-        loginForm.setValue("email", verificationEmail);
+        loginForm.setValue("email", verifyEmail);
       }
     });
   };
 
-  // If verificationEmail is set, show OTP form
-  if (verificationEmail) {
+  // Render Verification View if URL param exists
+  if (mode === "verify" && verifyEmail) {
     return (
       <div className="min-h-screen bg-background font-body flex flex-col">
         <Navbar />
@@ -81,32 +96,43 @@ export default function AuthPage() {
           <Card className="border-none shadow-lg w-full max-w-md">
             <CardHeader className="text-center">
               <CardTitle className="font-display text-3xl text-primary">Verify Email</CardTitle>
-              <CardDescription>Enter the code sent to {verificationEmail}</CardDescription>
+              <CardDescription>Enter the code sent to {verifyEmail}</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={verifyForm.handleSubmit(onVerify)} className="space-y-4">
-                <div className="space-y-2">
-                  <FormLabel>Verification Code</FormLabel>
-                  <Input
-                    placeholder="123456"
-                    {...verifyForm.register("otp")}
+              <Form {...verifyForm}>
+                <form onSubmit={verifyForm.handleSubmit(onVerify)} className="space-y-4">
+                  <FormField
+                    control={verifyForm.control}
+                    name="otp"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Verification Code</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="123456"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full bg-primary mt-4"
-                  disabled={verifyEmailMutation.isPending}
-                >
-                  {verifyEmailMutation.isPending ? "Verifying..." : "Verify Code"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full mt-2"
-                  onClick={() => setVerificationEmail(null)}
-                >
-                  Back to Register
-                </Button>
-              </form>
+                  <Button
+                    type="submit"
+                    className="w-full bg-primary mt-4"
+                    disabled={verifyEmailMutation.isPending}
+                  >
+                    {verifyEmailMutation.isPending ? "Verifying..." : "Verify Code"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full mt-2"
+                    onClick={() => setLocation("/auth?mode=register")}
+                  >
+                    Back to Register
+                  </Button>
+                </form>
+              </Form>
             </CardContent>
           </Card>
         </div>

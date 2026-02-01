@@ -158,8 +158,10 @@ Code-Structure/
 - **Product Catalog** - Categories, filters, search functionality
 - **Shopping Cart** - Add/remove items, quantity management
 - **Wishlist** - Save favorite products
-- **Order Management** - Track order status
-- **Admin Dashboard** - Manage products, categories, orders
+- **Reseller System** - Commission-based affiliate program with dedicated dashboard
+- **Admin Portal** - Comprehensive management for Orders, Products, Resellers, Payouts, Coupons, Campaigns, and Content
+- **Marketing Tools** - Hero Banner Campaigns, Coupon Management
+- **Security** - RBAC (Role-Based Access Control), Fraud Detection
 - **Reviews & Ratings** - Customer product reviews
 - **UI/UX** - Dark Mode, Infinite Scroll, Search Autocomplete, Mobile Optimized
 
@@ -169,9 +171,10 @@ Code-Structure/
 
 | Role    | Access Level                              |
 | ------- | ----------------------------------------- |
-| Admin   | Full access to all features               |
-| Manager | Product & order management                |
-| User    | Shopping, cart, wishlist, order placement |
+| Admin   | Full system access (Resellers, Payouts, Campaigns, RBAC) |
+| Manager | Product, Order, and Coupon management     |
+| Reseller| Reseller Dashboard, Affiliate Links, Payout History |
+| User    | Shopping, Cart, Wishlist, Order History   |
 
 ---
 

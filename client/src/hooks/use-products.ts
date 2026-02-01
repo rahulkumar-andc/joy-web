@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
-import { type InsertProduct } from "@shared/schema";
+import { type InsertProduct, type Product } from "@shared/schema";
 import { z } from "zod";
+import { getCookie } from "@/lib/utils";
 
 // List Products (Legacy/Simple)
 export function useProducts(filters?: { category?: string; search?: string; sort?: string }) {
@@ -20,7 +21,7 @@ export function useProducts(filters?: { category?: string; search?: string; sort
       if (!res.ok) throw new Error("Failed to fetch products");
       // New API returns { products, total }, but this hook initially returned Product[]
       // We'll return just products to maintain compatibility for now
-      const data = await res.json();
+      const data = (await res.json()) as { products: Product[]; total: number };
       return data.products;
     },
   });
@@ -103,7 +104,10 @@ export function useCreateProduct() {
       const validated = api.products.create.input.parse(data);
       const res = await fetch(api.products.create.path, {
         method: api.products.create.method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+        },
         body: JSON.stringify(validated),
         credentials: "include",
       });
@@ -130,6 +134,9 @@ export function useDeleteProduct() {
       const url = buildUrl(api.products.delete.path, { id });
       const res = await fetch(url, {
         method: api.products.delete.method,
+        headers: {
+          "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+        },
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to delete product");
@@ -148,7 +155,10 @@ export function useUpdateProduct() {
       const url = buildUrl(api.products.update.path, { id });
       const res = await fetch(url, {
         method: api.products.update.method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+        },
         body: JSON.stringify(data),
         credentials: "include",
       });

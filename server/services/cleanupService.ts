@@ -17,8 +17,10 @@ export class UserCleanupService {
 
         logger.info("🧹 UserCleanupService started");
 
-        // Run immediately on startup
-        this.cleanup();
+        // Delay initial run to prevent startup contention (boot traffic priority)
+        setTimeout(() => {
+            this.cleanup();
+        }, 10000);
 
         this.timer = setInterval(() => {
             this.cleanup();

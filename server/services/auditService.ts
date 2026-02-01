@@ -3,10 +3,10 @@ import { auditLogs, type InsertAuditLog } from "@shared/schema";
 
 export class AuditService {
     static async logAction(
-        userId: number,
+        userId: number | null,
         action: string,
         entityType: string,
-        entityId: string | number,
+        entityId: string | number | null,
         details?: Record<string, any>,
         ipAddress?: string
     ) {
@@ -15,7 +15,7 @@ export class AuditService {
                 userId,
                 action,
                 entityType,
-                entityId: entityId.toString(),
+                entityId: entityId?.toString() || null,
                 details: details as any,
                 ipAddress
             };

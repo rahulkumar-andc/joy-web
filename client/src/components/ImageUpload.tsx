@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, X, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getCookie } from "@/lib/utils";
 
 interface ImageUploadProps {
     value?: string;
@@ -34,6 +35,9 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
         try {
             const res = await fetch("/api/products/upload", {
                 method: "POST",
+                headers: {
+                    "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+                },
                 body: formData,
             });
 

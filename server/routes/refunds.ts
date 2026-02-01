@@ -61,6 +61,20 @@ refundRouter.post("/api/orders/:orderId/refund", async (req, res) => {
             amount = calculatedAmount.toFixed(2);
         }
 
+        const refundAmountNum = parseFloat(amount.toString());
+        const previouslyRefunded = await refundRepository.getRefundedAmountForOrder(orderId);
+        const orderTotal = parseFloat(order.totalAmount);
+
+        if (previouslyRefunded + refundAmountNum > orderTotal) {
+            return res.status(400).json({
+                error: "Refund amount exceeds refundable balance",
+                orderTotal,
+                previouslyRefunded,
+                requested: refundAmountNum,
+                remaining: orderTotal - previouslyRefunded
+            });
+        }
+
         const refund = await refundRepository.createRefund({
             userId: user.id,
             orderId,
@@ -69,6 +83,15 @@ refundRouter.post("/api/orders/:orderId/refund", async (req, res) => {
             refundMethod: refundMethod || "original",
             amount: amount.toString(),
             items: refundItemsData
+        });
+
+        // Initialize State Machine Tracking
+        const { RefundStateMachine, RefundState } = await import("../services/payment/RefundStateMachine");
+        await RefundStateMachine.transition({
+            refundId: refund.id,
+            toState: RefundState.INITIATED,
+            triggeredBy: "user",
+            reason: reason
         });
 
         res.status(201).json(refund);
@@ -103,12 +126,28 @@ refundRouter.patch("/api/admin/refunds/:id/status", restrictTo("admin", "manager
     try {
         const { status, adminNote } = updateRefundStatusSchema.parse(req.body);
 
-        // Check current refund to get method and amount
         const currentRefund = await refundRepository.getRefundById(id);
         if (!currentRefund) return res.status(404).send("Refund not found");
 
         const updated = await refundRepository.updateRefundStatus(id, status, adminNote);
         if (!updated) return res.status(404).send("Refund not found");
+
+        // Sync with State Machine
+        // Map legacy status to RefundState
+        const { RefundStateMachine, RefundState } = await import("../services/payment/RefundStateMachine");
+        let newState = RefundState.PENDING;
+        const s = status as string;
+        if (s === "approved" || s === "completed") newState = RefundState.SUCCESS;
+        else if (s === "rejected" || s === "cancelled") newState = RefundState.CANCELLED;
+        else if (s === "processing") newState = RefundState.PROCESSING;
+        else if (s === "failed") newState = RefundState.FAILED;
+
+        await RefundStateMachine.transition({
+            refundId: id,
+            toState: newState,
+            triggeredBy: "admin",
+            reason: adminNote
+        });
 
         // Wallet Logic: If approved and method is wallet
         if (status === "approved" && currentRefund.refundMethod === "wallet" && currentRefund.status !== "approved") {

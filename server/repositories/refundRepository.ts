@@ -19,6 +19,12 @@ export class RefundRepository {
                 images: data.images
             } as any).returning();
 
+            // Note: Validation should ideally happen before transaction or inside it
+            // ensuring (existing + new) <= orderTotal. 
+            // We'll perform a check here or caller must do it.
+            // For robustness, let's assume the caller uses getRefundedAmountForOrder before calling this.
+
+
             if (data.items && data.items.length > 0) {
                 await tx.insert(refundItems).values(
                     data.items.map(item => ({
@@ -76,6 +82,23 @@ export class RefundRepository {
             .where(eq(refunds.id, id))
             .returning();
         return updated;
+    }
+
+    /**
+     * Calculate total amount already refunded for an order
+     * Only counts SUCCESS or PROCESSING refunds (excludes FAILED/CANCELLED)
+     */
+    async getRefundedAmountForOrder(orderId: number): Promise<number> {
+        const existingRefunds = await db
+            .select({ amount: refunds.amount, status: refunds.status })
+            .from(refunds)
+            .where(and(
+                eq(refunds.orderId, orderId)
+            ));
+
+        return existingRefunds
+            .filter(r => (r.status as string) !== 'FAILED' && (r.status as string) !== 'CANCELLED' && (r.status as string) !== 'rejected')
+            .reduce((sum, r) => sum + parseFloat(r.amount), 0);
     }
 }
 

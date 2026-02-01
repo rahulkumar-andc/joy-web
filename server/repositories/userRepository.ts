@@ -1,6 +1,6 @@
 import { db } from "../db";
-import { users, verificationTokens, type User, type InsertUser, type VerificationToken } from "@shared/schema";
-import { eq, and, gt } from "drizzle-orm";
+import { users, verificationTokens, session, type User, type InsertUser, type VerificationToken } from "@shared/schema";
+import { eq, and, gt, sql } from "drizzle-orm";
 import { randomBytes, createHash } from "crypto";
 
 export class UserRepository {
@@ -84,6 +84,46 @@ export class UserRepository {
     async deleteResetToken(token: string): Promise<void> {
         const hashedToken = createHash("sha256").update(token).digest("hex");
         await db.delete(verificationTokens).where(eq(verificationTokens.token, hashedToken));
+    }
+
+    // === ACCOUNT LOCKOUT METHODS ===
+
+    async incrementFailedAttempts(userId: number): Promise<void> {
+        const [user] = await db.select({ attempts: users.failedLoginAttempts }).from(users).where(eq(users.id, userId));
+        await db.update(users).set({ failedLoginAttempts: (user?.attempts || 0) + 1 }).where(eq(users.id, userId));
+    }
+
+    async lockAccount(userId: number, durationMinutes: number = 30): Promise<void> {
+        await db.update(users)
+            .set({ lockoutUntil: sql`NOW() + INTERVAL '${sql.raw(durationMinutes.toString())} minutes'` })
+            .where(eq(users.id, userId));
+    }
+
+    async resetFailedAttempts(userId: number): Promise<void> {
+        await db.update(users).set({ failedLoginAttempts: 0, lockoutUntil: null }).where(eq(users.id, userId));
+    }
+
+    async updateLastLogin(userId: number): Promise<void> {
+        await db.update(users).set({ lastLoginAt: sql`NOW()` }).where(eq(users.id, userId));
+    }
+
+    async updatePasswordWithTimestamp(userId: number, hashedPassword: string): Promise<void> {
+        await db.update(users).set({ password: hashedPassword, lastPasswordChangeAt: new Date() }).where(eq(users.id, userId));
+    }
+
+    async unlockAccount(userId: number): Promise<void> {
+        await db.update(users).set({ lockoutUntil: null, failedLoginAttempts: 0 }).where(eq(users.id, userId));
+    }
+
+    // === SESSION MANAGEMENT ===
+    async invalidateUserSessions(userId: number): Promise<void> {
+        // Delete sessions where sess->passport->user == userId
+        // Note: connect-pg-simple stores user ID as number or string depending on serializer
+        // We match both just in case
+        await db.delete(session)
+            .where(
+                sql`sess -> 'passport' ->> 'user' = ${userId.toString()}`
+            );
     }
 }
 

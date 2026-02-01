@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useCart, useCreateOrder } from "@/hooks/use-cart";
+import { getCookie } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Address } from "@shared/schema";
 import { Navbar } from "@/components/Navbar";
@@ -13,12 +14,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useLocation } from "wouter";
 import { PaymentMethodSelector } from "@/components/PaymentMethodSelector";
 import { usePayment, loadRazorpayScript } from "@/hooks/use-payment";
+import { useAuth } from "@/hooks/use-auth";
 import { useEffect } from "react";
 
 const shippingSchema = z.object({
   fullName: z.string().min(2, "Name is required"),
-  address: z.string().min(5, "Address is required"),
+  addressLine1: z.string().min(5, "Address is required"),
   city: z.string().min(2, "City is required"),
+  state: z.string().min(2, "State is required"),
   zipCode: z.string().min(3, "Zip code is required"),
   country: z.string().min(2, "Country is required"),
 });
@@ -26,6 +29,7 @@ const shippingSchema = z.object({
 export default function CheckoutPage() {
   const { data: cartItems } = useCart();
   const createOrderMutation = useCreateOrder();
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
 
@@ -37,8 +41,9 @@ export default function CheckoutPage() {
     resolver: zodResolver(shippingSchema),
     defaultValues: {
       fullName: "",
-      address: "",
+      addressLine1: "",
       city: "",
+      state: "",
       zipCode: "",
       country: "",
     },
@@ -47,8 +52,9 @@ export default function CheckoutPage() {
   const handleSelectAddress = (addr: Address) => {
     setSelectedAddressId(addr.id);
     form.setValue("fullName", addr.fullName);
-    form.setValue("address", addr.addressLine1);
+    form.setValue("addressLine1", addr.addressLine1);
     form.setValue("city", addr.city);
+    form.setValue("state", addr.state);
     form.setValue("zipCode", addr.zipCode);
     form.setValue("country", addr.country);
   };
@@ -56,6 +62,11 @@ export default function CheckoutPage() {
   const { createPaymentOrder, verifyPayment } = usePayment();
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"upi" | "card" | "netbanking">("upi");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [discount, setDiscount] = useState(0);
+  const [couponMessage, setCouponMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
   useEffect(() => {
     loadRazorpayScript();
@@ -88,8 +99,20 @@ export default function CheckoutPage() {
         },
         prefill: {
           name: form.getValues("fullName"),
-          email: "user@example.com", // Should get from auth/user context
-          contact: "9999999999", // Should get from auth/user context
+          email: user?.email || "customer@example.com",
+          contact: user?.phone || "",
+        },
+        // ⚠️ CONVERSION: Mobile payment options
+        method: {
+          upi: paymentOrder.paymentOptions?.upi !== false,
+          card: paymentOrder.paymentOptions?.card !== false,
+          netbanking: paymentOrder.paymentOptions?.netbanking !== false,
+          wallet: paymentOrder.paymentOptions?.wallet !== false,
+          emi: paymentOrder.paymentOptions?.emi || false,
+          // Preferred UPI apps (GPay, PhonePe, Paytm)
+          ...(paymentOrder.paymentOptions?.preferred_apps && {
+            preferred_apps: paymentOrder.paymentOptions.preferred_apps
+          })
         },
         theme: {
           color: "#000000",
@@ -110,18 +133,56 @@ export default function CheckoutPage() {
     }
   };
 
+  const handleValidateCoupon = async () => {
+    if (!couponCode.trim()) return;
+
+    setIsValidatingCoupon(true);
+    setCouponMessage(null);
+
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+        },
+        body: JSON.stringify({ code: couponCode, orderAmount: subTotal })
+      });
+
+      const data = await res.json();
+
+      if (data.valid) {
+        setDiscount(data.discount);
+        setAppliedCoupon(couponCode);
+        setCouponMessage({ type: "success", text: `Coupon applied! You saved ₹${data.discount}` });
+      } else {
+        setDiscount(0);
+        setAppliedCoupon(null);
+        setCouponMessage({ type: "error", text: data.message || "Invalid coupon" });
+      }
+    } catch (error) {
+      console.error("Coupon validation error", error);
+      setCouponMessage({ type: "error", text: "Failed to validate coupon" });
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
   const onSubmit = (data: z.infer<typeof shippingSchema>) => {
     setIsProcessing(true);
-    createOrderMutation.mutate({ shippingAddress: data }, {
+    createOrderMutation.mutate({ shippingAddress: data, couponCode: appliedCoupon || undefined }, {
       onSuccess: async (orderData) => {
         try {
           // Initiate Stripe Checkout
           const res = await fetch("/api/payments/create-session", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+            },
             body: JSON.stringify({
               orderId: orderData.id,
-              amount: total > 2000 ? total.toString() : (total + 100).toString()
+              amount: finalTotal.toString()
             })
           });
 
@@ -144,7 +205,9 @@ export default function CheckoutPage() {
     });
   };
 
-  const total = cartItems?.reduce((acc, item) => acc + (Number(item.product.price) * item.item.quantity), 0) || 0;
+  const subTotal = cartItems?.reduce((acc, item) => acc + (Number(item.product.price) * item.item.quantity), 0) || 0;
+  const shippingCharge = subTotal > 2000 ? 0 : 100;
+  const finalTotal = Math.max(0, subTotal + shippingCharge - discount);
 
   return (
     <div className="min-h-screen bg-background font-body">
@@ -178,7 +241,7 @@ export default function CheckoutPage() {
                     </div>
                   ))}
                   <div
-                    onClick={() => { setSelectedAddressId(null); form.reset({ fullName: "", address: "", city: "", zipCode: "", country: "" }); }}
+                    onClick={() => { setSelectedAddressId(null); form.reset({ fullName: "", addressLine1: "", city: "", state: "", zipCode: "", country: "" }); }}
                     className={`p-3 rounded-lg border cursor-pointer hover:border-primary/50 transition-all flex items-center justify-center gap-2 ${selectedAddressId === null ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border"
                       }`}
                   >
@@ -207,7 +270,7 @@ export default function CheckoutPage() {
                 />
                 <FormField
                   control={form.control}
-                  name="address"
+                  name="addressLine1"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Address</FormLabel>
@@ -230,6 +293,19 @@ export default function CheckoutPage() {
                   />
                   <FormField
                     control={form.control}
+                    name="state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>State</FormLabel>
+                        <FormControl><Input placeholder="NY" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
                     name="zipCode"
                     render={({ field }) => (
                       <FormItem>
@@ -239,18 +315,18 @@ export default function CheckoutPage() {
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="country"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Country</FormLabel>
+                        <FormControl><Input placeholder="United States" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                <FormField
-                  control={form.control}
-                  name="country"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Country</FormLabel>
-                      <FormControl><Input placeholder="United States" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
                 <div className="pt-4">
                   <PaymentMethodSelector
@@ -265,7 +341,7 @@ export default function CheckoutPage() {
                     className="w-full bg-primary hover:bg-primary/90 text-white h-12 text-lg"
                     disabled={createOrderMutation.isPending}
                   >
-                    {isProcessing ? "Processing..." : `Pay ₹${total > 2000 ? total : total + 100}`}
+                    {isProcessing ? "Processing..." : `Pay ₹${finalTotal}`}
                   </Button>
                 </div>
               </form>
@@ -292,18 +368,62 @@ export default function CheckoutPage() {
               ))}
             </div>
 
+            {/* Coupon Input */}
+            <div className="mb-6">
+              <label className="text-sm font-medium mb-2 block">Have a coupon?</label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter code"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  disabled={!!appliedCoupon}
+                />
+                {appliedCoupon ? (
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      setAppliedCoupon(null);
+                      setDiscount(0);
+                      setCouponMessage(null);
+                      setCouponCode("");
+                    }}
+                  >
+                    Remove
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleValidateCoupon}
+                    disabled={!couponCode || isValidatingCoupon}
+                  >
+                    {isValidatingCoupon ? "Checking..." : "Apply"}
+                  </Button>
+                )}
+              </div>
+              {couponMessage && (
+                <p className={`text-xs mt-2 ${couponMessage.type === "success" ? "text-green-600" : "text-destructive"}`}>
+                  {couponMessage.text}
+                </p>
+              )}
+            </div>
+
             <div className="border-t border-primary/10 pt-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Subtotal</span>
-                <span>₹{total}</span>
+                <span>₹{subTotal}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span>Shipping</span>
-                <span>{total > 2000 ? "Free" : "₹100"}</span>
+                <span>{shippingCharge === 0 ? "Free" : `₹${shippingCharge}`}</span>
               </div>
+              {discount > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>Discount</span>
+                  <span>-₹{discount}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-lg text-primary pt-2">
                 <span>Total</span>
-                <span>₹{total > 2000 ? total : total + 100}</span>
+                <span>₹{finalTotal}</span>
               </div>
             </div>
           </div>

@@ -168,3 +168,43 @@ export function useHeroWithFallback() {
     };
 }
 
+/**
+ * Fetch hero carousel configuration from API
+ */
+async function fetchHeroCarouselConfig(): Promise<HeroConfig[]> {
+    const response = await fetch("/api/hero/carousel", {
+        credentials: "include",
+    });
+
+    if (!response.ok) {
+        if (response.status === 401 || response.status === 404) {
+            return [];
+        }
+        throw new Error(`Hero API error: ${response.status}`);
+    }
+
+    const text = await response.text();
+    if (!text) return [];
+
+    try {
+        return JSON.parse(text) as HeroConfig[];
+    } catch {
+        return [];
+    }
+}
+
+/**
+ * useHeroCarousel hook
+ * Fetches multiple active campaigns for the carousel
+ */
+export function useHeroCarousel(
+    options?: Omit<UseQueryOptions<HeroConfig[], Error>, 'queryKey' | 'queryFn'>
+) {
+    return useQuery<HeroConfig[], Error>({
+        queryKey: ["/api/hero/carousel"],
+        queryFn: fetchHeroCarouselConfig,
+        retry: 1,
+        staleTime: 60 * 1000,
+        ...options,
+    });
+}

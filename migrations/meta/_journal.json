@@ -8,6 +8,13 @@
       "when": 1769787569619,
       "tag": "0000_opposite_husk",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1769864348435,
+      "tag": "0001_campaign_ab_testing_scheduling",
+      "breakpoints": true
     }
   ]
 }

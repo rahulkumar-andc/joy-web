@@ -51,15 +51,22 @@ export async function createRazorpayOrder(
     }
 
     try {
-        const order = await razorpay.orders.create({
+        const razorpayOrder = await razorpay.orders.create({
             amount: amountInPaise,
             currency,
             receipt: receipt || `order_${Date.now()}`,
             notes: notes || {},
         });
 
-        logger.info(`Razorpay order created: ${order.id} for amount ₹${amount}`);
-        return order as RazorpayOrderResponse;
+        logger.info(`Razorpay order created: ${razorpayOrder.id} for amount ₹${amount}`);
+
+        // We defer DB creation to the controller usually, or typically service returns the object 
+        // and Controller saves it.
+        // But to ensure 'INITIATED' state is tracked, we should ideally handle it where DB record is created.
+        // Current flow: Controller calls createRazorpayOrder -> gets ID -> Controller saves DB record.
+        // So we just return the object here. The Controller needs to use the StateMachine.
+
+        return razorpayOrder as RazorpayOrderResponse;
     } catch (error: any) {
         logger.error(`Failed to create Razorpay order: ${error.message}`);
         throw new Error("Failed to create payment order");

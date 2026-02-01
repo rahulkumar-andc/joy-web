@@ -7,6 +7,42 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock_key', {
 });
 
 export class PaymentService {
+    /**
+     * Generic retry wrapper with exponential backoff
+     */
+    private async retryOperation<T>(operation: () => Promise<T>, maxRetries: number = 3): Promise<T> {
+        let lastError: any;
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                return await operation();
+            } catch (error: any) {
+                lastError = error;
+                // Retry only on network errors or 5xx server errors
+                // Stripe errors usually have 'type' or 'statusCode'
+                const isRetryable =
+                    error.type === 'StripeConnectionError' ||
+                    error.type === 'StripeAPIError' ||
+                    (error.statusCode && error.statusCode >= 500);
+
+                if (!isRetryable && i < maxRetries - 1) {
+                    // For non-specific errors, we might still retry if it's a network blip, 
+                    // but be careful not to retry user errors (400s).
+                    // If it's explicitly 4xx, do not retry.
+                    if (error.statusCode && error.statusCode >= 400 && error.statusCode < 500) {
+                        throw error;
+                    }
+                }
+
+                if (i === maxRetries - 1) break;
+
+                const delay = Math.pow(2, i) * 1000; // 1s, 2s, 4s
+                console.warn(`Payment operation failed, retrying in ${delay}ms... (Attempt ${i + 1}/${maxRetries})`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+        throw lastError;
+    }
+
     async createCheckoutSession(orderId: number, amount: string, currency: string = 'inr') {
         const order = await orderRepository.getById(orderId);
         if (!order) throw new AppError("Order not found", 404);
@@ -16,28 +52,28 @@ export class PaymentService {
         const unitAmount = Math.round(parseFloat(amount) * 100);
 
         // Create line item (simplified for now as one total, but could list all items)
-        const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
-            line_items: [{
-                price_data: {
-                    currency: currency,
-                    product_data: {
-                        name: `Order #${orderId}`,
-                        description: `Payment for Order #${orderId}`,
+        return await this.retryOperation(async () => {
+            return await stripe.checkout.sessions.create({
+                payment_method_types: ['card'],
+                line_items: [{
+                    price_data: {
+                        currency: currency,
+                        product_data: {
+                            name: `Order #${orderId}`,
+                            description: `Payment for Order #${orderId}`,
+                        },
+                        unit_amount: unitAmount,
                     },
-                    unit_amount: unitAmount,
-                },
-                quantity: 1,
-            }],
-            mode: 'payment',
-            success_url: `${process.env.BASE_URL || 'http://localhost:5000'}/order/success?session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}`,
-            cancel_url: `${process.env.BASE_URL || 'http://localhost:5000'}/order/failure?order_id=${orderId}`,
-            metadata: {
-                orderId: orderId.toString()
-            }
+                    quantity: 1,
+                }],
+                mode: 'payment',
+                success_url: `${process.env.BASE_URL || 'http://localhost:5000'}/order/success?session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}`,
+                cancel_url: `${process.env.BASE_URL || 'http://localhost:5000'}/order/failure?order_id=${orderId}`,
+                metadata: {
+                    orderId: orderId.toString()
+                }
+            });
         });
-
-        return session;
     }
 
     async handleWebhook(signature: string, payload: Buffer) {

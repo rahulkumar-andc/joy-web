@@ -23,7 +23,7 @@ const storage = multer.diskStorage({
 
 // Filter for images only
 const fileFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-    if (file.mimetype.startsWith("image/") || file.mimetype.includes("csv") || file.mimetype === "application/vnd.ms-excel" || file.mimetype === "text/plain") {
+    if (file.mimetype.startsWith("image/") || file.mimetype.startsWith("video/") || file.mimetype.includes("csv") || file.mimetype === "application/vnd.ms-excel" || file.mimetype === "text/plain") {
         cb(null, true);
     } else {
         cb(new Error("Only images and CSV files are allowed"));

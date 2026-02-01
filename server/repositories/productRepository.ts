@@ -1,6 +1,12 @@
 import { db } from "../db";
 import { products, categories, type Product, type InsertProduct, type Category, type InsertCategory } from "@shared/schema";
-import { eq, ilike, desc, sql, and } from "drizzle-orm";
+import { eq, ilike, desc, sql, and, inArray } from "drizzle-orm";
+import { logger } from "../logger";
+
+// Extended product type with category info
+export interface ProductWithCategory extends Product {
+    category?: Category | null;
+}
 
 export class ProductRepository {
     async findById(id: number): Promise<Product | undefined> {
@@ -8,14 +14,45 @@ export class ProductRepository {
         return product;
     }
 
+    /**
+     * Find product by ID with category data (single query with JOIN)
+     */
+    async findByIdWithCategory(id: number): Promise<ProductWithCategory | undefined> {
+        const startTime = Date.now();
+
+        const result = await db
+            .select({
+                product: products,
+                category: categories,
+            })
+            .from(products)
+            .leftJoin(categories, eq(products.categoryId, categories.id))
+            .where(eq(products.id, id));
+
+        const duration = Date.now() - startTime;
+        if (duration > 100) {
+            logger.warn(`Slow query: findByIdWithCategory took ${duration}ms`);
+        }
+
+        if (result.length === 0) return undefined;
+
+        return {
+            ...result[0].product,
+            category: result[0].category,
+        };
+    }
+
     async findAll(filters?: { category?: string; search?: string; sort?: string; page?: number; limit?: number }): Promise<{ products: Product[]; total: number }> {
+        const startTime = Date.now();
         const conditions = [];
 
+        // Optimized: Use subquery for category instead of separate query
         if (filters?.category) {
-            const [cat] = await db.select().from(categories).where(eq(categories.slug, filters.category));
-            if (cat) {
-                conditions.push(eq(products.categoryId, cat.id));
-            }
+            conditions.push(
+                sql`${products.categoryId} IN (
+                    SELECT id FROM ${categories} WHERE slug = ${filters.category}
+                )`
+            );
         }
 
         if (filters?.search) {
@@ -56,7 +93,87 @@ export class ProductRepository {
         query.limit(limit).offset(offset);
 
         const results = await query;
+
+        const duration = Date.now() - startTime;
+        if (duration > 100) {
+            logger.warn(`Slow query: findAll took ${duration}ms`, { filters });
+        }
+
         return { products: results, total };
+    }
+
+    /**
+     * Find all products with category data in a single query (N+1 prevention)
+     */
+    async findAllWithCategories(filters?: { category?: string; search?: string; sort?: string; page?: number; limit?: number }): Promise<{ products: ProductWithCategory[]; total: number }> {
+        const startTime = Date.now();
+        const conditions = [];
+
+        if (filters?.category) {
+            conditions.push(eq(categories.slug, filters.category));
+        }
+
+        if (filters?.search) {
+            conditions.push(
+                sql`(${ilike(products.name, `%${filters.search}%`)} OR ${ilike(products.description, `%${filters.search}%`)})`
+            );
+        }
+
+        let whereClause = undefined;
+        if (conditions.length > 0) {
+            if (conditions.length === 1) {
+                whereClause = conditions[0];
+            } else {
+                whereClause = and(...conditions);
+            }
+        }
+
+        // Single query with JOIN for count
+        const [countResult] = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(products)
+            .leftJoin(categories, eq(products.categoryId, categories.id))
+            .where(whereClause);
+        const total = Number(countResult?.count || 0);
+
+        // Build main query with JOIN
+        let baseQuery = db
+            .select({
+                product: products,
+                category: categories,
+            })
+            .from(products)
+            .leftJoin(categories, eq(products.categoryId, categories.id))
+            .where(whereClause);
+
+        // Apply sorting
+        if (filters?.sort === 'price_asc') {
+            baseQuery = baseQuery.orderBy(sql`CAST(${products.price} AS DECIMAL) ASC`) as typeof baseQuery;
+        } else if (filters?.sort === 'price_desc') {
+            baseQuery = baseQuery.orderBy(sql`CAST(${products.price} AS DECIMAL) DESC`) as typeof baseQuery;
+        } else {
+            baseQuery = baseQuery.orderBy(desc(products.createdAt)) as typeof baseQuery;
+        }
+
+        // Apply pagination
+        const page = filters?.page || 1;
+        const limit = filters?.limit || 50;
+        const offset = (page - 1) * limit;
+
+        const results = await baseQuery.limit(limit).offset(offset);
+
+        const duration = Date.now() - startTime;
+        if (duration > 100) {
+            logger.warn(`Slow query: findAllWithCategories took ${duration}ms`, { filters });
+        }
+
+        // Transform results
+        const productsWithCategory: ProductWithCategory[] = results.map(row => ({
+            ...row.product,
+            category: row.category,
+        }));
+
+        return { products: productsWithCategory, total };
     }
 
     async create(product: InsertProduct): Promise<Product> {

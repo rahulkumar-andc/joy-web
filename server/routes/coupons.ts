@@ -13,3 +13,5 @@ couponsRouter.post(api.coupons.create.path, restrictTo("admin", "manager"), Coup
 
 couponsRouter.get(api.coupons.list.path, restrictTo("admin", "manager"), CouponController.list);
 
+couponsRouter.delete(api.coupons.delete.path, restrictTo("admin", "manager"), CouponController.delete);
+

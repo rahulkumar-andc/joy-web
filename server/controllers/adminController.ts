@@ -5,6 +5,15 @@ import { AppError } from "../utils/AppError";
 
 export class AdminController {
 
+    static getCustomerProfile = catchAsync(async (req: Request, res: Response) => {
+        const userId = parseInt(req.params.id as string);
+        const profile = await analyticsService.getCustomerProfile(userId);
+        if (!profile) {
+            throw new AppError("Customer not found", 404);
+        }
+        res.json(profile);
+    });
+
     static getStats = catchAsync(async (req: Request, res: Response) => {
         const orderStats = await analyticsService.getOrderStats();
         // Format for frontend: count by status

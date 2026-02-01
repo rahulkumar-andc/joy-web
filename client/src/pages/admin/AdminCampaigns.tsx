@@ -12,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Edit, Trash, Play, Pause } from "lucide-react";
+import { Trash2, Plus, MoreVertical, Calendar, Eye, MousePointerClick, Loader2, Edit, Trash, Play, Pause } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function AdminCampaigns() {
@@ -42,7 +42,10 @@ export default function AdminCampaigns() {
             textColor: "#ffffff",
             overlayOpacity: "0.4",
             targetAudience: "all",
-            // Date handlers might need manual management if schema expects Date object but input gives string
+            // Initialize endTime as null or undefined. 
+            // Note: Schema expects Date | null | undefined. Form input gives string.
+            // We'll handle conversion in render/submit if needed, or rely on coercion.
+            endTime: null,
         },
     });
 
@@ -90,6 +93,9 @@ export default function AdminCampaigns() {
             queryClient.invalidateQueries({ queryKey: ["/api/hero"] });
             toast({ title: "Campaign deleted" });
         },
+        onError: (error: Error) => {
+            toast({ title: "Failed to delete campaign", description: error.message, variant: "destructive" });
+        }
     });
 
     const onSubmit = (data: InsertHeroCampaign) => {
@@ -109,10 +115,15 @@ export default function AdminCampaigns() {
             }
         }
 
+        const payload = {
+            ...data,
+            endTime: data.endTime instanceof Date ? data.endTime.toISOString() : data.endTime,
+        };
+
         if (editingCampaign) {
-            updateMutation.mutate({ id: editingCampaign.id, data });
+            updateMutation.mutate({ id: editingCampaign.id, data: payload as any });
         } else {
-            createMutation.mutate(data);
+            createMutation.mutate(payload as any);
         }
     };
 
@@ -133,6 +144,7 @@ export default function AdminCampaigns() {
             textColor: campaign.textColor,
             overlayOpacity: String(campaign.overlayOpacity),
             targetAudience: campaign.targetAudience as any,
+            endTime: campaign.endTime ? new Date(campaign.endTime) : null,
         });
         setIsOpen(true);
     };
@@ -154,6 +166,7 @@ export default function AdminCampaigns() {
             textColor: "#ffffff",
             overlayOpacity: "0.4",
             targetAudience: "all",
+            endTime: null,
         });
         setIsOpen(true);
     };
@@ -296,6 +309,23 @@ export default function AdminCampaigns() {
                                             </FormItem>
                                         )} />
                                     </div>
+                                    <FormField control={form.control} name="endTime" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Campaign End Time (for Countdown)</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    type="datetime-local"
+                                                    {...field}
+                                                    value={field.value ? new Date(field.value).toISOString().slice(0, 16) : ""}
+                                                    onChange={e => {
+                                                        const date = e.target.value ? new Date(e.target.value) : null;
+                                                        field.onChange(date);
+                                                    }}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
                                 </div>
 
                                 <div className="space-y-2 border p-4 rounded-md">
@@ -392,3 +422,4 @@ export default function AdminCampaigns() {
         </div>
     );
 }
+

@@ -29,7 +29,32 @@ export class UserController {
     static getProfile = catchAsync(async (req: Request, res: Response) => {
         const user = await userRepository.findById((req.user as any).id);
         if (!user) throw new AppError("User not found", 401);
-        res.json(user);
+
+        // Fetch reseller status
+        // We use dynamic import to avoid circular dependency if any, or just to keep it clean like OrderController
+        let resellerInfo = null;
+        try {
+            const { resellerService } = await import("../modules/reseller/reseller.service");
+            const reseller = await resellerService.getResellerByUserId(user.id);
+            if (reseller) {
+                resellerInfo = {
+                    isReseller: true,
+                    resellerStatus: reseller.status,
+                    resellerId: reseller.id
+                };
+            } else {
+                resellerInfo = {
+                    isReseller: false,
+                    resellerStatus: null,
+                    resellerId: null
+                };
+            }
+        } catch (err) {
+            // If reseller module fails, just return user info without blocking
+            resellerInfo = { isReseller: false, error: "Failed to fetch reseller info" };
+        }
+
+        res.json({ ...user, ...resellerInfo });
     });
 
     static updateProfile = catchAsync(async (req: Request, res: Response) => {
@@ -51,6 +76,9 @@ export class UserController {
 
         const hashedPassword = await hashPassword(newPassword);
         await userRepository.updatePassword(user.id, hashedPassword);
+
+        // Invalidate all other sessions
+        await userRepository.invalidateUserSessions(user.id);
 
         res.json({ message: "Password updated successfully" });
     });

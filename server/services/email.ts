@@ -105,6 +105,39 @@ class EmailService {
     `;
         return this.sendEmail(email, subject, html);
     }
+
+    async sendStockNotification(email: string, productName: string, productUrl: string) {
+        const subject = `Good news! ${productName} is back in stock`;
+        const html = `
+      <h1>🎉 Your Item is Back!</h1>
+      <p>Great news! The product you were waiting for is now available:</p>
+      <h2 style="color: #E89F71;">${productName}</h2>
+      <p>Click below to grab it before it's gone again:</p>
+      <a href="${productUrl}" style="display: inline-block; background: #E89F71; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">
+        Shop Now
+      </a>
+      <p style="margin-top: 20px; color: #666; font-size: 12px;">
+        You received this email because you signed up for stock notifications on Villen Fashion.
+      </p>
+    `;
+        return this.sendEmail(email, subject, html);
+    }
+
+    async sendAbandonedCartReminder(email: string, name: string, cartUrl: string) {
+        const subject = "You left something behind!";
+        const html = `
+      <h1>Hi ${name}! 👋</h1>
+      <p>Looks like you forgot a few items in your cart.</p>
+      <p>Your cart is waiting for you - complete your purchase before the items sell out!</p>
+      <a href="${cartUrl}" style="display: inline-block; background: #E89F71; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0;">
+        Complete Your Order
+      </a>
+      <p style="color: #666; font-size: 12px;">
+        Questions? Reply to this email and we'll help you out.
+      </p>
+    `;
+        return this.sendEmail(email, subject, html);
+    }
 }
 
 export const emailService = new EmailService();

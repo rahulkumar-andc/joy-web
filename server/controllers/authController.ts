@@ -12,19 +12,21 @@ import { AppError } from "../utils/AppError";
 
 const scryptAsync = promisify(scrypt);
 
-async function hashPassword(password: string) {
+export async function hashPassword(password: string) {
     const salt = randomBytes(16).toString("hex");
     const buf = (await scryptAsync(password, salt, 64)) as Buffer;
     return `${buf.toString("hex")}.${salt}`;
 }
 
-async function comparePassword(storedPassword: string, suppliedPassword: string) {
+export async function comparePassword(storedPassword: string, suppliedPassword: string) {
     const [hashed, salt] = storedPassword.split(".");
     const buf = (await scryptAsync(suppliedPassword, salt, 64)) as Buffer;
     return buf.toString("hex") === hashed;
 }
 
 import { verificationRepository } from "../repositories/verificationRepository";
+import { logger } from "../logger";
+import { SecurityAuditService } from "../services/securityAuditService";
 import { emailService } from "../services/email";
 
 export class AuthController {
@@ -35,6 +37,19 @@ export class AuthController {
         }
 
         const userData = api.auth.register.input.parse(req.body);
+
+        // ⚠️ Password strength validation
+        // Min 8 chars, at least 1 uppercase, 1 lowercase, 1 number
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+        const passesRegex = passwordRegex.test(userData.password);
+
+        if (!passesRegex) {
+            throw new AppError(
+                "Password must be at least 8 characters and include uppercase, lowercase, and a number",
+                400
+            );
+        }
+
         const hashedPassword = await hashPassword(userData.password);
 
         const user = await userRepository.create({
@@ -56,7 +71,10 @@ export class AuthController {
             expiresAt
         });
 
-        await emailService.sendVerificationEmail(user.email, otp);
+        // Fire-and-forget email sending to prevent blocking the response
+        emailService.sendVerificationEmail(user.email, otp).catch(err => {
+            logger.error(`Failed to send verification email to ${user.email}:`, err);
+        });
 
         res.status(200).json({
             message: "Registration successful. Please check your email for verification code.",
@@ -123,6 +141,15 @@ export class AuthController {
             throw new AppError("Missing credentials", 400);
         }
 
+        // ⚠️ Password strength validation
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!passwordRegex.test(newPassword)) {
+            throw new AppError(
+                "Password must be at least 8 characters and include uppercase, lowercase, and a number",
+                400
+            );
+        }
+
         const record = await verificationRepository.findValidToken(email, "PASSWORD_RESET");
         if (!record) throw new AppError("Invalid or expired link", 400);
 
@@ -135,6 +162,9 @@ export class AuthController {
         const hashedPassword = await hashPassword(newPassword);
         await userRepository.updatePassword(user.id, hashedPassword);
 
+        // Invalidate all existing sessions for security
+        await userRepository.invalidateUserSessions(user.id);
+
         await verificationRepository.delete(record.id);
 
         res.json({ message: "Password reset successfully. You can now login with your new password." });
@@ -143,18 +173,56 @@ export class AuthController {
     static login = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
         // Validate input
         api.auth.login.input.parse(req.body);
+        const { email } = req.body;
 
-        passport.authenticate("local", (err: any, user: any, info: any) => {
-            if (err) return next(err); // Will be caught by global error handler
-            if (!user) return next(new AppError(info?.message || "Invalid credentials", 401));
+        // \u26a0\ufe0f PHASE 1: Check if account is locked BEFORE authentication
+        const user = await userRepository.findByUsername(email);
 
-            if (!user.isVerified) {
+        if (user && user.lockoutUntil && user.lockoutUntil > new Date()) {
+            const minutesRemaining = Math.ceil((user.lockoutUntil.getTime() - Date.now()) / 60000);
+            throw new AppError(
+                `Account locked due to multiple failed login attempts. Try again in ${minutesRemaining} minute(s).`,
+                403
+            );
+        }
+
+        passport.authenticate("local", async (err: any, authenticatedUser: any, info: any) => {
+            if (err) return next(err);
+
+            // \u26a0\ufe0f PHASE 2: Handle failed authentication
+            if (!authenticatedUser) {
+                if (user) {
+                    // Increment failed attempts
+                    await userRepository.incrementFailedAttempts(user.id);
+
+                    // Check if we should lock after increment
+                    const [updated] = await db.select({ attempts: users.failedLoginAttempts })
+                        .from(users).where(eq(users.id, user.id));
+
+                    if (updated && updated.attempts >= 5) {
+                        await userRepository.lockAccount(user.id, 30);
+                        return next(new AppError(
+                            "Account locked due to 5 failed login attempts. Try again in 30 minutes.",
+                            403
+                        ));
+                    }
+                }
+                return next(new AppError(info?.message || "Invalid credentials", 401));
+            }
+
+            if (!authenticatedUser.isVerified) {
                 return next(new AppError("Email not verified. Please verify your email first.", 403));
             }
 
-            req.login(user, (err) => {
-                if (err) return next(new AppError("Login failed", 500));
-                res.json(user);
+            // \u26a0\ufe0f PHASE 3: Success - reset lockout and update login time
+            req.login(authenticatedUser, async (loginErr) => {
+                if (loginErr) return next(new AppError("Login failed", 500));
+
+                // Reset failed attempts and update last login
+                await userRepository.resetFailedAttempts(authenticatedUser.id);
+                await userRepository.updateLastLogin(authenticatedUser.id);
+
+                res.json(authenticatedUser);
             });
         })(req, res, next);
     });

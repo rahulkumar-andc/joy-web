@@ -59,20 +59,46 @@ export class PaymentController {
             );
 
             // Save payment record
-            await paymentRepository.create({
+            const newPayment = await paymentRepository.create({
                 orderId: order.id,
                 razorpayOrderId: razorpayOrder.id,
                 amount: order.totalAmount, // Store as string matching schema
                 currency: razorpayOrder.currency,
-                status: "created"
+                status: "created",
+                // New fields
+                paymentState: "CREATED",
+                gateway: "razorpay"
             });
+
+            // Transition to INITIATED
+            // Note: We need to import PaymentStateMachine dynamically or at top
+            const { PaymentStateMachine, PaymentState } = await import("../services/payment/PaymentStateMachine");
+
+            await PaymentStateMachine.transition({
+                paymentId: newPayment.id,
+                toState: PaymentState.INITIATED,
+                triggeredBy: "api",
+                metadata: { razorpayOrderId: razorpayOrder.id }
+            });
+
+            // ⚠️ CONVERSION: Mobile payment options configuration
+            const paymentOptions = {
+                upi: true,
+                card: true,
+                netbanking: true,
+                wallet: true,
+                emi: false,
+                // Preferred UPI apps
+                preferred_apps: ['gpay', 'phonepe', 'paytm']
+            };
 
             res.status(201).json({
                 orderId: order.id,
                 razorpayOrderId: razorpayOrder.id,
                 amount: razorpayOrder.amount, // amount in paise
                 currency: razorpayOrder.currency,
-                key: await import("../services/payments").then(m => m.paymentService.getRazorpayKeyId())
+                key: await import("../services/payments").then(m => m.paymentService.getRazorpayKeyId()),
+                paymentOptions // For frontend to configure Razorpay checkout
             });
         } catch (err: any) {
             logger.error("Payment order creation failed: " + err.message);
@@ -152,18 +178,27 @@ export class PaymentController {
             throw new AppError("Payment verification failed", 500);
         }
 
-        // Update payment status
-        const payment = await paymentRepository.updateStatus(
-            razorpayOrderId,
-            "paid",
-            razorpayPaymentId,
-            razorpaySignature,
-            "razorpay"
-        );
+        // ⚠️ PHASE 1: Update payment and order status in transaction
+        // Ensures atomicity - either both succeed or both fail
+        const { withTransaction } = await import("../utils/transactionHelpers");
 
-        if (payment) {
+        await withTransaction(async (tx) => {
+            // Update payment status
+            const payment = await paymentRepository.updateStatus(
+                razorpayOrderId,
+                "paid",
+                razorpayPaymentId,
+                razorpaySignature,
+                "razorpay"
+            );
+
+            if (!payment) {
+                throw new AppError("Payment record not found", 404);
+            }
+
+            // Update order status atomically
             await orderRepository.updateOrderStatus(payment.orderId, "paid");
-        }
+        });
 
         res.json({ message: "Payment verified successfully" });
     });

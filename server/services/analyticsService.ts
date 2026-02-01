@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { orders, orderItems, products } from "@shared/schema";
+import { orders, orderItems, products, users } from "@shared/schema";
 import { sql, eq, desc, and, gte } from "drizzle-orm";
 
 export class AnalyticsService {
@@ -45,6 +45,34 @@ export class AnalyticsService {
             .groupBy(orders.status);
 
         return result;
+    }
+
+    async getCustomerProfile(userId: number) {
+        const [user] = await db
+            .select({
+                id: users.id,
+                name: users.name,
+                email: users.email,
+                role: users.role,
+                createdAt: users.createdAt,
+            })
+            .from(users)
+            .where(eq(users.id, userId));
+
+        if (!user) return null;
+
+        const userOrders = await db
+            .select()
+            .from(orders)
+            .where(eq(orders.userId, userId))
+            .orderBy(desc(orders.createdAt));
+
+        return {
+            ...user,
+            orders: userOrders,
+            totalSpent: userOrders.reduce((sum, order) => sum + Number(order.totalAmount), 0),
+            orderCount: userOrders.length
+        };
     }
 }
 

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { productRepository } from "../repositories/productRepository";
 import { reviewRepository } from "../repositories/reviewRepository";
-import { cacheService, CacheKeys } from "../cache";
+import { cacheService, CacheKeys, CacheTTL } from "../cache";
 import { api } from "@shared/routes";
 import { catchAsync } from "../utils/catchAsync";
 import { AppError } from "../utils/AppError";
@@ -10,6 +10,8 @@ import { parseCsv } from "../lib/csv";
 import { logger } from "../logger";
 import { insertProductSchema } from "@shared/schema";
 import { AuditService } from "../services/auditService";
+import { sanitizeHtml } from "../utils/sanitize";
+import { imagekitService } from "../services/imagekitService";
 
 export class ProductController {
 
@@ -31,52 +33,97 @@ export class ProductController {
         };
 
         const cacheKey = CacheKeys.PRODUCTS_LIST(page, limit, JSON.stringify(filters));
-        const cached = await cacheService.get(cacheKey);
-        if (cached) {
-            return res.json(cached);
-        }
 
-        const result = await productRepository.findAll(filters);
-        await cacheService.set(cacheKey, result, 60);
+        const result = await cacheService.getOrSet(
+            cacheKey,
+            () => productRepository.findAll(filters),
+            CacheTTL.SHORT // Keep short for lists as inventory changes
+        );
+
         res.json(result);
     });
 
     static getProduct = catchAsync(async (req: Request, res: Response) => {
-        const product = await productRepository.findById(Number(req.params.id));
-        if (!product) throw new AppError("Product not found", 404);
+        const id = Number(req.params.id);
+        const product = await cacheService.getOrSet(
+            CacheKeys.PRODUCT_DETAIL(id),
+            async () => {
+                const p = await productRepository.findById(id);
+                if (!p) throw new AppError("Product not found", 404);
+                return p;
+            },
+            CacheTTL.MEDIUM
+        );
         res.json(product);
     });
 
     static uploadImage = catchAsync(async (req: Request, res: Response) => {
+        logger.info(`[Upload Debug] Upload request received. User: ${JSON.stringify(req.user)}`);
         if (!req.file) {
             throw new AppError("No file uploaded", 400);
         }
-        // Return the public URL
-        const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
-        res.status(200).json({ url: fileUrl, filename: req.file.filename });
+
+        try {
+            // Read file buffer
+            const fileBuffer = await fs.promises.readFile(req.file.path);
+
+            // Upload to ImageKit
+            const result = await imagekitService.uploadImage({
+                file: fileBuffer,
+                fileName: req.file.filename,
+                folder: '/products'
+            });
+
+            // Delete local file
+            await fs.promises.unlink(req.file.path).catch(err => {
+                logger.error("Failed to delete local file after upload", err);
+            });
+
+            // Return the public URL from ImageKit
+            res.status(200).json({ url: result.url, filename: result.name });
+        } catch (error) {
+            // Cleanup local file on error
+            if (req.file) {
+                await fs.promises.unlink(req.file.path).catch(() => { });
+            }
+            throw new AppError("Image upload failed: " + (error as Error).message, 500);
+        }
     });
 
     static createProduct = catchAsync(async (req: Request, res: Response) => {
-        const input = api.products.create.input.parse(req.body);
-        const sellerId = req.user ? (req.user as any).id : null;
+        logger.info(`[Product Create Debug] Payload: ${JSON.stringify(req.body)}`);
 
-        const product = await productRepository.create({
-            ...input,
-            sellerId // Add sellerId to repository call
-        });
-        await cacheService.invalidateProducts();
+        try {
+            const input = api.products.create.input.parse(req.body);
+            const sellerId = req.user ? (req.user as any).id : null;
 
-        if (req.user) {
-            await AuditService.logAction(
-                (req.user as any).id,
-                "CREATE_PRODUCT",
-                "PRODUCT",
-                product.id,
-                { name: product.name }
-            );
+            // ⚠️ Sanitize HTML in description to prevent XSS
+            const sanitizedInput = {
+                ...input,
+                description: input.description ? sanitizeHtml(input.description) : input.description
+            };
+
+            const product = await productRepository.create({
+                ...sanitizedInput,
+                sellerId // Add sellerId to repository call
+            });
+            await cacheService.invalidateProducts();
+
+            if (req.user) {
+                await AuditService.logAction(
+                    (req.user as any).id,
+                    "CREATE_PRODUCT",
+                    "PRODUCT",
+                    product.id,
+                    { name: product.name }
+                );
+            }
+
+            res.status(201).json(product);
+        } catch (error) {
+            logger.error(`[Product Create Error] Failed: ${error}`);
+            throw error;
         }
-
-        res.status(201).json(product);
     });
 
     static updateProduct = catchAsync(async (req: Request, res: Response) => {
@@ -136,11 +183,13 @@ export class ProductController {
 
     static createReview = catchAsync(async (req: Request, res: Response) => {
         const input = api.reviews.create.input.parse(req.body);
+
+        // ⚠️ Sanitize review comment to prevent XSS
         const review = await reviewRepository.create({
             userId: (req.user as any).id,
             productId: parseInt(req.params.productId as string),
             rating: input.rating,
-            comment: input.comment,
+            comment: input.comment ? sanitizeHtml(input.comment) : input.comment,
         });
         res.status(201).json(review);
     });

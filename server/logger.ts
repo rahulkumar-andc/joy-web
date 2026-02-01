@@ -24,11 +24,45 @@ const colors = {
 
 winston.addColors(colors);
 
+// Redaction Logic
+const SENSITIVE_KEYS = [
+    "password", "token", "secret", "authorization", "cookie",
+    "creditCard", "cvv", "apiKey", "key_id", "key_secret",
+    "access_token", "refresh_token"
+];
+
+const redactSensitiveData = winston.format((info) => {
+    const redact = (obj: any): any => {
+        if (!obj) return obj;
+        if (typeof obj !== "object") return obj;
+
+        // Handle Arrays
+        if (Array.isArray(obj)) {
+            return obj.map(redact);
+        }
+
+        // Handle Objects
+        const newObj: any = { ...obj };
+        for (const key of Object.keys(newObj)) {
+            if (SENSITIVE_KEYS.some(s => key.toLowerCase().includes(s))) {
+                newObj[key] = "***REDACTED***";
+            } else if (typeof newObj[key] === "object") {
+                newObj[key] = redact(newObj[key]);
+            }
+        }
+        return newObj;
+    };
+
+    return redact(info);
+});
+
 const format = winston.format.combine(
     winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss:ms" }),
+    redactSensitiveData(), // Apply redaction before colorize/printf
     winston.format.colorize({ all: true }),
     winston.format.printf(
-        (info) => `${info.timestamp} ${info.level}: ${info.message}`
+        (info) => `${info.timestamp} ${info.level}: ${info.message} ${info.metadata ? JSON.stringify(info.metadata) : ""
+            }`
     )
 );
 

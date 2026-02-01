@@ -6,8 +6,20 @@ import { createServer } from "http";
 import morgan from "morgan";
 import helmet from "helmet";
 import { logger } from "./logger";
+import { initSentry, Sentry } from "./config/sentry";
+import { correlationIdMiddleware } from "./middleware/correlationId";
+import { validateEnvOrExit } from "./config/env-validation";
 
-const app = express();
+// Validate environment variables FIRST
+validateEnvOrExit();
+
+// Initialize Sentry (after env validation)
+initSentry();
+
+// Initialize Sentry (after env validation)
+initSentry();
+
+export const app = express();
 app.set("trust proxy", 1);
 const httpServer = createServer(app);
 
@@ -16,6 +28,10 @@ declare module "http" {
     rawBody: unknown;
   }
 }
+
+// Sentry request tracking is automatic in v10 if configured in initSentry
+// No need for Handlers.requestHandler() or tracingHandler() individually
+app.use(correlationIdMiddleware);
 
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok", uptime: process.uptime() });
@@ -31,9 +47,47 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 app.use(helmet({
-  contentSecurityPolicy: false, // Disabled for now to prevent breaking scripts/images
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'", // Required for Razorpay widget
+        "https://checkout.razorpay.com",
+        "https://*.razorpay.com"
+      ],
+      frameSrc: [
+        "'self'",
+        "https://api.razorpay.com" // Razorpay payment modal
+      ],
+      imgSrc: [
+        "'self'",
+        "data:", // For base64 images
+        "https:", // Allow all HTTPS images (product images, CDN)
+        "blob:" // For dynamically generated images
+      ],
+      styleSrc: [
+        "'self'",
+        "'unsafe-inline'" // Required for dynamic styles
+      ],
+      connectSrc: [
+        "'self'",
+        "https://api.razorpay.com", // Razorpay API
+        "https://lumberjack.razorpay.com" // Razorpay analytics
+      ],
+      fontSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      workerSrc: ["'self'", "blob:"],
+      childSrc: ["'self'", "blob:"],
+      formAction: ["'self'"],
+      upgradeInsecureRequests: process.env.NODE_ENV === "production" ? [] : null
+    }
+  }
 }));
-app.use("/uploads", express.static("uploads"));
+// Static cache headers for uploads
+import { uploadsCacheMiddleware } from "./middleware/static-cache";
+app.use("/uploads", uploadsCacheMiddleware, express.static("uploads"));
 
 // Replace custom logging middleware with Morgan
 const morganFormat = ":method :url :status :response-time ms";
@@ -62,24 +116,8 @@ import { apiLimiter, authLimiter } from "./middleware/rate-limit";
     }
   }
 
-  // Start background services
-  const { userCleanupService } = await import("./services/cleanupService");
-  userCleanupService.start();
-
-  // Apply rate limits
-  app.use("/api/auth", authLimiter);
-
-  app.use("/api", apiLimiter);
-
+  // Register API Routes
   await registerRoutes(httpServer, app);
-
-  // Initialize Background Jobs
-  const { JobService } = await import("./services/jobService");
-  JobService.init();
-
-  // Initialize Hero System
-  const { initHeroSystem } = await import("./modules/hero");
-  await initHeroSystem();
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -99,9 +137,6 @@ import { apiLimiter, authLimiter } from "./middleware/rate-limit";
     return res.status(status).json(response);
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
@@ -109,10 +144,6 @@ import { apiLimiter, authLimiter } from "./middleware/rate-limit";
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
     {
@@ -122,6 +153,32 @@ import { apiLimiter, authLimiter } from "./middleware/rate-limit";
     },
     () => {
       logger.info(`serving on port ${port}`);
+
+      // 🚀 BACKGROUND BOOTSTRAP: Execute heavy tasks AFTER server is up
+      (async () => {
+        if (process.env.NODE_ENV !== "test") {
+          try {
+            const { userCleanupService } = await import("./services/cleanupService");
+            userCleanupService.start();
+
+            const { JobService } = await import("./services/jobService");
+            JobService.init();
+
+            const { initHeroSystem } = await import("./modules/hero");
+            await initHeroSystem();
+
+            const { warmCache } = await import("./cache");
+            await warmCache();
+
+            const { campaignScheduler } = await import("./modules/hero/scheduler");
+            campaignScheduler.start();
+
+            logger.info("✅ Background services and cache warming complete");
+          } catch (bgError) {
+            logger.error("Background bootstrap failed:", bgError);
+          }
+        }
+      })();
     }
   );
 

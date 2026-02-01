@@ -19,8 +19,8 @@ function makeRequest(path: string, method: string, sendCookies: string[] = [], b
 
         if (body) {
             const data = JSON.stringify(body);
-            options.headers!["Content-Type"] = "application/json";
-            options.headers!["Content-Length"] = Buffer.byteLength(data);
+            (options.headers as any)["Content-Type"] = "application/json";
+            (options.headers as any)["Content-Length"] = Buffer.byteLength(data);
         }
 
         const req = http.request(url, options, (res) => {
@@ -71,7 +71,9 @@ async function testLogin() {
 
         if (!csrfCookie || !sessionCookie) {
             console.error("❌ Failed to get cookies.");
+            console.log("Status:", initRes.statusCode);
             console.log("Headers:", initRes.headers);
+            console.log("Body:", initRes.body);
             process.exit(1);
         }
 

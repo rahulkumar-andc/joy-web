@@ -6,69 +6,164 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/hooks/use-theme";
-import NotFound from "@/pages/not-found";
-
-import HomePage from "@/pages/HomePage";
-import ShopPage from "@/pages/ShopPage";
-import ProductPage from "@/pages/ProductPage";
-import CartPage from "@/pages/CartPage";
-import CheckoutPage from "@/pages/CheckoutPage";
-import AuthPage from "@/pages/AuthPage";
-import OrdersPage from "@/pages/OrdersPage";
-import WishlistPage from "@/pages/WishlistPage";
-import ProtectedRoute from "@/lib/protected-route";
-
-import AdminProducts from "@/pages/admin/AdminProducts";
-import AdminOrders from "@/pages/admin/AdminOrders";
-import ProfilePage from "@/pages/ProfilePage";
-import AdminPage from "@/pages/admin/AdminPage";
-import AdminDashboard from "@/pages/admin/AdminDashboard";
-import AdminCampaigns from "@/pages/admin/AdminCampaigns";
-import SellerDashboard from "@/pages/seller/SellerDashboard";
-import SellerPage from "@/pages/seller/SellerPage";
 import { BottomNav } from "@/components/BottomNav";
+import { CookieConsentBanner, PrivacySettings } from "@/components/GDPRCompliance";
+import { lazy, Suspense } from "react";
+import { Loader2 } from "lucide-react";
 
-import ContactPage from "@/pages/info/ContactPage";
-import FAQPage from "@/pages/info/FAQPage";
-import PrivacyPage from "@/pages/info/PrivacyPage";
-import TermsPage from "@/pages/info/TermsPage";
-import ShippingPage from "@/pages/info/ShippingPage";
-import OrderSuccessPage from "@/pages/OrderSuccessPage";
-import OrderFailurePage from "@/pages/OrderFailurePage";
+// === Lazy Load Pages ===
+// Core Pages
+const HomePage = lazy(() => import("@/pages/HomePage"));
+const ShopPage = lazy(() => import("@/pages/ShopPage"));
+const ProductPage = lazy(() => import("@/pages/ProductPage"));
+const CartPage = lazy(() => import("@/pages/CartPage"));
+const CheckoutPage = lazy(() => import("@/pages/CheckoutPage"));
+const AuthPage = lazy(() => import("@/pages/AuthPage"));
+const OrdersPage = lazy(() => import("@/pages/OrdersPage"));
+const WishlistPage = lazy(() => import("@/pages/WishlistPage"));
+const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
+const NotFound = lazy(() => import("@/pages/not-found"));
+
+// Protected / Utility Pages
+const ProtectedRoute = lazy(() => import("@/lib/protected-route"));
+const OrderSuccessPage = lazy(() => import("@/pages/OrderSuccessPage"));
+const OrderFailurePage = lazy(() => import("@/pages/OrderFailurePage"));
+
+// Admin Pages
+const AdminPage = lazy(() => import("@/pages/admin/AdminPage"));
+const AdminProducts = lazy(() => import("@/pages/admin/AdminProducts"));
+const AdminOrders = lazy(() => import("@/pages/admin/AdminOrders"));
+const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
+const AdminCampaigns = lazy(() => import("@/pages/admin/AdminCampaigns"));
+const AnalyticsDashboard = lazy(() => import("@/pages/admin/AnalyticsDashboard"));
+const ContentModeration = lazy(() => import("@/pages/admin/ContentModeration"));
+
+// Seller Pages
+const SellerDashboard = lazy(() => import("@/pages/seller/SellerDashboard"));
+const SellerPage = lazy(() => import("@/pages/seller/SellerPage"));
+
+// Reseller Pages
+const BecomeResellerPage = lazy(() => import("@/pages/reseller").then(m => ({ default: m.BecomeResellerPage })));
+const ResellerDashboard = lazy(() => import("@/pages/reseller").then(m => ({ default: m.ResellerDashboard })));
+const ResellerCatalogPage = lazy(() => import("@/pages/reseller").then(m => ({ default: m.ResellerCatalogPage })));
+const ResellerEarningsPage = lazy(() => import("@/pages/reseller").then(m => ({ default: m.ResellerEarningsPage })));
+const ResellerPayoutsPage = lazy(() => import("@/pages/reseller").then(m => ({ default: m.ResellerPayoutsPage })));
+const ResellerBankSettingsPage = lazy(() => import("@/pages/reseller").then(m => ({ default: m.ResellerBankSettingsPage })));
+
+// Account Pages
+const OrderDetailPage = lazy(() => import("@/pages/account/OrderDetailPage"));
+const InvoicePage = lazy(() => import("@/pages/account/InvoicePage"));
+const SavedPaymentsPage = lazy(() => import("@/pages/account/SavedPaymentsPage"));
+
+// Discovery Pages
+const CategoryPage = lazy(() => import("@/pages/discovery/CategoryPage"));
+const SubCategoryPage = lazy(() => import("@/pages/discovery/SubCategoryPage"));
+const SearchPage = lazy(() => import("@/pages/discovery/SearchPage"));
+
+// Post-Order Pages
+const CancelOrderPage = lazy(() => import("@/pages/order/CancelOrderPage"));
+const ReturnPage = lazy(() => import("@/pages/order/ReturnPage"));
+const RefundStatusPage = lazy(() => import("@/pages/order/RefundStatusPage"));
+const TrackOrderPage = lazy(() => import("@/pages/order/TrackOrderPage"));
+
+// Info & Legal Pages
+const ContactPage = lazy(() => import("@/pages/info/ContactPage"));
+const FAQPage = lazy(() => import("@/pages/info/FAQPage"));
+const PrivacyPage = lazy(() => import("@/pages/info/PrivacyPage"));
+const TermsPage = lazy(() => import("@/pages/info/TermsPage"));
+const ShippingPage = lazy(() => import("@/pages/info/ShippingPage"));
+const AboutPage = lazy(() => import("@/pages/legal/AboutPage"));
+const ReturnPolicyPage = lazy(() => import("@/pages/legal/ReturnPolicyPage"));
+
+// Support Pages
+const HelpCenterPage = lazy(() => import("@/pages/support/HelpCenterPage"));
+const RaiseTicketPage = lazy(() => import("@/pages/support/RaiseTicketPage"));
+const TicketDetailPage = lazy(() => import("@/pages/support/TicketDetailPage"));
+const ChatSupportPage = lazy(() => import("@/pages/support/ChatSupportPage"));
+
+
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center min-h-[50vh]">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+}
 
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={HomePage} />
-      <Route path="/shop" component={ShopPage} />
-      <Route path="/seller" component={SellerPage} />
-      <Route path="/product/:id" component={ProductPage} />
-      <Route path="/cart" component={CartPage} />
-      <Route path="/checkout" component={CheckoutPage} />
-      <Route path="/auth" component={AuthPage} />
-      <Route path="/orders" component={OrdersPage} />
-      <Route path="/wishlist" component={WishlistPage} />
-      <Route path="/profile" component={ProfilePage} />
-      <Route path="/order-success" component={OrderSuccessPage} />
-      <Route path="/order-failure" component={OrderFailurePage} />
+    <Suspense fallback={<LoadingSpinner />}>
+      <Switch>
+        <Route path="/" component={HomePage} />
+        <Route path="/shop" component={ShopPage} />
 
-      {/* Info Pages */}
-      <Route path="/contact" component={ContactPage} />
-      <Route path="/faq" component={FAQPage} />
-      <Route path="/privacy" component={PrivacyPage} />
-      <Route path="/terms" component={TermsPage} />
-      <Route path="/shipping" component={ShippingPage} />
+        {/* Discovery Routes */}
+        <Route path="/category/:slug" component={CategoryPage} />
+        <Route path="/category/:categorySlug/:subSlug" component={SubCategoryPage} />
+        <Route path="/search" component={SearchPage} />
 
-      {/* Admin Routes */}
-      <ProtectedRoute path="/admin" component={AdminPage} role="admin" />
-      <ProtectedRoute path="/admin/products" component={AdminProducts} role="admin" />
-      <ProtectedRoute path="/admin/orders" component={AdminOrders} role="admin" />
-      <ProtectedRoute path="/seller/dashboard" component={SellerDashboard} role={["seller", "manager"]} />
-      <ProtectedRoute path="/admin/dashboard" component={AdminDashboard} role={["admin", "manager"]} />
-      <ProtectedRoute path="/admin/campaigns" component={AdminCampaigns} role="admin" />
+        <Route path="/seller" component={SellerPage} />
+        <Route path="/product/:id" component={ProductPage} />
+        <Route path="/cart" component={CartPage} />
+        <Route path="/checkout" component={CheckoutPage} />
+        <Route path="/auth" component={AuthPage} />
+        <Route path="/orders" component={OrdersPage} />
+        <Route path="/wishlist" component={WishlistPage} />
+        <Route path="/profile" component={ProfilePage} />
 
-      <Route component={NotFound} />
-    </Switch>
+        {/* Account Routes */}
+        <Route path="/orders/:id" component={OrderDetailPage} />
+        <Route path="/orders/:id/invoice" component={InvoicePage} />
+        <Route path="/account/payments" component={SavedPaymentsPage} />
+
+        {/* Post-Order Routes */}
+        <Route path="/orders/:id/cancel" component={CancelOrderPage} />
+        <Route path="/orders/:id/return" component={ReturnPage} />
+        <Route path="/orders/:id/refund" component={RefundStatusPage} />
+        <Route path="/orders/:id/track" component={TrackOrderPage} />
+        <Route path="/order-success" component={OrderSuccessPage} />
+        <Route path="/order-failure" component={OrderFailurePage} />
+
+        {/* Info Pages */}
+        <Route path="/contact" component={ContactPage} />
+
+        {/* Support Routes */}
+        <Route path="/help-center" component={HelpCenterPage} />
+        <Route path="/support/raise-ticket" component={RaiseTicketPage} />
+        <Route path="/support/ticket/:id" component={TicketDetailPage} />
+        <Route path="/support/chat" component={ChatSupportPage} />
+
+        <Route path="/faq" component={FAQPage} />
+        <Route path="/privacy" component={PrivacyPage} />
+        <Route path="/terms" component={TermsPage} />
+        <Route path="/shipping" component={ShippingPage} />
+
+        {/* Legal Routes */}
+        <Route path="/about" component={AboutPage} />
+        <Route path="/return-policy" component={ReturnPolicyPage} />
+
+        {/* Reseller Routes */}
+        <Route path="/reseller/join" component={BecomeResellerPage} />
+        <Route path="/reseller/dashboard" component={ResellerDashboard} />
+        <Route path="/reseller/catalog" component={ResellerCatalogPage} />
+        <Route path="/reseller/earnings" component={ResellerEarningsPage} />
+        <Route path="/reseller/payouts" component={ResellerPayoutsPage} />
+        <Route path="/reseller/bank" component={ResellerBankSettingsPage} />
+
+        {/* Admin Routes */}
+        <Route path="/admin" component={AdminPage} />
+        <Route path="/admin/products" component={AdminProducts} />
+        <Route path="/admin/orders" component={AdminOrders} />
+        <Route path="/seller/dashboard" component={SellerDashboard} />
+        <Route path="/admin/dashboard" component={AdminDashboard} />
+        <Route path="/admin/campaigns" component={AdminCampaigns} />
+        <Route path="/admin/analytics" component={AnalyticsDashboard} />
+        <Route path="/admin/moderation" component={ContentModeration} />
+        <Route path="/privacy-settings" component={PrivacySettings} />
+
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
   );
 }
 
@@ -84,6 +179,7 @@ function App() {
                 <Router />
               </div>
               <BottomNav />
+              <CookieConsentBanner />
             </TooltipProvider>
           </AuthProvider>
         </ThemeProvider>

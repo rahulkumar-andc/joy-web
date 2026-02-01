@@ -98,7 +98,7 @@ export function useCreateOrder() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (data: { shippingAddress: any }) => {
+    mutationFn: async (data: { shippingAddress: any; couponCode?: string }) => {
       const res = await fetch(api.orders.create.path, {
         method: api.orders.create.method,
         headers: {

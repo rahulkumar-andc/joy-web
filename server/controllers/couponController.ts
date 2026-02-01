@@ -28,4 +28,18 @@ export class CouponController {
         const coupon = await couponRepository.create(data);
         res.status(201).json(coupon);
     });
+
+    static delete = catchAsync(async (req: Request, res: Response) => {
+        const id = parseInt(req.params.id as string);
+        if (isNaN(id)) {
+            throw new AppError("Invalid coupon ID", 400);
+        }
+
+        const success = await couponRepository.delete(id);
+        if (!success) {
+            throw new AppError("Coupon not found", 404);
+        }
+
+        res.status(204).send();
+    });
 }

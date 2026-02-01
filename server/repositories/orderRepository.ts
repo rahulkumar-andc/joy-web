@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { orders, orderItems, users, type Order, type OrderItem } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
+import { webSocketService } from "../services/websocketService";
 
 export class OrderRepository {
     async createOrder(orderData: Omit<Order, "id" | "createdAt" | "status" | "paymentStatus">, items: { productId: number; quantity: number; price: number; size?: string; color?: string }[]): Promise<Order> {
@@ -17,6 +18,9 @@ export class OrderRepository {
                     color: item.color
                 });
             }
+
+            // Broadcast new order event
+            webSocketService.broadcast('NEW_ORDER', newOrder);
             return newOrder;
         });
     }
