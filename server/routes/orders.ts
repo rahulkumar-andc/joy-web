@@ -29,6 +29,9 @@ orderRouter.post(api.orders.create.path, OrderController.createOrder);
 
 orderRouter.get(api.orders.list.path, OrderController.listOrders);
 
+// User: Get single order for tracking
+orderRouter.get("/api/orders/:id", OrderController.getOrderById);
+
 // Admin: Update Order Status
 orderRouter.patch("/api/orders/:id/status", restrictTo("admin", "manager"), OrderController.updateOrderStatus);
 

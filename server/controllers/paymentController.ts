@@ -4,6 +4,8 @@ import { orderRepository } from "../repositories/orderRepository";
 import { logger } from "../logger";
 import { catchAsync } from "../utils/catchAsync";
 import { AppError } from "../utils/AppError";
+import { emailService } from "../services/email";
+import { userRepository } from "../repositories/userRepository";
 
 export class PaymentController {
 
@@ -26,6 +28,12 @@ export class PaymentController {
         // Security Check 2: Logic/State Validation
         if (order.paymentStatus === 'paid') {
             return res.json({ message: "Order is already paid" });
+        }
+
+        // Security Check 3: Zero Amount Check
+        // Payment gateway should never be called for zero amount
+        if (Number(order.totalAmount) <= 0) {
+            throw new AppError("Cannot create payment session for zero-amount order", 400);
         }
 
         // Logic Check 3: Idempotency / Double Spending
@@ -129,7 +137,10 @@ export class PaymentController {
         );
 
         if (!isValid) {
-            await paymentRepository.updateStatus(razorpayOrderId, "failed", razorpayPaymentId, razorpaySignature);
+            const failedPayment = await paymentRepository.updateStatus(razorpayOrderId, "failed", razorpayPaymentId, razorpaySignature);
+            if (failedPayment) {
+                await orderRepository.updateOrderStatus(failedPayment.orderId, "cancelled");
+            }
             throw new AppError("Invalid payment signature", 400);
         }
 
@@ -156,14 +167,20 @@ export class PaymentController {
             const expectedAmountInPaise = Math.round(Number(paymentRecord.amount) * 100);
             if (razorpayPayment.amount !== expectedAmountInPaise) {
                 logger.error(`Payment amount mismatch. Expected: ${expectedAmountInPaise}, Got: ${razorpayPayment.amount}`);
-                await paymentRepository.updateStatus(razorpayOrderId, "failed", razorpayPaymentId, razorpaySignature, razorpayPayment.method);
+                const failedPayment = await paymentRepository.updateStatus(razorpayOrderId, "failed", razorpayPaymentId, razorpaySignature, razorpayPayment.method);
+                if (failedPayment) {
+                    await orderRepository.updateOrderStatus(failedPayment.orderId, "cancelled");
+                }
                 throw new AppError("Payment amount mismatch", 400);
             }
 
             // Verify Status
             if (razorpayPayment.status !== "captured" && razorpayPayment.status !== "authorized") {
                 logger.error(`Invalid payment status: ${razorpayPayment.status}`);
-                await paymentRepository.updateStatus(razorpayOrderId, "failed", razorpayPaymentId, razorpaySignature, razorpayPayment.method);
+                const failedPayment = await paymentRepository.updateStatus(razorpayOrderId, "failed", razorpayPaymentId, razorpaySignature, razorpayPayment.method);
+                if (failedPayment) {
+                    await orderRepository.updateOrderStatus(failedPayment.orderId, "cancelled");
+                }
                 throw new AppError("Payment not captured", 400);
             }
 
@@ -200,6 +217,15 @@ export class PaymentController {
             await orderRepository.updateOrderStatus(payment.orderId, "paid");
         });
 
+        // Send Order Confirmation Email
+        // This is non-blocking to the response
+        const paymentRecord = await paymentRepository.findByRazorpayOrderId(razorpayOrderId);
+        if (paymentRecord) {
+            sendOrderConfirmation(paymentRecord.orderId).catch(err =>
+                logger.error("Email sending failed", err)
+            );
+        }
+
         res.json({ message: "Payment verified successfully" });
     });
 
@@ -230,9 +256,13 @@ export class PaymentController {
                     undefined, // Signature not needed for webhook update
                     "webhook"
                 );
-
                 if (payment) {
                     await orderRepository.updateOrderStatus(payment.orderId, "paid");
+
+                    // Send Order Confirmation Email
+                    sendOrderConfirmation(payment.orderId).catch((err: any) =>
+                        logger.error("Webhook email sending failed", err)
+                    );
                 }
             }
             res.json({ status: "ok" });
@@ -241,4 +271,49 @@ export class PaymentController {
             throw new AppError("Webhook processing failed", 500);
         }
     });
+}
+
+// Helper to send email (outside class)
+async function sendOrderConfirmation(orderId: number) {
+    try {
+        const order = await orderRepository.getById(orderId);
+        if (!order) return;
+
+        const user = await userRepository.findById(order.userId);
+        if (!user) return;
+
+        // Fetch order items
+        const orderItems = await orderRepository.getOrderItems(orderId);
+
+        // Fetch product names for email
+        // Dynamic import to avoid circular dependencies or massive imports
+        const { db } = await import("../db");
+        const { products } = await import("@shared/schema");
+        const { inArray } = await import("drizzle-orm");
+
+        let productMap = new Map<number, any>();
+
+        if (orderItems.length > 0) {
+            const productIds = orderItems.map(i => i.productId);
+            const productList = await db.select().from(products).where(inArray(products.id, productIds));
+            productMap = new Map(productList.map(p => [p.id, p]));
+        }
+
+        await emailService.sendOrderConfirmation({
+            email: user.email,
+            name: user.name,
+        }, {
+            id: order.id,
+            totalAmount: order.totalAmount,
+            items: orderItems.map(item => ({
+                name: productMap.get(item.productId)?.name || "Product",
+                quantity: item.quantity,
+                price: item.price
+            }))
+        });
+
+        logger.info(`Order confirmation email sent for order ${orderId}`);
+    } catch (error) {
+        logger.error(`Failed to send order confirmation email for order ${orderId}`, error);
+    }
 }

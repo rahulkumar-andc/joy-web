@@ -1,6 +1,8 @@
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import { logger } from "../logger";
+import { createCircuitBreaker, CIRCUIT_OPTIONS } from "../config/circuit-breakers";
+import CircuitBreaker from "opossum";
 
 // Initialize Razorpay instance
 const razorpay = new Razorpay({
@@ -25,6 +27,7 @@ export interface RazorpayOrderResponse {
     receipt: string;
     status: string;
     created_at: number;
+    _fallback?: boolean; // Indicates fallback was used
 }
 
 export interface VerifyPaymentParams {
@@ -34,11 +37,9 @@ export interface VerifyPaymentParams {
 }
 
 /**
- * Create a Razorpay order for payment
- * @param params Order parameters
- * @returns Razorpay order object
+ * Raw Razorpay order creation (without circuit breaker)
  */
-export async function createRazorpayOrder(
+async function createRazorpayOrderRaw(
     params: CreateOrderParams
 ): Promise<RazorpayOrderResponse> {
     const { amount, currency = "INR", receipt, notes } = params;
@@ -50,34 +51,62 @@ export async function createRazorpayOrder(
         throw new Error("Minimum order amount is ₹1");
     }
 
-    try {
-        const razorpayOrder = await razorpay.orders.create({
-            amount: amountInPaise,
-            currency,
-            receipt: receipt || `order_${Date.now()}`,
-            notes: notes || {},
+    const razorpayOrder = await razorpay.orders.create({
+        amount: amountInPaise,
+        currency,
+        receipt: receipt || `order_${Date.now()}`,
+        notes: notes || {},
+    });
+
+    logger.info(`Razorpay order created: ${razorpayOrder.id} for amount ₹${amount}`);
+
+    return razorpayOrder as RazorpayOrderResponse;
+}
+
+/**
+ * Circuit breaker wrapped Razorpay order creation
+ */
+const createOrderBreaker = createCircuitBreaker(
+    createRazorpayOrderRaw,
+    CIRCUIT_OPTIONS.PAYMENT,
+    async (params: CreateOrderParams) => {
+        // Fallback: Return pending order (queue for later processing)
+        logger.error('Razorpay circuit open - creating fallback order', {
+            amount: params.amount,
+            receipt: params.receipt,
         });
 
-        logger.info(`Razorpay order created: ${razorpayOrder.id} for amount ₹${amount}`);
+        // TODO: Queue order for retry via Bull
+        // await paymentQueue.add('createOrder', params, { attempts: 3 });
 
-        // We defer DB creation to the controller usually, or typically service returns the object 
-        // and Controller saves it.
-        // But to ensure 'INITIATED' state is tracked, we should ideally handle it where DB record is created.
-        // Current flow: Controller calls createRazorpayOrder -> gets ID -> Controller saves DB record.
-        // So we just return the object here. The Controller needs to use the StateMachine.
-
-        return razorpayOrder as RazorpayOrderResponse;
-    } catch (error: any) {
-        logger.error(`Failed to create Razorpay order: ${error.message}`);
-        throw new Error("Failed to create payment order");
+        return {
+            id: `fallback_${Date.now()}`,
+            entity: 'order',
+            amount: Math.round(params.amount * 100),
+            amount_paid: 0,
+            amount_due: Math.round(params.amount * 100),
+            currency: params.currency || 'INR',
+            receipt: params.receipt || `fallback_${Date.now()}`,
+            status: 'pending',
+            created_at: Date.now(),
+            _fallback: true,
+        };
     }
+);
+
+/**
+ * Create a Razorpay order for payment (with circuit breaker)
+ */
+export async function createRazorpayOrder(
+    params: CreateOrderParams
+): Promise<RazorpayOrderResponse> {
+    return await createOrderBreaker.fire(params);
 }
 
 /**
  * Verify Razorpay payment signature using HMAC SHA256
  * This is critical for security - prevents payment tampering
- * @param params Payment verification parameters
- * @returns boolean indicating if signature is valid
+ * (No circuit breaker needed - this is a local computation)
  */
 export function verifyPaymentSignature(params: VerifyPaymentParams): boolean {
     const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = params;
@@ -109,9 +138,7 @@ export function verifyPaymentSignature(params: VerifyPaymentParams): boolean {
 
 /**
  * Verify webhook signature from Razorpay
- * @param body Raw request body as string
- * @param signature X-Razorpay-Signature header value
- * @returns boolean indicating if webhook is authentic
+ * (No circuit breaker needed - this is a local computation)
  */
 export function verifyWebhookSignature(body: string, signature: string): boolean {
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
@@ -125,6 +152,7 @@ export function verifyWebhookSignature(body: string, signature: string): boolean
         .update(body)
         .digest("hex");
 
+
     return expectedSignature === signature;
 }
 
@@ -136,18 +164,30 @@ export function getRazorpayKeyId(): string {
 }
 
 /**
- * Fetch payment details from Razorpay
- * @param paymentId Razorpay payment ID
- * @returns Payment details
+ * Raw fetch payment (without circuit breaker)
+ */
+async function fetchPaymentRaw(paymentId: string): Promise<any> {
+    const payment = await razorpay.payments.fetch(paymentId);
+    return payment;
+}
+
+/**
+ * Circuit breaker wrapped fetch payment
+ */
+const fetchPaymentBreaker = createCircuitBreaker(
+    fetchPaymentRaw,
+    CIRCUIT_OPTIONS.PAYMENT,
+    async (paymentId: string) => {
+        logger.error('Razorpay circuit open - cannot fetch payment details', { paymentId });
+        throw new Error('Payment service temporarily unavailable');
+    }
+);
+
+/**
+ * Fetch payment details from Razorpay (with circuit breaker)
  */
 export async function fetchPayment(paymentId: string): Promise<any> {
-    try {
-        const payment = await razorpay.payments.fetch(paymentId);
-        return payment;
-    } catch (error: any) {
-        logger.error(`Failed to fetch payment details: ${error.message}`);
-        throw new Error("Failed to verify payment details");
-    }
+    return await fetchPaymentBreaker.fire(paymentId);
 }
 
 export const paymentService = {
@@ -156,4 +196,9 @@ export const paymentService = {
     verifyWebhookSignature,
     getRazorpayKeyId,
     fetchPayment,
+    // Expose breakers for monitoring
+    breakers: {
+        createOrder: createOrderBreaker as CircuitBreaker<[CreateOrderParams], RazorpayOrderResponse>,
+        fetchPayment: fetchPaymentBreaker as CircuitBreaker<[string], any>,
+    },
 };

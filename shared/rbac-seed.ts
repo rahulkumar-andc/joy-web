@@ -154,6 +154,11 @@ const DEFAULT_PERMISSIONS: InsertPermission[] = [
     // Reports
     { domain: "reports", action: "read", description: "View reports and analytics" },
     { domain: "reports", action: "export", description: "Export reports" },
+
+    // Shipping
+    { domain: "shipping", action: "read", description: "View shipping settings" },
+    { domain: "shipping", action: "update", description: "Update shipping settings" },
+    { domain: "shipping", action: "manage", description: "Full shipping management" },
 ];
 
 // Role → Permission mappings
@@ -168,6 +173,7 @@ const ROLE_PERMISSION_MAP: Record<string, { domain: string; action: string; reso
         { domain: "sellers", action: "manage" },
         { domain: "finance", action: "manage" },
         { domain: "reports", action: "read" },
+        { domain: "shipping", action: "manage" },
     ],
     BUSINESS_ADMIN: [
         { domain: "catalog", action: "manage" },
@@ -175,6 +181,8 @@ const ROLE_PERMISSION_MAP: Record<string, { domain: string; action: string; reso
         { domain: "sellers", action: "suspend" },
         { domain: "sellers", action: "read" },
         { domain: "reports", action: "read" },
+        { domain: "shipping", action: "read" },
+        { domain: "shipping", action: "update" },
     ],
     OPS_ADMIN: [
         { domain: "orders", action: "manage" },

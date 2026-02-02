@@ -13,6 +13,15 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 
 export default function AdminOrders() {
     const { data: orders, isLoading } = useQuery<(Order & { user: { name: string; email: string } })[]>({
@@ -28,14 +37,25 @@ export default function AdminOrders() {
     const { toast } = useToast();
     const queryClient = useQueryClient();
 
+    // Modal State
+    const [shippingModalOpen, setShippingModalOpen] = useState(false);
+    const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+    const [courierName, setCourierName] = useState("");
+    const [trackingNumber, setTrackingNumber] = useState("");
+    const [estimatedDeliveryDate, setEstimatedDeliveryDate] = useState("");
+    const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+
     const updateStatus = useMutation({
-        mutationFn: async ({ id, status }: { id: number; status: string }) => {
+        mutationFn: async ({ id, status, courierName, trackingNumber, estimatedDeliveryDate }: { id: number; status: string; courierName?: string; trackingNumber?: string; estimatedDeliveryDate?: string }) => {
             const res = await fetch(`/api/orders/${id}/status`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status }),
+                body: JSON.stringify({ status, courierName, trackingNumber, estimatedDeliveryDate }),
             });
-            if (!res.ok) throw new Error("Failed to update status");
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || "Failed to update status");
+            }
             return res.json();
         },
         onSuccess: () => {
@@ -44,15 +64,44 @@ export default function AdminOrders() {
                 title: "Status Updated",
                 description: "Order status has been updated successfully.",
             });
+            // Reset modal state
+            setShippingModalOpen(false);
+            setCourierName("");
+            setTrackingNumber("");
+            setEstimatedDeliveryDate("");
+            setSelectedOrderId(null);
+            setPendingStatus(null);
         },
-        onError: () => {
+        onError: (error: Error) => {
             toast({
                 title: "Update Failed",
-                description: "Could not update order status.",
+                description: error.message || "Could not update order status.",
                 variant: "destructive",
             });
         },
     });
+
+    const handleStatusChange = (id: number, status: string) => {
+        if (status === "shipped") {
+            setSelectedOrderId(id);
+            setPendingStatus(status);
+            setShippingModalOpen(true);
+        } else {
+            updateStatus.mutate({ id, status });
+        }
+    };
+
+    const confirmShipping = () => {
+        if (selectedOrderId && pendingStatus) {
+            updateStatus.mutate({
+                id: selectedOrderId,
+                status: pendingStatus,
+                courierName,
+                trackingNumber,
+                estimatedDeliveryDate
+            });
+        }
+    };
 
     const filteredOrders = orders?.filter((order) =>
         order.id.toString().includes(search) ||
@@ -64,7 +113,9 @@ export default function AdminOrders() {
         switch (status) {
             case "pending": return "bg-yellow-100 text-yellow-800";
             case "paid": return "bg-blue-100 text-blue-800";
+            case "packed": return "bg-indigo-100 text-indigo-800";
             case "shipped": return "bg-purple-100 text-purple-800";
+            case "out_for_delivery": return "bg-orange-100 text-orange-800";
             case "delivered": return "bg-green-100 text-green-800";
             case "cancelled": return "bg-red-100 text-red-800";
             default: return "bg-gray-100 text-gray-800";
@@ -123,17 +174,19 @@ export default function AdminOrders() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <Select
-                                                defaultValue={order.status}
-                                                onValueChange={(val) => updateStatus.mutate({ id: order.id, status: val })}
+                                                value={order.status}
+                                                onValueChange={(val) => handleStatusChange(order.id, val)}
                                                 disabled={updateStatus.isPending}
                                             >
-                                                <SelectTrigger className={`w-[130px] h-8 ${getStatusColor(order.status)} border-0`}>
+                                                <SelectTrigger className={`w-[140px] h-8 ${getStatusColor(order.status)} border-0`}>
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="pending">Pending</SelectItem>
                                                     <SelectItem value="paid">Paid</SelectItem>
+                                                    <SelectItem value="packed">Packed</SelectItem>
                                                     <SelectItem value="shipped">Shipped</SelectItem>
+                                                    <SelectItem value="out_for_delivery">Out for Delivery</SelectItem>
                                                     <SelectItem value="delivered">Delivered</SelectItem>
                                                     <SelectItem value="cancelled">Cancelled</SelectItem>
                                                 </SelectContent>
@@ -153,6 +206,51 @@ export default function AdminOrders() {
                     </div>
                 </div>
             )}
+
+            {/* Shipping Details Modal */}
+            <Dialog open={shippingModalOpen} onOpenChange={setShippingModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Enter Shipping Details</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="courier">Courier Name</Label>
+                            <Input
+                                id="courier"
+                                placeholder="e.g. FedEx, DHL, BlueDart"
+                                value={courierName}
+                                onChange={(e) => setCourierName(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="tracking">Tracking Number</Label>
+                            <Input
+                                id="tracking"
+                                placeholder="Tracking ID"
+                                value={trackingNumber}
+                                onChange={(e) => setTrackingNumber(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="estimated-delivery">Estimated Delivery Date</Label>
+                            <Input
+                                id="estimated-delivery"
+                                type="date"
+                                value={estimatedDeliveryDate}
+                                onChange={(e) => setEstimatedDeliveryDate(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShippingModalOpen(false)}>Cancel</Button>
+                        <Button onClick={confirmShipping} disabled={updateStatus.isPending}>
+                            {updateStatus.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Update Status
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

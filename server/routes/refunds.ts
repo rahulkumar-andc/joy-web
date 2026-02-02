@@ -8,6 +8,11 @@ import { AuditService } from "../services/auditService";
 import { NotificationService } from "../services/notificationService";
 import { userRepository } from "../repositories/userRepository";
 import { WalletService } from "../services/walletService";
+import { db } from "../db";
+import { payments } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import { paymentService } from "../services/paymentService";
+
 
 
 export const refundRouter = Router();
@@ -157,6 +162,33 @@ refundRouter.patch("/api/admin/refunds/:id/status", restrictTo("admin", "manager
                 `refund_${id}`,
                 `Refund for Order #${currentRefund.orderId}`
             );
+        }
+
+        // Payment Gateway Logic: If approved and method is original
+        if (status === "approved" && currentRefund.refundMethod === "original" && currentRefund.status !== "approved") {
+            // Find payment record
+            const payment = await db.query.payments.findFirst({
+                where: eq(payments.orderId, currentRefund.orderId)
+            });
+
+            if (payment && payment.gatewayReference && payment.gateway) {
+                try {
+                    await paymentService.refundPayment(
+                        payment.gatewayReference,
+                        Number(currentRefund.amount),
+                        payment.gateway as "stripe" | "razorpay"
+                    );
+
+                    // Log success
+                    await AuditService.logAction((req.user as any).id, "REFUND_GATEWAY_SUCCESS", "PAYMENT", payment.id, { refundId: id });
+                } catch (err: any) {
+                    // Log failure but don't fail the whole request (refund is already marked approved in DB)
+                    console.error("Gateway refund failed:", err);
+                    await AuditService.logAction((req.user as any).id, "REFUND_GATEWAY_FAILED", "PAYMENT", payment.id, { error: err.message });
+                }
+            } else {
+                console.warn(`No valid payment record found for Order #${currentRefund.orderId} to process original refund.`);
+            }
         }
 
         // Audit Log

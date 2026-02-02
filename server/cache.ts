@@ -4,10 +4,81 @@ import { logger } from "./logger";
 // Initialize Upstash Redis
 // Falls back to a mock/no-op if credentials are missing in dev, usually.
 // But we expect credentials now.
-const redis = new Redis({
+// Initialize Upstash Redis
+// Falls back to a mock/no-op if credentials are missing in dev, usually.
+// But we expect credentials now.
+export const redis = new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL || "https://mock.upstash.io",
     token: process.env.UPSTASH_REDIS_REST_TOKEN || "mock_token",
 });
+
+// ============================================================================
+// REDIS WRAPPER (Safe Serialization)
+// ============================================================================
+
+/**
+ * Safely parse JSON from Redis. 
+ * Returns null if parsing fails or value is missing.
+ * Prevents app crashes from "SyntaxError: [object Object] is not valid JSON"
+ */
+export async function redisGet<T>(key: string): Promise<T | null> {
+    try {
+        // Force Redis to return string (if Upstash client supports it via config, otherwise we handle what we get)
+        // Upstash Redis SDK automatically parses JSON if it detects it.
+        // However, if the value is physically "[object Object]" string in Redis, Upstash might return it as string.
+        // If we want to be 100% sure we handle raw strings:
+        const data = await redis.get(key);
+
+        if (data === null || data === undefined) return null;
+
+        // If Upstash already parsed it as an object, great.
+        if (typeof data === 'object') {
+            return data as T;
+        }
+
+        // If it's a string, try to parse it. 
+        // If it's the dreaded "[object Object]", this is where we catch it.
+        if (typeof data === 'string') {
+            try {
+                return JSON.parse(data) as T;
+            } catch (parseError) {
+                logger.warn(`Redis JSON parse error for key ${key}. Value was: ${data.substring(0, 50)}...`);
+                return null; // Graceful fallback
+            }
+        }
+
+        return data as T; // Should verify if number/boolean need handling
+    } catch (err) {
+        logger.error(`Redis get error for key ${key}:`, err);
+        return null; // Fail safe
+    }
+}
+
+/**
+ * Safely store value in Redis as JSON string.
+ */
+export async function redisSet<T>(key: string, value: T, ttlSeconds: number = CacheTTL.MEDIUM): Promise<boolean> {
+    try {
+        // We explicitly stringify to ensure we never store implicit [object Object]
+        // Note: Upstash SDK might double-stringify if we pass a string. 
+        // But to guarantee consistency, passing a primitive string is safer than relying on SDK magic that might fail.
+
+        let stringValue: string;
+        try {
+            stringValue = JSON.stringify(value);
+        } catch (stringifyError) {
+            logger.error(`Redis serialization error for key ${key}:`, stringifyError);
+            return false;
+        }
+
+        // Use 'ex' for expiry
+        await redis.set(key, stringValue, { ex: ttlSeconds });
+        return true;
+    } catch (err) {
+        logger.error(`Redis set error for key ${key}:`, err);
+        return false;
+    }
+}
 
 // ============================================================================
 // CACHE KEY DEFINITIONS
@@ -28,6 +99,7 @@ export const CacheKeys = {
 
     // User-specific caching (shorter TTL)
     USER_CART: (userId: number) => `user_cart_${userId}`,
+    SESSION_CART: (sessionId: string) => `session_cart_${sessionId}`,
     USER_WISHLIST: (userId: number) => `user_wishlist_${userId}`,
 
     // Admin/analytics
@@ -55,26 +127,12 @@ export const CacheTTL = {
 export const cacheService = {
     // Upstash Redis methods return Promises by default (HTTP requests)
     get: async <T>(key: string): Promise<T | undefined> => {
-        try {
-            const data = await redis.get(key);
-            // Upstash auto-parses JSON if it was stored as JSON, or we might need to handle it.
-            // But usually, redis.get<T> works.
-            return data as T;
-        } catch (err) {
-            logger.error(`Cache get error for key ${key}:`, err);
-            return undefined;
-        }
+        const result = await redisGet<T>(key);
+        return result === null ? undefined : result;
     },
 
     set: async <T>(key: string, value: T, ttlSeconds: number = CacheTTL.MEDIUM): Promise<boolean> => {
-        try {
-            // ex: expiry in seconds
-            await redis.set(key, value, { ex: ttlSeconds });
-            return true;
-        } catch (err) {
-            logger.error(`Cache set error for key ${key}:`, err);
-            return false;
-        }
+        return redisSet(key, value, ttlSeconds);
     },
 
     del: async (key: string): Promise<number> => {
@@ -96,10 +154,11 @@ export const cacheService = {
     ): Promise<T> => {
         try {
             // Try cache first
-            const cached = await redis.get(key);
+            const cached = await redisGet<T>(key);
             if (cached !== null && cached !== undefined) {
+                // Start of Selection
                 logger.debug(`Cache HIT: ${key}`);
-                return cached as T;
+                return cached;
             }
 
             // Cache miss - fetch data
@@ -107,7 +166,7 @@ export const cacheService = {
             const data = await fetchFn();
 
             // Store in cache (fire-and-forget)
-            redis.set(key, data, { ex: ttlSeconds }).catch(err => {
+            redisSet(key, data, ttlSeconds).catch(err => {
                 logger.error(`Cache set error for key ${key}:`, err);
             });
 

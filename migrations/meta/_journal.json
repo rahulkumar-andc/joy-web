@@ -15,6 +15,13 @@
       "when": 1769864348435,
       "tag": "0001_campaign_ab_testing_scheduling",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769982561226,
+      "tag": "0002_audit_check",
+      "breakpoints": true
     }
   ]
 }

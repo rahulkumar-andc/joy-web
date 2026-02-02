@@ -8,6 +8,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { BottomNav } from "@/components/BottomNav";
 import { CookieConsentBanner, PrivacySettings } from "@/components/GDPRCompliance";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -35,12 +36,24 @@ const AdminProducts = lazy(() => import("@/pages/admin/AdminProducts"));
 const AdminOrders = lazy(() => import("@/pages/admin/AdminOrders"));
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 const AdminCampaigns = lazy(() => import("@/pages/admin/AdminCampaigns"));
+const AdminSellersPage = lazy(() => import("@/pages/admin/AdminSellersPage"));
+const AdminProductModerationPage = lazy(() => import("@/pages/admin/AdminProductModerationPage"));
+const AdminPayoutApprovalPage = lazy(() => import("@/pages/admin/AdminPayoutApprovalPage"));
 const AnalyticsDashboard = lazy(() => import("@/pages/admin/AnalyticsDashboard"));
 const ContentModeration = lazy(() => import("@/pages/admin/ContentModeration"));
+const AdminRefundsPage = lazy(() => import("@/pages/admin/AdminRefundsPage"));
+const AdminReturnDisputesPage = lazy(() => import("@/pages/admin/AdminReturnDisputesPage"));
 
 // Seller Pages
 const SellerDashboard = lazy(() => import("@/pages/seller/SellerDashboard"));
 const SellerPage = lazy(() => import("@/pages/seller/SellerPage"));
+const SellerRegistrationPage = lazy(() => import("@/pages/seller/SellerRegistrationPage"));
+const SellerVerifyPage = lazy(() => import("@/pages/seller/SellerVerifyPage"));
+const SellerProductsPage = lazy(() => import("@/pages/seller/SellerProductsPage"));
+const SellerProductFormPage = lazy(() => import("@/pages/seller/SellerProductFormPage"));
+const SellerOrdersPage = lazy(() => import("@/pages/seller/SellerOrdersPage"));
+const SellerReturnRequestsPage = lazy(() => import("@/pages/seller/SellerReturnRequestsPage"));
+const SellerWalletPage = lazy(() => import("@/pages/seller/SellerWalletPage"));
 
 // Reseller Pages
 const BecomeResellerPage = lazy(() => import("@/pages/reseller").then(m => ({ default: m.BecomeResellerPage })));
@@ -155,10 +168,23 @@ function Router() {
         <Route path="/admin/products" component={AdminProducts} />
         <Route path="/admin/orders" component={AdminOrders} />
         <Route path="/seller/dashboard" component={SellerDashboard} />
+        <Route path="/seller/register" component={SellerRegistrationPage} />
+        <Route path="/seller/verify" component={SellerVerifyPage} />
+        <Route path="/seller/products" component={SellerProductsPage} />
+        <Route path="/seller/products/new" component={SellerProductFormPage} />
+        <Route path="/seller/products/:id/edit" component={SellerProductFormPage} />
+        <Route path="/seller/orders" component={SellerOrdersPage} />
+        <Route path="/seller/returns" component={SellerReturnRequestsPage} />
+        <Route path="/seller/wallet" component={SellerWalletPage} />
         <Route path="/admin/dashboard" component={AdminDashboard} />
+        <Route path="/admin/sellers" component={AdminSellersPage} />
+        <Route path="/admin/products/moderation" component={AdminProductModerationPage} />
+        <Route path="/admin/payouts" component={AdminPayoutApprovalPage} />
         <Route path="/admin/campaigns" component={AdminCampaigns} />
         <Route path="/admin/analytics" component={AnalyticsDashboard} />
         <Route path="/admin/moderation" component={ContentModeration} />
+        <Route path="/admin/refunds" component={AdminRefundsPage} />
+        <Route path="/admin/disputes" component={AdminReturnDisputesPage} />
         <Route path="/privacy-settings" component={PrivacySettings} />
 
         <Route component={NotFound} />
@@ -169,22 +195,24 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <HelmetProvider>
-        <ThemeProvider>
-          <AuthProvider>
-            <TooltipProvider>
-              <Toaster />
-              <div className="pb-16 md:pb-0">
-                <Router />
-              </div>
-              <BottomNav />
-              <CookieConsentBanner />
-            </TooltipProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </HelmetProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <HelmetProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <TooltipProvider>
+                <Toaster />
+                <div className="pb-16 md:pb-0">
+                  <Router />
+                </div>
+                <BottomNav />
+                <CookieConsentBanner />
+              </TooltipProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </HelmetProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

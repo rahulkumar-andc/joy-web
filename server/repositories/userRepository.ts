@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { users, verificationTokens, session, type User, type InsertUser, type VerificationToken } from "@shared/schema";
+import { users, verificationTokens, type User, type InsertUser, type VerificationToken } from "@shared/schema";
 import { eq, and, gt, sql } from "drizzle-orm";
 import { randomBytes, createHash } from "crypto";
 
@@ -117,13 +117,42 @@ export class UserRepository {
 
     // === SESSION MANAGEMENT ===
     async invalidateUserSessions(userId: number): Promise<void> {
-        // Delete sessions where sess->passport->user == userId
-        // Note: connect-pg-simple stores user ID as number or string depending on serializer
-        // We match both just in case
-        await db.delete(session)
-            .where(
-                sql`sess -> 'passport' ->> 'user' = ${userId.toString()}`
-            );
+        try {
+            const { redis } = await import("../cache");
+            const { logger } = await import("../logger");
+
+            // Scan for user's sessions in Redis
+            let cursor = 0;
+            const sessionsToDelete: string[] = [];
+
+            do {
+                const [nextCursor, keys] = await redis.scan(cursor, {
+                    match: "sess:*",
+                    count: 100,
+                });
+                cursor = Number(nextCursor);
+
+                // Check each session for userId
+                for (const key of keys) {
+                    const sessData = await redis.get(key);
+                    if (sessData && typeof sessData === 'object') {
+                        const sess = sessData as any;
+                        if (sess.passport?.user === userId || sess.passport?.user === String(userId)) {
+                            sessionsToDelete.push(key);
+                        }
+                    }
+                }
+            } while (cursor !== 0);
+
+            // Delete all user sessions
+            if (sessionsToDelete.length > 0) {
+                await redis.del(...sessionsToDelete);
+                logger.info(`Invalidated ${sessionsToDelete.length} sessions for user ${userId}`);
+            }
+        } catch (error) {
+            const { logger } = await import("../logger");
+            logger.error("Session invalidation failed", { userId, error });
+        }
     }
 }
 

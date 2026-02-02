@@ -78,6 +78,7 @@ export class DeliveryEstimationService {
 
     /**
      * Get delivery estimate based on shipping address
+     * Now uses dynamic shipping settings from database
      */
     static getDeliveryEstimate(
         city: string,
@@ -108,7 +109,8 @@ export class DeliveryEstimationService {
             case 'standard':
             default:
                 estimatedDays = zone.standardDays;
-                shippingCharge = estimatedDays <= 3 ? 0 : 100; // Free shipping for fast zones
+                // Default shipping - actual cost determined by shippingSettingsService
+                shippingCharge = 0; // Will be calculated by checkout using calculateShippingAsync
                 break;
         }
 
@@ -122,6 +124,20 @@ export class DeliveryEstimationService {
             deliveryType,
             shippingCharge
         };
+    }
+
+    /**
+     * Calculate shipping cost using dynamic settings (async)
+     * This is the primary method for checkout integration
+     */
+    static async calculateShippingAsync(orderTotal: number): Promise<{
+        shippingCost: number;
+        isFree: boolean;
+        reason: string;
+    }> {
+        // Dynamic import to avoid circular dependency
+        const { shippingSettingsService } = await import('./shippingSettingsService');
+        return shippingSettingsService.calculateShipping(orderTotal);
     }
 
     /**

@@ -4,7 +4,7 @@ import { eq, desc, and, sql } from "drizzle-orm";
 import { webSocketService } from "../services/websocketService";
 
 export class OrderRepository {
-    async createOrder(orderData: Omit<Order, "id" | "createdAt" | "status" | "paymentStatus">, items: { productId: number; quantity: number; price: number; size?: string; color?: string }[]): Promise<Order> {
+    async createOrder(orderData: Omit<Order, "id" | "createdAt">, items: { productId: number; quantity: number; price: number; size?: string; color?: string }[]): Promise<Order> {
         return await db.transaction(async (tx) => {
             const [newOrder] = await tx.insert(orders).values(orderData).returning();
 
@@ -44,9 +44,30 @@ export class OrderRepository {
         }));
     }
 
-    async updateOrderStatus(id: number, status: string): Promise<Order | undefined> {
+    async updateOrderStatus(id: number, status: string, courierName?: string, trackingNumber?: string, estimatedDeliveryDate?: string): Promise<Order | undefined> {
+        const updateData: any = { status: status as any };
+
+        if (courierName) updateData.courierName = courierName;
+        if (trackingNumber) updateData.trackingNumber = trackingNumber;
+        if (estimatedDeliveryDate) updateData.estimatedDeliveryDate = new Date(estimatedDeliveryDate);
+
+        // Sync orderState
+        const statusToStateMap: Record<string, string> = {
+            "pending": "PROCESSING",
+            "paid": "CONFIRMED",
+            "packed": "PACKED",
+            "shipped": "SHIPPED",
+            "out_for_delivery": "OUT_FOR_DELIVERY",
+            "delivered": "DELIVERED",
+            "cancelled": "CANCELLED"
+        };
+
+        if (statusToStateMap[status]) {
+            updateData.orderState = statusToStateMap[status];
+        }
+
         const [updated] = await db.update(orders)
-            .set({ status: status as any })
+            .set(updateData)
             .where(eq(orders.id, id))
             .returning();
         return updated;

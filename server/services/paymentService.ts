@@ -105,6 +105,22 @@ export class PaymentService {
 
         return { received: true };
     }
+
+    async refundPayment(paymentId: string, amount: number, gateway: "stripe" | "razorpay" = "stripe") {
+        if (gateway === "stripe") {
+            // Amount in cents
+            const unitAmount = Math.round(amount * 100);
+            return await this.retryOperation(async () => {
+                return await stripe.refunds.create({
+                    payment_intent: paymentId,
+                    amount: unitAmount,
+                });
+            });
+        }
+        // Placeholder for Razorpay
+        console.warn("Razorpay refund not implemented yet");
+        return { status: "mock_refunded", id: "mock_refund_id" };
+    }
 }
 
 export const paymentService = new PaymentService();

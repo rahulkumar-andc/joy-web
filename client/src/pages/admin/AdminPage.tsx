@@ -13,6 +13,7 @@ import AdminPayouts from "./AdminPayouts";
 import AdminOrders from "./AdminOrders";
 import AdminCampaigns from "./AdminCampaigns";
 import AdminCoupons from "./AdminCoupons";
+import AdminShippingSettings from "./AdminShippingSettings";
 import ContentModeration from "./ContentModeration";
 
 export default function AdminPage() {
@@ -51,6 +52,7 @@ export default function AdminPage() {
                         <TabsTrigger value="orders">Orders</TabsTrigger>
                         <TabsTrigger value="products">Products</TabsTrigger>
                         <TabsTrigger value="coupons">Coupons</TabsTrigger>
+                        <TabsTrigger value="shipping">Shipping</TabsTrigger>
                         <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
                         <TabsTrigger value="moderation">Moderation</TabsTrigger>
                         <TabsTrigger value="refunds">Refunds</TabsTrigger>
@@ -73,6 +75,10 @@ export default function AdminPage() {
 
                     <TabsContent value="coupons">
                         <AdminCoupons />
+                    </TabsContent>
+
+                    <TabsContent value="shipping">
+                        <AdminShippingSettings />
                     </TabsContent>
 
                     <TabsContent value="campaigns">

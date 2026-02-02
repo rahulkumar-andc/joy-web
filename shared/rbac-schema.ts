@@ -231,6 +231,7 @@ export const PermissionDomains = {
     SELLERS: "sellers",
     FINANCE: "finance",
     REPORTS: "reports",
+    SHIPPING: "shipping",
 } as const;
 
 export const PermissionActions = {

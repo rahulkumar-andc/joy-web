@@ -6,29 +6,41 @@ import { cartRepository } from "../repositories/cartRepository";
 import { productRepository } from "../repositories/productRepository";
 import { userRepository } from "../repositories/userRepository";
 import { emailService } from "../services/email";
+import { pushNotificationService } from "../services/pushNotificationService";
 import { catchAsync } from "../utils/catchAsync";
 import { AppError } from "../utils/AppError";
 import { AuditService } from "../services/auditService";
 import { NotificationService } from "../services/notificationService";
-import { cacheService } from "../cache";
+import { cacheService, CacheKeys, CacheTTL } from "../cache";
 import { withTransaction } from "../utils/transactionHelpers";
 import { products, cartItems as cartItemsTable } from "@shared/schema";
 import { sql, eq } from "drizzle-orm";
 import { stockReservationService } from "../services/stockReservationService";
 import { logger } from "../logger";
 import { couponService } from "../services/couponService";
+import { shippingSettingsService } from "../services/shippingSettingsService";
 
 export class OrderController {
 
     // === CART ===
     static getCart = catchAsync(async (req: Request, res: Response) => {
-        let cart;
-        if (req.user) {
-            cart = await cartRepository.getCart((req.user as any).id);
-        } else {
-            const sessionId = req.sessionID;
-            cart = await cartRepository.getCart(undefined, sessionId);
+        const userId = req.user ? (req.user as any).id : undefined;
+        const sessionId = req.sessionID;
+        const cacheKey = userId ? CacheKeys.USER_CART(userId) : (sessionId ? CacheKeys.SESSION_CART(sessionId) : null);
+
+        if (!cacheKey) {
+            // Fallback if neither exists (unlikely given session middleware)
+            return res.json([]);
         }
+
+        const cart = await cacheService.getOrSet(
+            cacheKey,
+            async () => {
+                return await cartRepository.getCart(userId, sessionId);
+            },
+            CacheTTL.USER_DATA
+        );
+
         res.json(cart.map((c: any) => ({ item: c, product: c.product })));
     });
 
@@ -36,6 +48,7 @@ export class OrderController {
         const { productId, quantity, size, color } = api.cart.add.input.parse(req.body);
         const userId = req.user ? (req.user as any).id : undefined;
         const sessionId = req.sessionID;
+        const cacheKey = userId ? CacheKeys.USER_CART(userId) : (sessionId ? CacheKeys.SESSION_CART(sessionId) : null);
 
         await cartRepository.addToCart({
             userId,
@@ -45,8 +58,16 @@ export class OrderController {
             size: size || null,
             color: color || null
         });
+
+        // Invalidate cache
+        if (cacheKey) await cacheService.del(cacheKey);
+
         // Return the updated cart after adding the item (consistent with frontend expectation)
+        // We fetch fresh data and re-cache it immediately to keep cache warm
         const cart = await cartRepository.getCart(userId, userId ? undefined : sessionId);
+
+        if (cacheKey) await cacheService.set(cacheKey, cart, CacheTTL.USER_DATA);
+
         res.json(cart.map((c: any) => ({ item: c, product: c.product })));
     });
 
@@ -54,11 +75,26 @@ export class OrderController {
         const { quantity } = api.cart.update.input.parse(req.body);
         const updated = await cartRepository.updateCartItem(Number(req.params.id), quantity);
         if (!updated) throw new AppError("Cart item not found", 404);
+
+        // Invalidate cache logic
+        const userId = req.user ? (req.user as any).id : updated.userId;
+        const sessionId = req.sessionID;
+        const cacheKey = userId ? CacheKeys.USER_CART(userId) : (sessionId ? CacheKeys.SESSION_CART(sessionId) : null);
+
+        if (cacheKey) await cacheService.del(cacheKey);
+
         res.json(updated);
     });
 
     static removeFromCart = catchAsync(async (req: Request, res: Response) => {
         await cartRepository.removeFromCart(Number(req.params.id));
+
+        const userId = req.user ? (req.user as any).id : undefined;
+        const sessionId = req.sessionID;
+        const cacheKey = userId ? CacheKeys.USER_CART(userId) : (sessionId ? CacheKeys.SESSION_CART(sessionId) : null);
+
+        if (cacheKey) await cacheService.del(cacheKey);
+
         res.status(204).send();
     });
 
@@ -151,6 +187,11 @@ export class OrderController {
             });
         }
 
+        // Calculate Shipping
+        const shippingCalc = await shippingSettingsService.calculateShipping(totalAmount);
+        const shippingCost = shippingCalc.shippingCost;
+        totalAmount += shippingCost;
+
         // ⚠️ PHASE 1: Reserve stock BEFORE creating order
         // This prevents overselling in concurrent checkout scenarios
         let reservationId: number | null = null;
@@ -175,16 +216,32 @@ export class OrderController {
         try {
             order = await withTransaction(async (tx) => {
                 // 1. Create order with order items (repository handles this internally)
+                // 1. Create order with order items (repository handles this internally)
+                const isFreeOrder = totalAmount <= 0;
+
                 const newOrder = await orderRepository.createOrder({
                     userId,
                     totalAmount: totalAmount.toString(),
+                    shippingCost: shippingCost.toString(),
                     shippingAddress,
-                    orderState: "CREATED",
+                    orderState: isFreeOrder ? "CONFIRMED" : "CREATED",
+                    status: isFreeOrder ? "paid" : "pending",
+                    paymentStatus: isFreeOrder ? "paid" : "pending",
                     stateVersion: 1,
                     stateHistory: [],
                     orderIdempotencyKey: crypto.randomUUID(),
                     resellerLinkId: resellerLinkId || null,
-                    referredByReseller: referredByReseller || null
+                    referredByReseller: referredByReseller || null,
+                    courierName: null,
+                    trackingNumber: null,
+                    estimatedDeliveryDate: null,
+
+                    // COD Defaults
+                    codAmount: null,
+                    codCollected: false,
+                    codCollectedAt: null,
+                    codCollectedBy: null,
+                    deliveryInstructions: null,
                 }, cartItems.map((item: any) => ({
                     productId: item.productId,
                     quantity: item.quantity,
@@ -261,21 +318,24 @@ export class OrderController {
             throw error; // Re-throw to be handled by catchAsync
         }
 
-        // Send Order Confirmation
-        const user = await userRepository.findById(userId);
-        if (user) {
-            emailService.sendOrderConfirmation({
-                email: user.email,
-                name: user.name,
-            }, {
-                id: order.id,
-                totalAmount: order.totalAmount,
-                items: cartItems.map((item: any) => ({
-                    name: item.product.name,
-                    quantity: item.quantity,
-                    price: item.product.price
-                }))
-            });
+        // Send Order Confirmation - ONLY IF FREE/PAID (Zero Amount)
+        // For regular payments, the email is sent by PaymentController after successful payment
+        if (totalAmount <= 0) {
+            const user = await userRepository.findById(userId);
+            if (user) {
+                emailService.sendOrderConfirmation({
+                    email: user.email,
+                    name: user.name,
+                }, {
+                    id: order.id,
+                    totalAmount: order.totalAmount,
+                    items: cartItems.map((item: any) => ({
+                        name: item.product.name,
+                        quantity: item.quantity,
+                        price: item.product.price
+                    }))
+                });
+            }
         }
 
         // Invalidate product cache so stock quantities update immediately
@@ -304,15 +364,43 @@ export class OrderController {
         res.json(orders);
     });
 
+    // GET /api/orders/:id - Get single order for tracking
+    static getOrderById = catchAsync(async (req: Request, res: Response) => {
+        if (!req.isAuthenticated()) throw new AppError("Login required", 401);
+
+        const orderId = parseInt(req.params.id as string);
+        const userId = (req.user as any).id;
+        const isAdmin = (req.user as any).role === "admin";
+
+        const order = await orderRepository.getById(orderId);
+        if (!order) throw new AppError("Order not found", 404);
+
+        // Ensure user can only view their own orders (unless admin)
+        if (!isAdmin && order.userId !== userId) {
+            throw new AppError("Unauthorized", 403);
+        }
+
+        // Fetch order items
+        const items = await orderRepository.getOrderItems(orderId);
+
+        res.json({ ...order, items });
+    });
+
     static updateOrderStatus = catchAsync(async (req: Request, res: Response) => {
         const id = parseInt(req.params.id as string);
-        const { status } = req.body;
+        const { status, courierName, trackingNumber, estimatedDeliveryDate } = req.body;
 
-        if (!["pending", "paid", "shipped", "delivered", "cancelled"].includes(status)) {
+        const validStatuses = ["pending", "paid", "packed", "shipped", "out_for_delivery", "delivered", "cancelled"];
+        if (!validStatuses.includes(status)) {
             throw new AppError("Invalid status", 400);
         }
 
-        const updated = await orderRepository.updateOrderStatus(id, status);
+        // Validation: Courier & Tracking only allowed when status is SHIPPED
+        if ((courierName || trackingNumber || estimatedDeliveryDate) && status !== 'shipped') {
+            throw new AppError("Courier, Tracking, and Estimated Delivery details can only be added when status is SHIPPED", 400);
+        }
+
+        const updated = await orderRepository.updateOrderStatus(id, status, courierName, trackingNumber, estimatedDeliveryDate);
         if (!updated) throw new AppError("Order not found", 404);
 
         // Audit Log
@@ -332,6 +420,31 @@ export class OrderController {
         const user = await userRepository.findById(updated.userId);
         if (user) {
             await NotificationService.notifyOrderStatusChange(user.email, id, status, user.name);
+
+            // Send email notifications based on status
+            if (status === "shipped") {
+                await emailService.sendOrderShipped(
+                    { email: user.email, name: user.name },
+                    id,
+                    courierName,
+                    trackingNumber,
+                    estimatedDeliveryDate
+                );
+                // Send browser push notification
+                await pushNotificationService.sendOrderUpdate(updated.userId, id, status);
+            } else if (status === "delivered") {
+                await emailService.sendOrderDelivered(
+                    { email: user.email, name: user.name },
+                    id
+                );
+                await pushNotificationService.sendOrderUpdate(updated.userId, id, status);
+            } else if (status === "cancelled") {
+                await emailService.sendOrderCancelled(
+                    { email: user.email, name: user.name },
+                    id
+                );
+                await pushNotificationService.sendOrderUpdate(updated.userId, id, status);
+            }
         }
 
         // ⚠️ COMMISSION CALCULATION: Trigger when order is delivered

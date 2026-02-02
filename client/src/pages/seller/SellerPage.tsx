@@ -34,7 +34,7 @@ export default function SellerPage() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2 }}
                         >
-                            <Link href="/auth?role=seller">
+                            <Link href="/seller/register">
                                 <Button size="lg" className="text-lg px-8 py-6 rounded-full">
                                     Start Selling Now
                                 </Button>

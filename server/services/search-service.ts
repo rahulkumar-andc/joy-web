@@ -1,6 +1,10 @@
 import { MeiliSearch, Index, SearchParams, SearchResponse } from "meilisearch";
 import { logger } from "../logger";
-import type { Product } from "@shared/schema";
+import { Product, products, categories } from "@shared/schema";
+import { createCircuitBreaker, CIRCUIT_OPTIONS } from "../config/circuit-breakers";
+import CircuitBreaker from "opossum";
+import { db } from "../db";
+import { ilike, or, eq, desc, and, sql } from "drizzle-orm";
 
 // ============================================================================
 // MEILISEARCH CLIENT CONFIGURATION
@@ -82,6 +86,7 @@ export interface ProductDocument {
     isBestSeller: boolean;
     isNewArrival: boolean;
     createdAt: number; // Unix timestamp for sorting
+    _fallback?: boolean;
 }
 
 /**
@@ -112,11 +117,35 @@ function toSearchDocument(product: Product, categoryName?: string): ProductDocum
 // SEARCH SERVICE
 // ============================================================================
 
+interface SearchOptions {
+    page?: number;
+    limit?: number;
+    category?: string;
+    brand?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    sort?: "price_asc" | "price_desc" | "newest" | "name";
+    onlyInStock?: boolean;
+}
+
 export const searchService = {
+    searchBreaker: undefined as any | undefined, // CircuitBreaker type is complex with args, simplifying to any to allow assignment
+
+    init() {
+        if (!this.searchBreaker) {
+            this.searchBreaker = createCircuitBreaker(
+                this.searchRaw.bind(this),
+                CIRCUIT_OPTIONS.SEARCH,
+                this.searchFallback.bind(this)
+            );
+        }
+    },
+
     /**
      * Initialize the products index with proper settings
      */
     async initializeIndex(): Promise<void> {
+        this.init(); // Ensure breaker is init
         const client = getClient();
 
         try {
@@ -204,26 +233,9 @@ export const searchService = {
     },
 
     /**
-     * Search products
+     * Raw search function
      */
-    async search(
-        query: string,
-        options?: {
-            page?: number;
-            limit?: number;
-            category?: string;
-            brand?: string;
-            minPrice?: number;
-            maxPrice?: number;
-            sort?: "price_asc" | "price_desc" | "newest" | "name";
-            onlyInStock?: boolean;
-        }
-    ): Promise<{
-        products: ProductDocument[];
-        total: number;
-        query: string;
-        processingTimeMs: number;
-    }> {
+    async searchRaw(query: string, options?: SearchOptions) {
         const client = getClient();
         const index = client.index(PRODUCT_INDEX_NAME);
 
@@ -271,25 +283,94 @@ export const searchService = {
                 break;
         }
 
+        const searchParams: SearchParams = {
+            offset,
+            limit,
+            filter: filters.length > 0 ? filters.join(" AND ") : undefined,
+            sort,
+        };
+
+        const result = await index.search<ProductDocument>(query, searchParams);
+
+        return {
+            products: result.hits,
+            total: result.estimatedTotalHits || 0,
+            query,
+            processingTimeMs: result.processingTimeMs,
+        }
+    },
+
+    /**
+     * Fallback search function (PostgreSQL)
+     */
+    async searchFallback(query: string, options?: SearchOptions) {
+        logger.warn('MeiliSearch circuit open - using PostgreSQL fallback', { query });
+
+        const limit = options?.limit || 20;
+        const page = options?.page || 1;
+        const offset = (page - 1) * limit;
+
+        // Basic ILIKE search on normalized columns
+        const whereConditions = [
+            or(
+                ilike(products.name, `%${query}%`),
+                ilike(products.description, `%${query}%`),
+                ilike(products.brand, `%${query}%`)
+            )
+        ];
+
+        // Apply basic filters if possible (simplified for fallback)
+        if (options?.minPrice) {
+            whereConditions.push(sql`${products.price} >= ${options.minPrice}`);
+        }
+
+        const results = await db
+            .select({
+                product: products,
+                categoryName: categories.name,
+            })
+            .from(products)
+            .leftJoin(categories, eq(products.categoryId, categories.id))
+            .where(and(...whereConditions))
+            .limit(limit)
+            .offset(offset)
+            .orderBy(desc(products.createdAt)); // Default to newest for fallback
+
+        // Transform result
+        const productDocs = results.map(row => ({
+            ...toSearchDocument(row.product, row.categoryName || undefined),
+            _fallback: true
+        }));
+
+        return {
+            products: productDocs,
+            total: productDocs.length, // Approximate/Limited
+            query,
+            processingTimeMs: 0,
+            _fallback: true
+        };
+    },
+
+    /**
+     * Search products (wrapped with circuit breaker)
+     */
+    async search(
+        query: string,
+        options?: SearchOptions
+    ): Promise<{
+        products: ProductDocument[];
+        total: number;
+        query: string;
+        processingTimeMs: number;
+        _fallback?: boolean;
+    }> {
+        this.init(); // Ensure initialized
         try {
-            const searchParams: SearchParams = {
-                offset,
-                limit,
-                filter: filters.length > 0 ? filters.join(" AND ") : undefined,
-                sort,
-            };
-
-            const result = await index.search<ProductDocument>(query, searchParams);
-
-            return {
-                products: result.hits,
-                total: result.estimatedTotalHits || 0,
-                query,
-                processingTimeMs: result.processingTimeMs,
-            };
+            return await this.searchBreaker!.fire(query, options);
         } catch (error) {
-            logger.error("Search failed:", error);
-            throw error;
+            logger.error("Search failed completely (circuit breaker & fallback):", error);
+            // Last resort empty fallback
+            return { products: [], total: 0, query, processingTimeMs: 0, _fallback: true };
         }
     },
 
@@ -390,6 +471,15 @@ export const searchService = {
             return null;
         }
     },
+
+    // Check breaker status
+    getBreakerStats() {
+        if (!this.searchBreaker) return null;
+        return {
+            opened: this.searchBreaker.opened,
+            stats: this.searchBreaker.stats
+        };
+    }
 };
 
 // ============================================================================
@@ -404,10 +494,8 @@ export async function syncAllProducts(): Promise<{ indexed: number; errors: numb
     const startTime = Date.now();
 
     try {
-        // Import repository dynamically to avoid circular dependencies
-        const { db } = await import("../db");
-        const { products, categories } = await import("@shared/schema");
-        const { eq } = await import("drizzle-orm");
+        // Import repository dynamically to avoid circular dependencies if needed, 
+        // but here we can just use imported db since we're in service layer.
 
         // Fetch all products with category names
         const allProducts = await db

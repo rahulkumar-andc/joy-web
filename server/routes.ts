@@ -5,15 +5,13 @@ import { userRepository } from "./repositories/userRepository";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
-import connectPg from "connect-pg-simple";
-import { pool } from "./db";
+import { RedisStore } from "connect-redis";
+import { redis } from "./cache"; // Use existing Upstash Redis client
 import bcrypt from "bcryptjs"; // Still used for passport strategy
 import { apiLimiter } from "./middleware/rate-limit";
 import { globalErrorHandler } from "./middleware/error";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
-
-const PostgresStore = connectPg(session);
 const scryptAsync = promisify(scrypt);
 
 async function verifyPassword(password: string, hash: string) {
@@ -27,9 +25,30 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   // === AUTH SETUP ===
-  const sessionStore = new PostgresStore({
-    pool,
-    createTableIfMissing: true,
+  // Redis session store (faster, scalable)
+  // Redis session store (faster, scalable)
+  const sessionStore = new RedisStore({
+    client: redis as any, // Upstash Redis client is compatible
+    prefix: "sess:", // Prefix session keys to avoid conflicts
+    ttl: 30 * 24 * 60 * 60, // 30 days in seconds
+    serializer: {
+      parse: (json: string) => {
+        try {
+          const result = JSON.parse(json);
+          // Ensure valid object to prevent corrupted session (missing cookie) crash
+          if (result && typeof result === "object" && !Array.isArray(result)) {
+            return result;
+          }
+          console.warn(`Redis session validation failed for key: ${json.substring(0, 20)}...`);
+          return null;
+        } catch (err) {
+          // Gracefully handle corrupted session data by treating it as missing
+          console.error("Redis session parse error (resetting session):", err);
+          return null;
+        }
+      },
+      stringify: (obj: any) => JSON.stringify(obj),
+    },
   });
 
   // Initialize WebSocket Service
@@ -120,7 +139,7 @@ export async function registerRoutes(
   const { webhookMgmtRouter } = await import("./routes/webhook-management");
   app.use(webhookMgmtRouter);
   app.use(heroRouter);
-  const { sellerRouter } = await import("./routes/seller");
+  const { sellerRouter } = await import("./routes/seller.routes");
   app.use(sellerRouter);
 
   // Reseller Module Routes
@@ -171,9 +190,41 @@ export async function registerRoutes(
   const healthRouter = (await import("./routes/health.routes")).default;
   app.use(healthRouter);
 
+  // Error Reporting Routes
+  const errorRouter = (await import("./routes/errors.routes")).default;
+  app.use("/api/errors", errorRouter);
+
   // Audit Analytics & Monitoring Routes
   const auditAnalyticsRouter = (await import("./routes/audit-analytics.routes")).default;
   app.use(auditAnalyticsRouter);
+
+  // Shipping Settings Routes (Admin + Public calculate endpoint)
+  const shippingRouter = (await import("./routes/shipping.routes")).default;
+  app.use("/api/shipping", shippingRouter);
+  app.use("/api/admin/shipping", shippingRouter);
+
+  // Push Notifications
+  const pushRouter = (await import("./routes/push.routes")).default;
+  app.use(pushRouter);
+
+  // COD Management Routes
+  const codRouter = (await import("./routes/cod.routes")).default;
+  app.use("/api/admin/orders", codRouter);
+
+  // Invoice Routes
+  const invoiceRouter = (await import("./routes/invoice.routes")).default;
+  app.use("/api/orders", invoiceRouter);
+
+  // Feature Flags Routes
+  const featureFlagsAdminRouter = (await import("./routes/feature-flags.routes")).default;
+  app.use("/api/admin/feature-flags", featureFlagsAdminRouter);
+
+  const featureFlagsClientRouter = (await import("./routes/client-feature-flags.routes")).default;
+  app.use("/api/feature-flags", featureFlagsClientRouter);
+
+  // Circuit Breaker Monitoring
+  const circuitBreakerRouter = (await import("./routes/circuit-breaker.routes")).default;
+  app.use("/api/admin/circuit-breakers", circuitBreakerRouter);
 
   // === SEED DATA ===
   // Move seeding to background or manual script to avoid blocking startup

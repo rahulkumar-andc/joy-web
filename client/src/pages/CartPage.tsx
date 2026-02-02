@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useCart, useUpdateCartItem, useRemoveFromCart } from "@/hooks/use-cart";
 import { useValidateCoupon } from "@/hooks/use-coupons";
+import { useShipping } from "@/hooks/use-shipping";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -30,9 +31,18 @@ export default function CartPage() {
     );
   }
 
-  const subtotal = cartItems?.reduce((acc, item) => acc + (Number(item.product.price) * item.item.quantity), 0) || 0;
-  const shipping = subtotal > 2000 ? 0 : 100;
+  const subtotal = cartItems?.reduce((acc, item) => {
+    const price = Number(item.product.discountPrice) > 0
+      ? Number(item.product.discountPrice)
+      : Number(item.product.price);
+    return acc + (price * item.item.quantity);
+  }, 0) || 0;
+  // Shipping Calculation
+  const { data: shippingData, isLoading: isShippingLoading, isError: isShippingError } = useShipping(subtotal);
+  const shipping = shippingData?.shippingCost ?? 0;
+
   const discount = appliedCoupon?.discount || 0;
+  // Make sure total calculation waits for shipping or handles defaults
   const total = Math.max(0, subtotal + shipping - discount);
 
   const handleApplyCoupon = async () => {
@@ -195,7 +205,13 @@ export default function CartPage() {
                   </div>
                   <div className="flex justify-between text-muted-foreground">
                     <span>Shipping</span>
-                    <span>{shipping === 0 ? "Free" : `₹${shipping}`}</span>
+                    <span>
+                      {isShippingLoading
+                        ? <Loader2 className="h-4 w-4 animate-spin inline" />
+                        : isShippingError
+                          ? <span className="text-destructive text-xs">Error calculating</span>
+                          : (shipping === 0 ? "Free" : `₹${shipping}`)}
+                    </span>
                   </div>
                   {discount > 0 && (
                     <div className="flex justify-between text-green-600">

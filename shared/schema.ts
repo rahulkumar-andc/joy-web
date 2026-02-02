@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, decimal, boolean, timestamp, unique, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, decimal, boolean, timestamp, unique, jsonb, index, real, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -53,6 +53,7 @@ export const products = pgTable("products", {
   colors: text("colors").array(),
   tags: text("tags").array(),
   brand: text("brand"),
+  sku: text("sku"), // Product SKU for seller reference
   // Flags
   showOnHomepage: boolean("show_on_homepage").default(false),
   isFeatured: boolean("is_featured").default(false),
@@ -61,10 +62,19 @@ export const products = pgTable("products", {
   isNewArrival: boolean("is_new_arrival").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   sellerId: integer("seller_id").references(() => users.id),
+
+  // Product Moderation (for multi-vendor marketplace)
+  moderationStatus: text("moderation_status", {
+    enum: ["pending", "approved", "rejected", "disabled"]
+  }).default("approved").notNull(), // Default approved for backward compatibility
+  rejectionReason: text("rejection_reason"),
+  moderatedBy: integer("moderated_by").references(() => users.id),
+  moderatedAt: timestamp("moderated_at"),
 }, (table) => ({
   categoryIdIdx: index("product_category_idx").on(table.categoryId),
   sellerIdIdx: index("product_seller_idx").on(table.sellerId),
   featuredIdx: index("product_featured_idx").on(table.isFeatured),
+  moderationIdx: index("product_moderation_idx").on(table.moderationStatus),
 }));
 
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
@@ -121,12 +131,18 @@ export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
   totalAmount: decimal("total_amount").notNull(),
-  status: text("status", { enum: ["pending", "paid", "shipped", "delivered", "cancelled"] }).default("pending").notNull(),
+  shippingCost: decimal("shipping_cost").default("0"), // Shipping cost for analytics
+  status: text("status", { enum: ["pending", "paid", "packed", "shipped", "out_for_delivery", "delivered", "cancelled"] }).default("pending").notNull(),
   paymentStatus: text("payment_status", { enum: ["pending", "paid", "failed"] }).default("pending").notNull(),
+
+  // Tracking Info
+  courierName: text("courier_name"),
+  trackingNumber: text("tracking_number"),
+  estimatedDeliveryDate: timestamp("estimated_delivery_date"),
 
   // Order state machine
   orderState: text("order_state", {
-    enum: ["CREATED", "PAYMENT_PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUND_PENDING"]
+    enum: ["CREATED", "PAYMENT_PENDING", "CONFIRMED", "PROCESSING", "PACKED", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED", "REFUND_PENDING"]
   }).default("CREATED").notNull(),
   stateVersion: integer("state_version").default(1).notNull(), // Optimistic locking
   stateHistory: jsonb("state_history").default([]), // Audit trail
@@ -137,6 +153,13 @@ export const orders = pgTable("orders", {
   // Reseller attribution
   resellerLinkId: integer("reseller_link_id"),
   referredByReseller: integer("referred_by_reseller"),
+
+  // COD (Cash on Delivery) Support
+  codAmount: decimal("cod_amount", { precision: 10, scale: 2 }),
+  codCollected: boolean("cod_collected").default(false),
+  codCollectedAt: timestamp("cod_collected_at"),
+  codCollectedBy: integer("cod_collected_by").references(() => users.id),
+  deliveryInstructions: text("delivery_instructions"),
 
   shippingAddress: jsonb("shipping_address").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -177,7 +200,9 @@ export const payments = pgTable("payments", {
     enum: ["PENDING", "SETTLED", "DELAYED", "FAILED"]
   }),
 
-  paymentMethod: text("payment_method"), // upi, card, netbanking, wallet
+  paymentMethod: text("payment_method", {
+    enum: ["upi", "card", "netbanking", "wallet", "cod"]
+  }), // Payment method used
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -637,7 +662,45 @@ export const insertCampaignReviewSchema = createInsertSchema(campaignReviews).om
 export type CampaignReview = typeof campaignReviews.$inferSelect;
 export type InsertCampaignReview = z.infer<typeof insertCampaignReviewSchema>;
 
-// === RE-EXPORT RBAC SCHEMA ===
+// === PUSH SUBSCRIPTIONS ===
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  endpoint: text("endpoint").notNull(),
+  keys: jsonb("keys").notNull(), // { p256dh: string, auth: string }
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).omit({ id: true, createdAt: true });
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
+
+// === FEATURE FLAGS ===
+export const featureFlags = pgTable('feature_flags', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull().unique(),
+  description: text('description'),
+  enabled: boolean('enabled').default(false).notNull(),
+
+  // Rollout strategy
+  rolloutPercentage: integer('rollout_percentage').default(0).notNull(),
+
+  // User targeting
+  userIds: integer('user_ids').array(),
+  userRoles: text('user_roles').array(),
+
+  // Metadata
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  createdBy: integer('created_by').references(() => users.id),
+  updatedBy: integer('updated_by').references(() => users.id),
+});
+
+export const insertFeatureFlagSchema = createInsertSchema(featureFlags).omit({ id: true, createdAt: true, updatedAt: true });
+export type FeatureFlag = typeof featureFlags.$inferSelect;
+export type InsertFeatureFlag = z.infer<typeof insertFeatureFlagSchema>;
+
+//=== RE-EXPORT RBAC SCHEMA ===
 export * from "./rbac-schema";
 
 // === RE-EXPORT PAYMENT SCHEMA ===
@@ -645,3 +708,9 @@ export * from "./payment-schema";
 
 // === RE-EXPORT RESELLER SCHEMA ===
 export * from "./reseller-schema";
+
+// === RE-EXPORT SHIPPING SCHEMA ===
+export * from "./shipping-schema";
+
+// === RE-EXPORT SELLER MARKETPLACE SCHEMA ===
+export * from "./seller-schema";
