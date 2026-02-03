@@ -1,4 +1,4 @@
-import { db } from "../../db";
+import { db } from "@server/db";
 import { campaignPersonalization, type CampaignPersonalization } from "@shared/schema";
 import { eq } from "drizzle-orm";
 

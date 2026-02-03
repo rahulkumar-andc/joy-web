@@ -28,7 +28,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Navbar } from "@/components/Navbar";
+import { AdminLayout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
 import {
     Loader2,
@@ -89,11 +89,14 @@ export default function AdminProductModerationPage() {
             action: "approve" | "reject";
             reason?: string;
         }) => {
-            const res = await fetch(`/api/admin/products/${productId}/moderate`, {
-                method: "PUT",
+            const res = await fetch(`/api/admin/products/${productId}/status`, {
+                method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify({ action, reason }),
+                body: JSON.stringify({
+                    status: action === "approve" ? "approved" : "rejected",
+                    reason
+                }),
             });
             if (!res.ok) {
                 const error = await res.json();
@@ -158,171 +161,150 @@ export default function AdminProductModerationPage() {
     }
 
     return (
-        <div className="min-h-screen bg-background">
-            <Navbar />
-            <main className="container mx-auto px-4 py-8">
-                {/* Header */}
-                <div className="mb-6">
-                    <h1 className="text-3xl font-bold">Product Moderation</h1>
-                    <p className="text-muted-foreground">
-                        Review and approve or reject pending products
-                    </p>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <Card>
-                        <CardContent className="py-4">
-                            <div className="text-2xl font-bold text-yellow-600">
-                                {data?.total || 0}
-                            </div>
-                            <p className="text-sm text-muted-foreground">Pending Review</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="py-4">
-                            <div className="text-2xl font-bold text-green-600">
-                                {data?.stats?.approvedToday || 0}
-                            </div>
-                            <p className="text-sm text-muted-foreground">Approved Today</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="py-4">
-                            <div className="text-2xl font-bold text-red-600">
-                                {data?.stats?.rejectedToday || 0}
-                            </div>
-                            <p className="text-sm text-muted-foreground">Rejected Today</p>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Products Table */}
+        <AdminLayout
+            title="Product Moderation"
+            subtitle="Review and approve or reject pending products"
+        >
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Pending Products ({data?.total || 0})</CardTitle>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
+                        <AlertCircle className="h-4 w-4 text-yellow-600" />
                     </CardHeader>
                     <CardContent>
-                        {data?.products?.length === 0 ? (
-                            <div className="text-center py-12">
-                                <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                                <h3 className="text-lg font-semibold mb-2">No Pending Products</h3>
-                                <p className="text-muted-foreground">
-                                    All products have been reviewed
-                                </p>
-                            </div>
-                        ) : (
-                            <>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-[80px]">Image</TableHead>
-                                            <TableHead>Product</TableHead>
-                                            <TableHead>Seller</TableHead>
-                                            <TableHead>Price</TableHead>
-                                            <TableHead>Stock</TableHead>
-                                            <TableHead>Submitted</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {data?.products?.map((product: PendingProduct) => (
-                                            <TableRow key={product.id}>
-                                                <TableCell>
-                                                    <div className="w-12 h-12 rounded bg-muted overflow-hidden">
-                                                        {product.images?.[0] ? (
-                                                            <img
-                                                                src={product.images[0]}
-                                                                alt={product.name}
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center">
-                                                                <Package className="h-6 w-6 text-muted-foreground" />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="max-w-[300px]">
-                                                        <div className="font-medium truncate">{product.name}</div>
-                                                        <div className="text-sm text-muted-foreground truncate">
-                                                            {product.description}
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="text-sm">
-                                                        <div className="font-medium">{product.seller.shopName}</div>
-                                                        <div className="text-muted-foreground">{product.seller.businessEmail}</div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>₹{parseFloat(product.price).toLocaleString()}</TableCell>
-                                                <TableCell>{product.stockQuantity}</TableCell>
-                                                <TableCell className="text-sm text-muted-foreground">
-                                                    {format(new Date(product.createdAt), "MMM d, yyyy")}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => handleView(product)}
-                                                        >
-                                                            <Eye className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="default"
-                                                            onClick={() => handleModerate(product, "approve")}
-                                                        >
-                                                            <Check className="h-4 w-4 mr-1" />
-                                                            Approve
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="destructive"
-                                                            onClick={() => handleModerate(product, "reject")}
-                                                        >
-                                                            <X className="h-4 w-4 mr-1" />
-                                                            Reject
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-
-                                {/* Pagination */}
-                                {data?.totalPages > 1 && (
-                                    <div className="flex justify-center items-center gap-2 mt-4">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                                            disabled={page === 1}
-                                        >
-                                            <ChevronLeft className="h-4 w-4" />
-                                        </Button>
-                                        <span className="text-sm text-muted-foreground">
-                                            Page {page} of {data.totalPages}
-                                        </span>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setPage(p => p + 1)}
-                                            disabled={page >= data.totalPages}
-                                        >
-                                            <ChevronRight className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                )}
-                            </>
-                        )}
+                        <div className="text-2xl font-bold text-yellow-600">
+                            {data?.total || 0}
+                        </div>
                     </CardContent>
                 </Card>
-            </main>
+            </div>
+
+            {/* Products Table */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Pending Products ({data?.total || 0})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {data?.products?.length === 0 ? (
+                        <div className="text-center py-12">
+                            <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                            <h3 className="text-lg font-semibold mb-2">No Pending Products</h3>
+                            <p className="text-muted-foreground">
+                                All products have been reviewed
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[80px]">Image</TableHead>
+                                        <TableHead>Product</TableHead>
+                                        <TableHead>Seller</TableHead>
+                                        <TableHead>Price</TableHead>
+                                        <TableHead>Stock</TableHead>
+                                        <TableHead>Submitted</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {data?.products?.map((product: PendingProduct) => (
+                                        <TableRow key={product.id}>
+                                            <TableCell>
+                                                <div className="w-12 h-12 rounded bg-muted overflow-hidden">
+                                                    {product.images?.[0] ? (
+                                                        <img
+                                                            src={product.images[0]}
+                                                            alt={product.name}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center">
+                                                            <Package className="h-6 w-6 text-muted-foreground" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="max-w-[300px]">
+                                                    <div className="font-medium truncate">{product.name}</div>
+                                                    <div className="text-sm text-muted-foreground truncate">
+                                                        {product.description}
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="text-sm">
+                                                    <div className="font-medium">{product.seller.shopName}</div>
+                                                    <div className="text-muted-foreground">{product.seller.businessEmail}</div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>₹{parseFloat(product.price).toLocaleString()}</TableCell>
+                                            <TableCell>{product.stockQuantity}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">
+                                                {format(new Date(product.createdAt), "MMM d, yyyy")}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleView(product)}
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="default"
+                                                        onClick={() => handleModerate(product, "approve")}
+                                                    >
+                                                        <Check className="h-4 w-4 mr-1" />
+                                                        Approve
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="destructive"
+                                                        onClick={() => handleModerate(product, "reject")}
+                                                    >
+                                                        <X className="h-4 w-4 mr-1" />
+                                                        Reject
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+
+                            {/* Pagination */}
+                            {data?.totalPages > 1 && (
+                                <div className="flex justify-center items-center gap-2 mt-4">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                                        disabled={page === 1}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    <span className="text-sm text-muted-foreground">
+                                        Page {page} of {data.totalPages}
+                                    </span>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setPage(p => p + 1)}
+                                        disabled={page >= data.totalPages}
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </CardContent>
+            </Card>
 
             {/* View Product Dialog */}
             <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
@@ -426,6 +408,6 @@ export default function AdminProductModerationPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </AdminLayout>
     );
 }

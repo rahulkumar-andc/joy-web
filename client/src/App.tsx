@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/hooks/use-theme";
 import { BottomNav } from "@/components/BottomNav";
 import { CookieConsentBanner, PrivacySettings } from "@/components/GDPRCompliance";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PromotionalBanner } from "@/components/PromotionalBanner";
 import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -20,6 +21,8 @@ const ProductPage = lazy(() => import("@/pages/ProductPage"));
 const CartPage = lazy(() => import("@/pages/CartPage"));
 const CheckoutPage = lazy(() => import("@/pages/CheckoutPage"));
 const AuthPage = lazy(() => import("@/pages/AuthPage"));
+const ForgotPasswordPage = lazy(() => import("@/pages/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("@/pages/ResetPasswordPage"));
 const OrdersPage = lazy(() => import("@/pages/OrdersPage"));
 const WishlistPage = lazy(() => import("@/pages/WishlistPage"));
 const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
@@ -43,6 +46,8 @@ const AnalyticsDashboard = lazy(() => import("@/pages/admin/AnalyticsDashboard")
 const ContentModeration = lazy(() => import("@/pages/admin/ContentModeration"));
 const AdminRefundsPage = lazy(() => import("@/pages/admin/AdminRefundsPage"));
 const AdminReturnDisputesPage = lazy(() => import("@/pages/admin/AdminReturnDisputesPage"));
+const AdminUsersPage = lazy(() => import("@/pages/admin/AdminUsersPage"));
+const AdminRBAC = lazy(() => import("@/pages/admin/AdminRBAC"));
 
 // Seller Pages
 const SellerDashboard = lazy(() => import("@/pages/seller/SellerDashboard"));
@@ -54,6 +59,7 @@ const SellerProductFormPage = lazy(() => import("@/pages/seller/SellerProductFor
 const SellerOrdersPage = lazy(() => import("@/pages/seller/SellerOrdersPage"));
 const SellerReturnRequestsPage = lazy(() => import("@/pages/seller/SellerReturnRequestsPage"));
 const SellerWalletPage = lazy(() => import("@/pages/seller/SellerWalletPage"));
+const SellerProfilePage = lazy(() => import("@/pages/seller/SellerProfilePage"));
 
 // Reseller Pages
 const BecomeResellerPage = lazy(() => import("@/pages/reseller").then(m => ({ default: m.BecomeResellerPage })));
@@ -119,7 +125,10 @@ function Router() {
         <Route path="/product/:id" component={ProductPage} />
         <Route path="/cart" component={CartPage} />
         <Route path="/checkout" component={CheckoutPage} />
+        <Route path="/auth/reset-password" component={ResetPasswordPage} />
         <Route path="/auth" component={AuthPage} />
+        <Route path="/forgot-password" component={ForgotPasswordPage} />
+        <Route path="/reset-password" component={ResetPasswordPage} />
         <Route path="/orders" component={OrdersPage} />
         <Route path="/wishlist" component={WishlistPage} />
         <Route path="/profile" component={ProfilePage} />
@@ -167,16 +176,22 @@ function Router() {
         <Route path="/admin" component={AdminPage} />
         <Route path="/admin/products" component={AdminProducts} />
         <Route path="/admin/orders" component={AdminOrders} />
-        <Route path="/seller/dashboard" component={SellerDashboard} />
-        <Route path="/seller/register" component={SellerRegistrationPage} />
-        <Route path="/seller/verify" component={SellerVerifyPage} />
-        <Route path="/seller/products" component={SellerProductsPage} />
-        <Route path="/seller/products/new" component={SellerProductFormPage} />
-        <Route path="/seller/products/:id/edit" component={SellerProductFormPage} />
-        <Route path="/seller/orders" component={SellerOrdersPage} />
-        <Route path="/seller/returns" component={SellerReturnRequestsPage} />
-        <Route path="/seller/wallet" component={SellerWalletPage} />
+
+        {/* Seller Routes - Protected (require login) */}
+        <ProtectedRoute path="/seller/dashboard" component={SellerDashboard} />
+        <ProtectedRoute path="/seller/register" component={SellerRegistrationPage} />
+        <ProtectedRoute path="/seller/verify" component={SellerVerifyPage} />
+        <ProtectedRoute path="/seller/products" component={SellerProductsPage} />
+        <ProtectedRoute path="/seller/products/new" component={SellerProductFormPage} />
+        <ProtectedRoute path="/seller/products/:id/edit" component={SellerProductFormPage} />
+        <ProtectedRoute path="/seller/orders" component={SellerOrdersPage} />
+        <ProtectedRoute path="/seller/returns" component={SellerReturnRequestsPage} />
+        <ProtectedRoute path="/seller/returns" component={SellerReturnRequestsPage} />
+        <ProtectedRoute path="/seller/wallet" component={SellerWalletPage} />
+        <ProtectedRoute path="/seller/payouts" component={SellerWalletPage} />
+        <ProtectedRoute path="/seller/profile" component={SellerProfilePage} />
         <Route path="/admin/dashboard" component={AdminDashboard} />
+        <Route path="/admin/users" component={AdminUsersPage} />
         <Route path="/admin/sellers" component={AdminSellersPage} />
         <Route path="/admin/products/moderation" component={AdminProductModerationPage} />
         <Route path="/admin/payouts" component={AdminPayoutApprovalPage} />
@@ -185,6 +200,7 @@ function Router() {
         <Route path="/admin/moderation" component={ContentModeration} />
         <Route path="/admin/refunds" component={AdminRefundsPage} />
         <Route path="/admin/disputes" component={AdminReturnDisputesPage} />
+        <Route path="/admin/rbac" component={AdminRBAC} />
         <Route path="/privacy-settings" component={PrivacySettings} />
 
         <Route component={NotFound} />
@@ -202,6 +218,7 @@ function App() {
             <AuthProvider>
               <TooltipProvider>
                 <Toaster />
+                <PromotionalBanner />
                 <div className="pb-16 md:pb-0">
                   <Router />
                 </div>

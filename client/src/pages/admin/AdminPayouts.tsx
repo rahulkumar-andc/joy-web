@@ -33,15 +33,18 @@ export default function AdminPayouts() {
     const [selectedPayoutId, setSelectedPayoutId] = useState<number | null>(null);
 
     // Fetch payouts
-    const { data: payouts, isLoading } = useQuery({
+    const { data: payoutsData, isLoading } = useQuery({
         queryKey: ["admin-payouts"],
         queryFn: async () => {
-            // TODO: Ensure this endpoint exists in backend
             const res = await api.get("/api/admin/payouts");
+            // API returns { payouts: [...], total, page, limit, totalPages }
             return res.data;
         },
         retry: false
     });
+
+    // Extract payouts array from response
+    const payouts = payoutsData?.payouts || [];
 
     // Complete mutation
     const completeMutation = useMutation({
@@ -98,14 +101,14 @@ export default function AdminPayouts() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {payouts?.length === 0 ? (
+                        {payouts.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                                     No payout requests found.
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            payouts?.map((payout: any) => (
+                            payouts.map((payout: any) => (
                                 <TableRow key={payout.id}>
                                     <TableCell>#{payout.id}</TableCell>
                                     <TableCell>#{payout.resellerId}</TableCell>

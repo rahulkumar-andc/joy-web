@@ -40,7 +40,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Navbar } from "@/components/Navbar";
+import { SellerLayout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
 import {
     Loader2,
@@ -72,6 +72,14 @@ const statusColors: Record<string, string> = {
     approved: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
     rejected: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
     disabled: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+};
+
+const statusLabels: Record<string, string> = {
+    pending: "🟡 Pending approval",
+    active: "🟢 Live",
+    approved: "🟢 Approved (Live)",
+    rejected: "🔴 Rejected",
+    disabled: "⚫ Disabled",
 };
 
 export default function SellerProductsPage() {
@@ -152,53 +160,47 @@ export default function SellerProductsPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
+            <SellerLayout title="My Products">
+                <div className="h-[50vh] flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            </SellerLayout>
         );
     }
 
     if (error) {
         return (
-            <div className="min-h-screen bg-background">
-                <Navbar />
-                <main className="container mx-auto px-4 py-16">
-                    <Card className="max-w-lg mx-auto text-center">
-                        <CardHeader>
-                            <AlertCircle className="h-16 w-16 mx-auto text-red-500 mb-4" />
-                            <CardTitle>Error Loading Products</CardTitle>
-                            <CardDescription>{(error as Error).message}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Button onClick={() => window.location.reload()}>
-                                Try Again
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </main>
-            </div>
+            <SellerLayout title="My Products">
+                <Card className="max-w-lg mx-auto text-center mt-12">
+                    <CardHeader>
+                        <AlertCircle className="h-16 w-16 mx-auto text-red-500 mb-4" />
+                        <CardTitle>Error Loading Products</CardTitle>
+                        <CardDescription>{(error as Error).message}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button onClick={() => window.location.reload()}>
+                            Try Again
+                        </Button>
+                    </CardContent>
+                </Card>
+            </SellerLayout>
         );
     }
 
     return (
-        <div className="min-h-screen bg-background">
-            <Navbar />
-            <main className="container mx-auto px-4 py-8">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                    <div>
-                        <h1 className="text-3xl font-bold">My Products</h1>
-                        <p className="text-muted-foreground">
-                            Manage your product listings
-                        </p>
-                    </div>
-                    <Link href="/seller/products/new">
-                        <Button>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Product
-                        </Button>
-                    </Link>
-                </div>
+        <SellerLayout
+            title="My Products"
+            subtitle="Manage your product listings"
+            actions={
+                <Link href="/seller/products/new">
+                    <Button>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Product
+                    </Button>
+                </Link>
+            }
+        >
+            <div className="space-y-6">
 
                 {/* Filters */}
                 <Card className="mb-6">
@@ -291,7 +293,7 @@ export default function SellerProductsPage() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge className={statusColors[product.moderationStatus] || statusColors.pending}>
-                                                        {product.moderationStatus}
+                                                        {statusLabels[product.moderationStatus] || product.moderationStatus}
                                                     </Badge>
                                                     {product.rejectionReason && (
                                                         <p className="text-xs text-red-500 mt-1">
@@ -356,7 +358,7 @@ export default function SellerProductsPage() {
                         )}
                     </CardContent>
                 </Card>
-            </main>
+            </div>
 
             {/* Delete Confirmation Dialog */}
             <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -384,6 +386,6 @@ export default function SellerProductsPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </SellerLayout>
     );
 }

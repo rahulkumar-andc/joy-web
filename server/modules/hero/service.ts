@@ -1,6 +1,6 @@
 import { heroCampaignRepository, type CampaignSelectionCriteria } from "./repository";
 import type { HeroCampaign, InsertHeroCampaign, CampaignReview } from "@shared/schema";
-import { logger } from "../../logger";
+import { logger } from "@server/logger";
 import fs from "fs";
 
 /**

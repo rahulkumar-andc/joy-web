@@ -1,0 +1,40 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+2026-02-04 00:02:38:238 [33mwarn[39m: [33mREAD_REPLICA_URL not set, all queries will use primary database[39m 
+2026-02-04 00:02:38:238 [33mwarn[39m: [33m⚠️ Environment variable warnings:[39m 
+2026-02-04 00:02:38:238 [33mwarn[39m: [33m  - Optional env var not set: RAZORPAY_WEBHOOK_SECRET - Razorpay webhook secret for signature verification[39m 
+2026-02-04 00:02:38:238 [33mwarn[39m: [33m  - Optional env var not set: SENTRY_DSN - Sentry error tracking DSN[39m 
+2026-02-04 00:02:38:238 [33mwarn[39m: [33m  - Optional env var not set: QUEUE_REDIS_URL - Redis URL for BullMQ queues[39m 
+2026-02-04 00:02:38:238 [33mwarn[39m: [33m  - Optional env var not set: READ_REPLICA_URL - PostgreSQL read replica connection string[39m 
+2026-02-04 00:02:38:238 [31merror[39m: [31m❌ Environment validation failed:[39m 
+2026-02-04 00:02:38:238 [31merror[39m: [31m  - Invalid RAZORPAY_KEY_SECRET: Must be a valid secret key[39m 
+2026-02-04 00:02:38:238 [33mwarn[39m: [33m⚠️ Running in development mode with missing variables[39m 
+⚠️  SENTRY_DSN not configured - Sentry disabled
+⚠️  SENTRY_DSN not configured - Sentry disabled
+2026-02-04 00:02:38:238 [32minfo[39m: [32mWebSocket Server initialized[39m 
+2026-02-04 00:02:38:238 [32minfo[39m: [32m📧 EmailService: SMTP Transporter initialized[39m 
+2026-02-04 00:02:39:239 [33mwarn[39m: [33m⚠️ Web Push not configured (VAPID keys missing)[39m 
+2026-02-04 00:02:39:239 [32minfo[39m: [32mFirebase Cloud Messaging not configured[39m 
+
+node:internal/process/promises:288
+            triggerUncaughtException(err, true /* fromPromise */);
+            ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/devshare/Code-Structure/db' imported from /home/devshare/Code-Structure/server/services/userService.ts
+    at new NodeError (node:internal/errors:405:5)
+    at finalizeResolution (node:internal/modules/esm/resolve:327:11)
+    at moduleResolve (node:internal/modules/esm/resolve:980:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1193:11)
+    at nextResolve (node:internal/modules/esm/hooks:864:28)
+    at resolveBase (file:///home/devshare/Code-Structure/node_modules/tsx/dist/esm/index.mjs?1770143556713:2:3744)
+    at async resolveDirectory (file:///home/devshare/Code-Structure/node_modules/tsx/dist/esm/index.mjs?1770143556713:2:4237)
+    at async resolve (file:///home/devshare/Code-Structure/node_modules/tsx/dist/esm/index.mjs?1770143556713:2:5355)
+    at async nextResolve (node:internal/modules/esm/hooks:864:22)
+    at async Hooks.resolve (node:internal/modules/esm/hooks:302:24) {
+  url: 'file:///home/devshare/Code-Structure/db',
+  code: 'ERR_MODULE_NOT_FOUND'
+}
+
+Node.js v18.19.1

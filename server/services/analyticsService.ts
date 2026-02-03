@@ -47,6 +47,28 @@ export class AnalyticsService {
         return result;
     }
 
+    async getProductStats() {
+        const result = await db.select({
+            status: products.moderationStatus,
+            count: sql<number>`COUNT(*)`
+        })
+            .from(products)
+            .groupBy(products.moderationStatus);
+
+        return result;
+    }
+
+    async getUserStats() {
+        const result = await db.select({
+            role: users.role,
+            count: sql<number>`COUNT(*)`
+        })
+            .from(users)
+            .groupBy(users.role);
+
+        return result;
+    }
+
     async getCustomerProfile(userId: number) {
         const [user] = await db
             .select({

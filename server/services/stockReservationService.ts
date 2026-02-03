@@ -150,24 +150,30 @@ export class StockReservationService {
      * Release expired reservations (cron job runs this every 5 minutes)
      */
     async releaseExpiredReservations(): Promise<number> {
-        const result = await db
-            .update(stockReservations)
-            .set({ status: "released" })
-            .where(
-                and(
-                    eq(stockReservations.status, "active"),
-                    lt(stockReservations.expiresAt, sql`NOW()`)
+        try {
+            const result = await db
+                .update(stockReservations)
+                .set({ status: "released" })
+                .where(
+                    and(
+                        eq(stockReservations.status, "active"),
+                        lt(stockReservations.expiresAt, sql`NOW()`)
+                    )
                 )
-            )
-            .returning();
+                .returning();
 
-        const count = result.length;
+            const count = result.length;
 
-        if (count > 0) {
-            logger.info(`Released ${count} expired stock reservations`);
+            if (count > 0) {
+                logger.info(`Released ${count} expired stock reservations`);
+            }
+
+            return count;
+        } catch (error) {
+            logger.error("Stock cleanup failed:", error);
+            // Don't let the cron job hang the entire connection pool
+            throw error;
         }
-
-        return count;
     }
 
     /**

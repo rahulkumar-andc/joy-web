@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Navbar } from "@/components/Navbar";
+import { AdminLayout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
 import {
     Loader2,
@@ -176,112 +176,122 @@ export default function AdminSellersPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
+            <div className="flex bg-background h-screen items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-background">
-            <Navbar />
-            <main className="container mx-auto px-4 py-8">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                    <div>
-                        <h1 className="text-3xl font-bold">Seller Management</h1>
-                        <p className="text-muted-foreground">
-                            Approve, reject, and manage sellers
-                        </p>
-                    </div>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <Card>
-                        <CardContent className="py-4">
-                            <div className="text-2xl font-bold text-yellow-600">
-                                {data?.stats?.pending || 0}
-                            </div>
-                            <p className="text-sm text-muted-foreground">Pending Review</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="py-4">
-                            <div className="text-2xl font-bold text-green-600">
-                                {data?.stats?.approved || 0}
-                            </div>
-                            <p className="text-sm text-muted-foreground">Approved</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="py-4">
-                            <div className="text-2xl font-bold text-orange-600">
-                                {data?.stats?.suspended || 0}
-                            </div>
-                            <p className="text-sm text-muted-foreground">Suspended</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="py-4">
-                            <div className="text-2xl font-bold text-red-600">
-                                {data?.stats?.rejected || 0}
-                            </div>
-                            <p className="text-sm text-muted-foreground">Rejected</p>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Filters */}
-                <Card className="mb-6">
-                    <CardContent className="py-4">
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Search by shop name, email, or phone..."
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    className="pl-9"
-                                />
-                            </div>
-                            <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                <SelectTrigger className="w-[200px]">
-                                    <SelectValue placeholder="Filter by status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Sellers</SelectItem>
-                                    <SelectItem value="pending">Pending</SelectItem>
-                                    <SelectItem value="approved">Approved</SelectItem>
-                                    <SelectItem value="rejected">Rejected</SelectItem>
-                                    <SelectItem value="suspended">Suspended</SelectItem>
-                                    <SelectItem value="blacklisted">Blacklisted</SelectItem>
-                                </SelectContent>
-                            </Select>
+        <AdminLayout
+            title="Seller Management"
+            subtitle="Approve, reject, and manage sellers"
+        >
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
+                        <Shield className="h-4 w-4 text-yellow-600" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-yellow-600">
+                            {data?.stats?.pending || 0}
                         </div>
                     </CardContent>
                 </Card>
-
-                {/* Sellers Table */}
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Sellers ({data?.total || 0})</CardTitle>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Approved</CardTitle>
+                        <ShieldCheck className="h-4 w-4 text-green-600" />
                     </CardHeader>
                     <CardContent>
-                        <Table>
-                            <TableHeader>
+                        <div className="text-2xl font-bold text-green-600">
+                            {data?.stats?.approved || 0}
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Suspended</CardTitle>
+                        <Ban className="h-4 w-4 text-orange-600" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-orange-600">
+                            {data?.stats?.suspended || 0}
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Rejected</CardTitle>
+                        <X className="h-4 w-4 text-red-600" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-red-600">
+                            {data?.stats?.rejected || 0}
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Filters */}
+            <Card className="mb-6">
+                <CardContent className="py-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Search by shop name, email, or phone..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-9"
+                            />
+                        </div>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-[200px]">
+                                <SelectValue placeholder="Filter by status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Sellers</SelectItem>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="approved">Approved</SelectItem>
+                                <SelectItem value="rejected">Rejected</SelectItem>
+                                <SelectItem value="suspended">Suspended</SelectItem>
+                                <SelectItem value="blacklisted">Blacklisted</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Sellers Table */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Sellers ({data?.total || 0})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Shop Name</TableHead>
+                                <TableHead>Contact</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead>Stats</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Joined</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {data?.sellers?.length === 0 ? (
                                 <TableRow>
-                                    <TableHead>Shop Name</TableHead>
-                                    <TableHead>Contact</TableHead>
-                                    <TableHead>Type</TableHead>
-                                    <TableHead>Stats</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Joined</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
+                                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                                        No sellers found
+                                    </TableCell>
                                 </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {data?.sellers?.map((seller: Seller) => {
+                            ) : (
+                                data?.sellers?.map((seller: Seller) => {
                                     const Icon = statusIcons[seller.status] || Shield;
                                     return (
                                         <TableRow key={seller.id}>
@@ -299,9 +309,9 @@ export default function AdminSellersPage() {
                                             </TableCell>
                                             <TableCell>
                                                 <div className="text-sm">
-                                                    <div>{seller.totalOrders} orders</div>
+                                                    <div>{seller.totalOrders || 0} orders</div>
                                                     <div className="text-muted-foreground">
-                                                        ₹{parseFloat(seller.totalRevenue).toLocaleString()}
+                                                        ₹{parseFloat(seller.totalRevenue || "0").toLocaleString()}
                                                     </div>
                                                 </div>
                                             </TableCell>
@@ -368,37 +378,37 @@ export default function AdminSellersPage() {
                                             </TableCell>
                                         </TableRow>
                                     );
-                                })}
-                            </TableBody>
-                        </Table>
+                                })
+                            )}
+                        </TableBody>
+                    </Table>
 
-                        {/* Pagination */}
-                        {data?.totalPages > 1 && (
-                            <div className="flex justify-center items-center gap-2 mt-4">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                    disabled={page === 1}
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <span className="text-sm text-muted-foreground">
-                                    Page {page} of {data.totalPages}
-                                </span>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setPage(p => p + 1)}
-                                    disabled={page >= data.totalPages}
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </main>
+                    {/* Pagination */}
+                    {data?.totalPages > 1 && (
+                        <div className="flex justify-center items-center gap-2 mt-4">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <span className="text-sm text-muted-foreground">
+                                Page {page} of {data.totalPages}
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage(p => p + 1)}
+                                disabled={page >= data.totalPages}
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
 
             {/* Action Confirmation Dialog */}
             <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>
@@ -448,6 +458,6 @@ export default function AdminSellersPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </AdminLayout>
     );
 }

@@ -1,6 +1,5 @@
 import { useInfiniteProducts, useCategories } from "@/hooks/use-products";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
+import { PremiumHeader, PremiumFooter } from "@/components/layout";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductSkeletonGrid } from "@/components/ProductSkeleton";
 import { QuickViewModal } from "@/components/QuickViewModal";
@@ -310,7 +309,7 @@ export default function ShopPage() {
   return (
     <div className="min-h-screen bg-background font-body">
       <SEO title="Shop All Products" description="Browse our extensive collection of premium products." />
-      <Navbar />
+      <PremiumHeader />
 
       {/* Header */}
       <div className="bg-warm-beige py-8 md:py-12">
@@ -440,7 +439,7 @@ export default function ShopPage() {
         </div>
       </div>
 
-      <Footer />
+      <PremiumFooter />
 
       {/* Quick View Modal */}
       <QuickViewModal

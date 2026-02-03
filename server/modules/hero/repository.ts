@@ -1,7 +1,8 @@
 
-import { db } from "../../db";
+import { db } from "@server/db";
 import { heroCampaigns, heroAnalytics, campaignReviews, type InsertHeroCampaign, type HeroCampaign, type InsertCampaignReview, type CampaignReview } from "@shared/schema";
 import { eq, desc, and, or, isNull, lte, gte, inArray } from "drizzle-orm";
+import { logger } from "@server/logger";
 
 /**
  * Target audience types for campaign targeting

@@ -532,7 +532,7 @@ class SellerOnboardingService {
         },
         page: number = 1,
         limit: number = 20
-    ): Promise<{ sellers: SellerProfile[]; total: number }> {
+    ): Promise<{ sellers: SellerProfile[]; total: number; stats: Record<string, number> }> {
         const offset = (page - 1) * limit;
 
         let whereClause = undefined;
@@ -548,12 +548,27 @@ class SellerOnboardingService {
             offset,
         });
 
+        // Get total count for pagination
         const [{ count }] = await db
             .select({ count: sql<number>`count(*)` })
             .from(sellerProfiles)
             .where(whereClause);
 
-        return { sellers, total: Number(count) };
+        // Get overall stats (independent of filters)
+        const statsRows = await db
+            .select({
+                status: sellerProfiles.status,
+                count: sql<number>`count(*)`
+            })
+            .from(sellerProfiles)
+            .groupBy(sellerProfiles.status);
+
+        const stats = statsRows.reduce((acc, curr) => {
+            acc[curr.status || "unknown"] = Number(curr.count);
+            return acc;
+        }, {} as Record<string, number>);
+
+        return { sellers, total: Number(count), stats };
     }
 
     /**

@@ -29,19 +29,53 @@ export class OrderRepository {
         return await db.select().from(orders).where(eq(orders.userId, userId)).orderBy(desc(orders.createdAt));
     }
 
-    async getAllOrders(): Promise<(Order & { user: { name: string; email: string } })[]> {
+    async getAllOrders(
+        page: number = 1,
+        limit: number = 20,
+        filters: { status?: string; search?: string } = {}
+    ): Promise<{ orders: (Order & { user: { name: string; email: string } })[]; total: number }> {
+        const offset = (page - 1) * limit;
+
+        let conditions = undefined;
+        const conditionsList = [];
+
+        if (filters.status && filters.status !== 'all') {
+            conditionsList.push(eq(orders.status, filters.status));
+        }
+
+        if (filters.search) {
+            conditionsList.push(
+                sql`(${orders.id}::text ILIKE ${`%${filters.search}%`} OR ${users.email} ILIKE ${`%${filters.search}%`} OR ${users.name} ILIKE ${`%${filters.search}%`})`
+            );
+        }
+
+        if (conditionsList.length > 0) {
+            conditions = and(...conditionsList);
+        }
+
         const results = await db.select({
             order: orders,
             user: users
         })
             .from(orders)
             .innerJoin(users, eq(orders.userId, users.id))
-            .orderBy(desc(orders.createdAt));
+            .where(conditions)
+            .orderBy(desc(orders.createdAt))
+            .limit(limit)
+            .offset(offset);
 
-        return results.map(r => ({
+        const [{ count }] = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(orders)
+            .innerJoin(users, eq(orders.userId, users.id))
+            .where(conditions);
+
+        const formattedOrders = results.map(r => ({
             ...r.order,
             user: { name: r.user.name, email: r.user.email }
         }));
+
+        return { orders: formattedOrders, total: Number(count) };
     }
 
     async updateOrderStatus(id: number, status: string, courierName?: string, trackingNumber?: string, estimatedDeliveryDate?: string): Promise<Order | undefined> {

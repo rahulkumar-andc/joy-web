@@ -3,8 +3,7 @@ import { useProductReviews, useProductRating, useCreateReview } from "@/hooks/us
 import { useAddToWishlist, useRemoveFromWishlist, useIsInWishlist } from "@/hooks/use-wishlist";
 import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
 import { useAuth } from "@/hooks/use-auth";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
+import { PremiumHeader, PremiumFooter } from "@/components/layout";
 import { SizeGuideDialog } from "@/components/SizeGuideDialog";
 import { RecentlyViewed } from "@/components/RecentlyViewed";
 import { useRoute, useLocation } from "wouter";
@@ -53,7 +52,7 @@ export default function ProductPage() {
   if (isLoading || !product) {
     return (
       <div className="min-h-screen bg-background font-body">
-        <Navbar />
+        <PremiumHeader />
         <div className="container mx-auto px-4 py-12">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <div className="aspect-[3/4]"><Skeleton className="w-full h-full rounded-2xl" /></div>
@@ -112,7 +111,7 @@ export default function ProductPage() {
         description={product.description}
         image={product.images[0]}
       />
-      <Navbar />
+      <PremiumHeader />
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <Link href="/shop" className="inline-flex items-center text-muted-foreground hover:text-primary mb-8 transition-colors">
@@ -354,7 +353,7 @@ export default function ProductPage() {
         <RecentlyViewed excludeId={product.id} />
       </div>
 
-      <Footer />
+      <PremiumFooter />
     </div>
   );
 }

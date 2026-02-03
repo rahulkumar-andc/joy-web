@@ -24,13 +24,38 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // === AUTH SETUP ===
   // Redis session store (faster, scalable)
-  // Redis session store (faster, scalable)
+  // Custom serializer to handle Upstash's auto-JSON parsing behavior
+  // Upstash returns parsed objects, but connect-redis expects strings
+  const sessionSerializer = {
+    parse: (value: string | object): session.SessionData => {
+      try {
+        // If Upstash already parsed it as an object, return it directly
+        if (typeof value === 'object' && value !== null) {
+          return value as session.SessionData;
+        }
+        // If it's a string, parse it normally
+        if (typeof value === 'string') {
+          return JSON.parse(value);
+        }
+        // Return empty session for invalid data
+        return { cookie: { originalMaxAge: null } } as session.SessionData;
+      } catch (error) {
+        // Gracefully handle corrupted session data with empty session
+        console.error('Session parse error, returning empty session:', error);
+        return { cookie: { originalMaxAge: null } } as session.SessionData;
+      }
+    },
+    stringify: (value: session.SessionData): string => {
+      return JSON.stringify(value);
+    },
+  };
+
   const sessionStore = new RedisStore({
     client: redis as any, // Upstash Redis client is compatible
-    prefix: "sess:v2:", // Prefix session keys to avoid conflicts and rotate corrupted sessions
+    prefix: "sess:v3:", // Prefix session keys, v3 for clean slate after serializer fix
     ttl: 30 * 24 * 60 * 60, // 30 days in seconds
+    serializer: sessionSerializer,
   });
 
   // Initialize WebSocket Service

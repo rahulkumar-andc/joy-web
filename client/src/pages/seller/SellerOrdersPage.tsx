@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Navbar } from "@/components/Navbar";
+import { SellerLayout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
 import {
     Loader2,
@@ -209,47 +209,36 @@ export default function SellerOrdersPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
+            <SellerLayout title="My Orders">
+                <div className="h-[50vh] flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            </SellerLayout>
         );
     }
 
     if (error) {
         return (
-            <div className="min-h-screen bg-background">
-                <Navbar />
-                <main className="container mx-auto px-4 py-16">
-                    <Card className="max-w-lg mx-auto text-center">
-                        <CardHeader>
-                            <AlertCircle className="h-16 w-16 mx-auto text-red-500 mb-4" />
-                            <CardTitle>Error Loading Orders</CardTitle>
-                            <CardDescription>{(error as Error).message}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Button onClick={() => window.location.reload()}>
-                                Try Again
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </main>
-            </div>
+            <SellerLayout title="My Orders">
+                <Card className="max-w-lg mx-auto text-center mt-12">
+                    <CardHeader>
+                        <AlertCircle className="h-16 w-16 mx-auto text-red-500 mb-4" />
+                        <CardTitle>Error Loading Orders</CardTitle>
+                        <CardDescription>{(error as Error).message}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button onClick={() => window.location.reload()}>
+                            Try Again
+                        </Button>
+                    </CardContent>
+                </Card>
+            </SellerLayout>
         );
     }
 
     return (
-        <div className="min-h-screen bg-background">
-            <Navbar />
-            <main className="container mx-auto px-4 py-8">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                    <div>
-                        <h1 className="text-3xl font-bold">My Orders</h1>
-                        <p className="text-muted-foreground">
-                            Manage and fulfill customer orders
-                        </p>
-                    </div>
-                </div>
+        <SellerLayout title="My Orders" subtitle="Manage and fulfill customer orders">
+            <div className="space-y-6">
 
                 {/* Filters */}
                 <Card className="mb-6">
@@ -404,7 +393,7 @@ export default function SellerOrdersPage() {
                         )}
                     </CardContent>
                 </Card>
-            </main>
+            </div>
 
             {/* Update Status Dialog */}
             <Dialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen}>
@@ -478,6 +467,6 @@ export default function SellerOrdersPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </SellerLayout>
     );
 }

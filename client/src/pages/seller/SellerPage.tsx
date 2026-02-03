@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/Navbar";
+import { PremiumHeader } from "@/components/layout";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -8,7 +8,7 @@ import { TrendingUp, ShieldCheck, DollarSign, Package } from "lucide-react";
 export default function SellerPage() {
     return (
         <div className="min-h-screen bg-background">
-            <Navbar />
+            <PremiumHeader />
 
             {/* Hero Section */}
             <section className="relative pt-20 pb-20 md:pt-32 md:pb-32 overflow-hidden">

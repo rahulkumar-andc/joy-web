@@ -24,7 +24,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Navbar } from "@/components/Navbar";
+import { PremiumHeader } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Store, CheckCircle2 } from "lucide-react";
 
@@ -128,7 +128,7 @@ export default function SellerRegistrationPage() {
     if (registrationSuccess) {
         return (
             <div className="min-h-screen bg-background">
-                <Navbar />
+                <PremiumHeader />
                 <main className="container mx-auto px-4 py-16">
                     <Card className="max-w-lg mx-auto text-center">
                         <CardHeader>
@@ -154,7 +154,7 @@ export default function SellerRegistrationPage() {
 
     return (
         <div className="min-h-screen bg-background">
-            <Navbar />
+            <PremiumHeader />
             <main className="container mx-auto px-4 py-8">
                 <div className="max-w-2xl mx-auto">
                     <div className="text-center mb-8">

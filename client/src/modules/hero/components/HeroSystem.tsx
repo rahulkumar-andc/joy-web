@@ -79,7 +79,7 @@ export function HeroSystem() {
     }
 
     return (
-        <section className="relative h-[80vh] min-h-[600px] w-full overflow-hidden bg-black text-white">
+        <section className="relative h-screen min-h-[700px] w-full overflow-hidden bg-black text-white">
             <AnimatePresence mode="wait">
                 <motion.div
                     key={currentHero.ui.id || 'default'}
@@ -105,7 +105,7 @@ export function HeroSystem() {
 
             {/* Carousel Indicators */}
             {heroes.length > 1 && (
-                <div className="absolute bottom-8 left-0 right-0 z-30 flex justify-center gap-2">
+                <div className="absolute bottom-20 left-0 right-0 z-30 flex justify-center gap-2">
                     {heroes.map((_, idx) => (
                         <button
                             key={idx}
@@ -116,6 +116,24 @@ export function HeroSystem() {
                     ))}
                 </div>
             )}
+
+            {/* Scroll Indicator */}
+            <div className="absolute bottom-8 left-0 right-0 z-30 flex flex-col items-center animate-bounce">
+                <span className="text-xs uppercase tracking-widest mb-2 text-white/60">Scroll</span>
+                <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-white/60"
+                >
+                    <path d="M12 5v14M19 12l-7 7-7-7" />
+                </svg>
+            </div>
         </section>
     );
 }

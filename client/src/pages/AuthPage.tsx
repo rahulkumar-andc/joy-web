@@ -30,13 +30,17 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (user) {
-      if (user.role === "admin") {
+      // Check for redirect param - navigate there after login
+      const redirectTo = searchParams.get("redirect");
+      if (redirectTo) {
+        setLocation(decodeURIComponent(redirectTo));
+      } else if (user.role === "admin") {
         setLocation("/admin");
       } else {
         setLocation("/");
       }
     }
-  }, [user, setLocation]);
+  }, [user, setLocation, searchString]);
 
   // Handle URL-based tab/mode switching
   useEffect(() => {

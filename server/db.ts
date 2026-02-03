@@ -23,6 +23,14 @@ export const writePool = new Pool({
   max: 20, // Maximum connections for writes
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000, // Increased from 2s to 10s to prevent startup timeouts
+  // Production hardening: TCP keepalive to prevent idle connection drops
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 60000, // Start keepalive probes after 60s idle
+});
+
+// Error listener to prevent process crash on unexpected pool errors
+writePool.on('error', (err) => {
+  logger.error('Unexpected error on idle write pool client', err);
 });
 
 // Read replica connection pool (optional)
@@ -34,6 +42,14 @@ if (process.env.READ_REPLICA_URL) {
     max: 30, // More connections for reads
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
+    // Production hardening: TCP keepalive
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 60000,
+  });
+
+  // Error listener for read pool
+  readPool.on('error', (err) => {
+    logger.error('Unexpected error on idle read pool client', err);
   });
 
   logger.info('Read replica configured', {

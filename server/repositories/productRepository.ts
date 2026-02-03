@@ -10,7 +10,13 @@ export interface ProductWithCategory extends Product {
 
 export class ProductRepository {
     async findById(id: number): Promise<Product | undefined> {
-        const [product] = await db.select().from(products).where(eq(products.id, id));
+        // Strictly filter by moderationStatus for public access
+        const [product] = await db.select()
+            .from(products)
+            .where(and(
+                eq(products.id, id),
+                eq(products.moderationStatus, 'approved')
+            ));
         return product;
     }
 
@@ -27,7 +33,10 @@ export class ProductRepository {
             })
             .from(products)
             .leftJoin(categories, eq(products.categoryId, categories.id))
-            .where(eq(products.id, id));
+            .where(and(
+                eq(products.id, id),
+                eq(products.moderationStatus, 'approved')
+            ));
 
         const duration = Date.now() - startTime;
         if (duration > 100) {
@@ -45,6 +54,9 @@ export class ProductRepository {
     async findAll(filters?: { category?: string; search?: string; sort?: string; page?: number; limit?: number }): Promise<{ products: Product[]; total: number }> {
         const startTime = Date.now();
         const conditions = [];
+
+        // Strictly enforce filtering by APPROVED products for public API
+        conditions.push(eq(products.moderationStatus, "approved"));
 
         // Optimized: Use subquery for category instead of separate query
         if (filters?.category) {
@@ -108,6 +120,9 @@ export class ProductRepository {
     async findAllWithCategories(filters?: { category?: string; search?: string; sort?: string; page?: number; limit?: number }): Promise<{ products: ProductWithCategory[]; total: number }> {
         const startTime = Date.now();
         const conditions = [];
+
+        // Strictly enforce filtering by APPROVED products for public API
+        conditions.push(eq(products.moderationStatus, "approved"));
 
         if (filters?.category) {
             conditions.push(eq(categories.slug, filters.category));

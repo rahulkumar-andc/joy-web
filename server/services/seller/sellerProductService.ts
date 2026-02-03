@@ -1,6 +1,6 @@
 import { db } from "../../db";
 import { eq, and, desc, sql, like, or } from "drizzle-orm";
-import { products, Product, InsertProduct, categories } from "@shared/schema";
+import { products, Product, InsertProduct, categories, users } from "@shared/schema";
 import { sellerProfiles, sellerNotifications } from "@shared/seller-schema";
 
 // ============================================================================
@@ -320,25 +320,40 @@ class SellerProductService {
     async getPendingProducts(
         page: number = 1,
         limit: number = 20
-    ): Promise<{ products: Product[]; total: number }> {
+    ): Promise<{ products: any[]; total: number }> {
         const offset = (page - 1) * limit;
 
-        const productsList = await db.query.products.findMany({
-            where: eq(products.moderationStatus, "pending"),
-            with: {
-                category: true,
-            },
-            orderBy: [desc(products.createdAt)],
-            limit,
-            offset,
-        });
+        const rows = await db
+            .select({
+                product: products,
+                seller: {
+                    shopName: sellerProfiles.shopName,
+                    businessEmail: sellerProfiles.businessEmail,
+                },
+                userEmail: users.email
+            })
+            .from(products)
+            .leftJoin(users, eq(products.sellerId, users.id))
+            .leftJoin(sellerProfiles, eq(users.id, sellerProfiles.userId))
+            .where(eq(products.moderationStatus, "pending"))
+            .orderBy(desc(products.createdAt))
+            .limit(limit)
+            .offset(offset);
 
         const [{ count }] = await db
             .select({ count: sql<number>`count(*)` })
             .from(products)
             .where(eq(products.moderationStatus, "pending"));
 
-        return { products: productsList, total: Number(count) };
+        const formattedProducts = rows.map(row => ({
+            ...row.product,
+            seller: {
+                shopName: row.seller?.shopName || "Unknown Shop",
+                businessEmail: row.seller?.businessEmail || row.userEmail || "No Email",
+            }
+        }));
+
+        return { products: formattedProducts, total: Number(count) };
     }
 
     /**

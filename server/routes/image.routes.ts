@@ -3,7 +3,7 @@ import { imagekitService } from '../services/imagekitService';
 import { imageMigrationService } from '../services/imageMigrationService';
 import { catchAsync } from '../utils/catchAsync';
 import { AppError } from '../utils/AppError';
-import { requireAuth, requireAdmin } from '../middleware/auth';
+import { requireAuth, requireAdmin, requireSeller } from '../middleware/auth';
 import multer from 'multer';
 
 export const imageRouter = Router();
@@ -31,7 +31,7 @@ const upload = multer({
 imageRouter.post(
     '/api/images/upload',
     requireAuth,
-    requireAdmin,
+    requireSeller, // Changed from requireAdmin to allow sellers to upload
     upload.single('image'),
     catchAsync(async (req: Request, res: Response) => {
         if (!req.file) {
@@ -59,7 +59,7 @@ imageRouter.post(
 imageRouter.post(
     '/api/images/upload-multiple',
     requireAuth,
-    requireAdmin,
+    requireSeller, // Changed from requireAdmin to allow sellers to upload
     upload.array('images', 10), // Max 10 images
     catchAsync(async (req: Request, res: Response) => {
         const files = req.files as Express.Multer.File[];
@@ -81,6 +81,40 @@ imageRouter.post(
         }
 
         res.status(201).json(results);
+    })
+);
+
+/**
+ * POST /api/upload/images
+ * Upload multiple images - route used by seller product form
+ * Returns { urls: string[] } format expected by frontend
+ */
+imageRouter.post(
+    '/api/upload/images',
+    requireAuth,
+    requireSeller,
+    upload.array('images', 10),
+    catchAsync(async (req: Request, res: Response) => {
+        const files = req.files as Express.Multer.File[];
+
+        if (!files || files.length === 0) {
+            throw new AppError('No image files provided', 400);
+        }
+
+        const folder = req.body.folder || '/products';
+        const urls: string[] = [];
+
+        for (const file of files) {
+            const result = await imagekitService.uploadImage({
+                file: file.buffer,
+                fileName: file.originalname,
+                folder
+            });
+            urls.push(result.url);
+        }
+
+        // Return format expected by frontend: { urls: [...] }
+        res.status(201).json({ urls });
     })
 );
 

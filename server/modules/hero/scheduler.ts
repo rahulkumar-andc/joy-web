@@ -1,4 +1,4 @@
-import { db } from "../../db";
+import { db } from "@server/db";
 import { campaignSchedules, heroCampaigns, type CampaignSchedule, type InsertCampaignSchedule } from "@shared/schema";
 import { eq, lte, and, sql } from "drizzle-orm";
 import { heroCampaignRepository } from "./repository";

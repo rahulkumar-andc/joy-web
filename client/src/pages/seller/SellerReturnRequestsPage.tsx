@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { SellerLayout } from "@/components/layout";
 import {
     Card,
     CardContent,
@@ -162,139 +163,134 @@ export default function SellerReturnRequestsPage() {
 
     if (isLoading) {
         return (
-            <div className="h-full flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
+            <SellerLayout title="Return Requests">
+                <div className="h-[50vh] flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            </SellerLayout>
         );
     }
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Return Requests</h1>
-                    <p className="text-muted-foreground">
-                        Manage customer return requests and approvals
-                    </p>
-                </div>
-            </div>
-
-            <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <CardTitle>Returns ({data?.total || 0})</CardTitle>
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Status</SelectItem>
-                                <SelectItem value="requested">Pending Action</SelectItem>
-                                <SelectItem value="seller_approved">Approved</SelectItem>
-                                <SelectItem value="seller_rejected">Rejected</SelectItem>
-                                <SelectItem value="completed">Completed</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    {data?.requests?.length === 0 ? (
-                        <div className="text-center py-10 text-muted-foreground">
-                            No return requests found.
+        <SellerLayout title="Return Requests" subtitle="Manage customer return requests and approvals">
+            <div className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <CardTitle>Returns ({data?.total || 0})</CardTitle>
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="w-[180px]">
+                                    <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Status</SelectItem>
+                                    <SelectItem value="requested">Pending Action</SelectItem>
+                                    <SelectItem value="seller_approved">Approved</SelectItem>
+                                    <SelectItem value="seller_rejected">Rejected</SelectItem>
+                                    <SelectItem value="completed">Completed</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Return #</TableHead>
-                                    <TableHead>Order</TableHead>
-                                    <TableHead>Reason</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Customer</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {data?.requests.map((req: ReturnRequest) => (
-                                    <TableRow key={req.id}>
-                                        <TableCell className="font-medium">{req.returnNumber}</TableCell>
-                                        <TableCell>
-                                            <div className="text-sm">{req.sellerOrder.sellerOrderNumber}</div>
-                                            <div className="text-xs text-muted-foreground">₹{req.sellerOrder.subtotal}</div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="text-sm">{req.reason}</div>
-                                            <div className="text-xs text-muted-foreground truncate max-w-[200px]">{req.description}</div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge className={statusColors[req.status] || ""}>
-                                                {req.status.replace("_", " ")}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>{req.customer.name}</TableCell>
-                                        <TableCell className="text-right">
-                                            {req.status === "requested" ? (
-                                                <div className="flex justify-end gap-2">
-                                                    <Button size="sm" variant="outline" className="text-green-600 hover:text-green-700" onClick={() => handleProcess(req, "approve")}>
-                                                        <Check className="h-4 w-4 mr-1" /> Approve
-                                                    </Button>
-                                                    <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700" onClick={() => handleProcess(req, "reject")}>
-                                                        <X className="h-4 w-4 mr-1" /> Reject
-                                                    </Button>
-                                                </div>
-                                            ) : (
-                                                <span className="text-muted-foreground text-sm">
-                                                    {req.sellerResponse ? "Responded" : "-"}
-                                                </span>
-                                            )}
-                                        </TableCell>
+                    </CardHeader>
+                    <CardContent>
+                        {data?.requests?.length === 0 ? (
+                            <div className="text-center py-10 text-muted-foreground">
+                                No return requests found.
+                            </div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Return #</TableHead>
+                                        <TableHead>Order</TableHead>
+                                        <TableHead>Reason</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Customer</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    )}
-                </CardContent>
-            </Card>
+                                </TableHeader>
+                                <TableBody>
+                                    {data?.requests.map((req: ReturnRequest) => (
+                                        <TableRow key={req.id}>
+                                            <TableCell className="font-medium">{req.returnNumber}</TableCell>
+                                            <TableCell>
+                                                <div className="text-sm">{req.sellerOrder.sellerOrderNumber}</div>
+                                                <div className="text-xs text-muted-foreground">₹{req.sellerOrder.subtotal}</div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="text-sm">{req.reason}</div>
+                                                <div className="text-xs text-muted-foreground truncate max-w-[200px]">{req.description}</div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge className={statusColors[req.status] || ""}>
+                                                    {req.status.replace("_", " ")}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>{req.customer.name}</TableCell>
+                                            <TableCell className="text-right">
+                                                {req.status === "requested" ? (
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button size="sm" variant="outline" className="text-green-600 hover:text-green-700" onClick={() => handleProcess(req, "approve")}>
+                                                            <Check className="h-4 w-4 mr-1" /> Approve
+                                                        </Button>
+                                                        <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700" onClick={() => handleProcess(req, "reject")}>
+                                                            <X className="h-4 w-4 mr-1" /> Reject
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-sm">
+                                                        {req.sellerResponse ? "Responded" : "-"}
+                                                    </span>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </CardContent>
+                </Card>
 
-            <Dialog open={processDialogOpen} onOpenChange={setProcessDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>{action === "approve" ? "Approve Return" : "Reject Return"}</DialogTitle>
-                        <DialogDescription>
-                            {action === "approve"
-                                ? "Approving will schedule a pickup attempt. Please confirm."
-                                : "Rejecting may cause the customer to raise a dispute. Please provide a valid reason."}
-                        </DialogDescription>
-                    </DialogHeader>
+                <Dialog open={processDialogOpen} onOpenChange={setProcessDialogOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>{action === "approve" ? "Approve Return" : "Reject Return"}</DialogTitle>
+                            <DialogDescription>
+                                {action === "approve"
+                                    ? "Approving will schedule a pickup attempt. Please confirm."
+                                    : "Rejecting may cause the customer to raise a dispute. Please provide a valid reason."}
+                            </DialogDescription>
+                        </DialogHeader>
 
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Response / Reason</label>
-                            <Textarea
-                                value={response}
-                                onChange={(e) => setResponse(e.target.value)}
-                                placeholder={action === "approve" ? "e.g. Return approved, pickup schedule initiated." : "e.g. Item not eligible for return because..."}
-                                className="min-h-[100px]"
-                            />
-                            {response.length > 0 && response.length < 10 && (
-                                <p className="text-xs text-red-500">Must be at least 10 characters.</p>
-                            )}
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Response / Reason</label>
+                                <Textarea
+                                    value={response}
+                                    onChange={(e) => setResponse(e.target.value)}
+                                    placeholder={action === "approve" ? "e.g. Return approved, pickup schedule initiated." : "e.g. Item not eligible for return because..."}
+                                    className="min-h-[100px]"
+                                />
+                                {response.length > 0 && response.length < 10 && (
+                                    <p className="text-xs text-red-500">Must be at least 10 characters.</p>
+                                )}
+                            </div>
                         </div>
-                    </div>
 
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setProcessDialogOpen(false)}>Cancel</Button>
-                        <Button
-                            variant={action === "approve" ? "default" : "destructive"}
-                            onClick={confirmProcess}
-                            disabled={respondMutation.isPending}
-                        >
-                            {respondMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                            Confirm {action === "approve" ? "Approval" : "Rejection"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setProcessDialogOpen(false)}>Cancel</Button>
+                            <Button
+                                variant={action === "approve" ? "default" : "destructive"}
+                                onClick={confirmProcess}
+                                disabled={respondMutation.isPending}
+                            >
+                                {respondMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                                Confirm {action === "approve" ? "Approval" : "Rejection"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+        </SellerLayout>
     );
 }

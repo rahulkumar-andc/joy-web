@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Navbar } from "@/components/Navbar";
+import { PremiumHeader } from "@/components/layout";
 import { Loader2, Mail, CheckCircle2 } from "lucide-react";
 
 export default function SellerVerifyPage() {
@@ -72,7 +72,7 @@ export default function SellerVerifyPage() {
     if (isVerified) {
         return (
             <div className="min-h-screen bg-background">
-                <Navbar />
+                <PremiumHeader />
                 <main className="container mx-auto px-4 py-16">
                     <Card className="max-w-md mx-auto text-center">
                         <CardHeader>
@@ -98,7 +98,7 @@ export default function SellerVerifyPage() {
 
     return (
         <div className="min-h-screen bg-background">
-            <Navbar />
+            <PremiumHeader />
             <main className="container mx-auto px-4 py-16">
                 <Card className="max-w-md mx-auto">
                     <CardHeader className="text-center">

@@ -1,9 +1,23 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@shared/routes";
-import { type Order } from "@shared/schema";
-import { Loader2, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle
+} from "@/components/ui/card";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
     Select,
     SelectContent,
@@ -11,246 +25,293 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { Badge } from "@/components/ui/badge";
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
+    DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { AdminLayout } from "@/components/layout";
+import {
+    Loader2,
+    Search,
+    Eye,
+    ChevronLeft,
+    ChevronRight,
+    Package,
+    Truck,
+    CheckCircle,
+    XCircle,
+    Clock
+} from "lucide-react";
+import { format } from "date-fns";
+
+interface Order {
+    id: number;
+    userId: number;
+    totalAmount: string; // Decimal string
+    status: string;
+    createdAt: string;
+    shippingAddress: any;
+    items: any[];
+    user: {
+        name: string;
+        email: string;
+    };
+    paymentStatus?: string;
+}
+
+const statusColors: Record<string, string> = {
+    pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    processing: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    shipped: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+    delivered: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+    paid: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
+};
+
+const statusIcons: Record<string, any> = {
+    pending: Clock,
+    processing: Package,
+    shipped: Truck,
+    delivered: CheckCircle,
+    cancelled: XCircle,
+    paid: CheckCircle,
+};
 
 export default function AdminOrders() {
-    const { data: orders, isLoading } = useQuery<(Order & { user: { name: string; email: string } })[]>({
-        queryKey: [api.orders.list.path],
+    const { toast } = useToast();
+    const queryClient = useQueryClient();
+
+    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState<string>("all");
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+    // Fetch Orders
+    const { data, isLoading } = useQuery({
+        queryKey: ["admin-orders", page, statusFilter, search],
         queryFn: async () => {
-            const res = await fetch(api.orders.list.path);
+            const params = new URLSearchParams({
+                page: page.toString(),
+                limit: "20",
+            });
+            if (statusFilter !== "all") params.set("status", statusFilter);
+            if (search) params.set("search", search);
+
+            const res = await fetch(`/api/admin/orders?${params}`, {
+                credentials: "include"
+            });
             if (!res.ok) throw new Error("Failed to fetch orders");
             return res.json();
         },
     });
 
-    const [search, setSearch] = useState("");
-    const { toast } = useToast();
-    const queryClient = useQueryClient();
-
-    // Modal State
-    const [shippingModalOpen, setShippingModalOpen] = useState(false);
-    const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-    const [courierName, setCourierName] = useState("");
-    const [trackingNumber, setTrackingNumber] = useState("");
-    const [estimatedDeliveryDate, setEstimatedDeliveryDate] = useState("");
-    const [pendingStatus, setPendingStatus] = useState<string | null>(null);
-
-    const updateStatus = useMutation({
-        mutationFn: async ({ id, status, courierName, trackingNumber, estimatedDeliveryDate }: { id: number; status: string; courierName?: string; trackingNumber?: string; estimatedDeliveryDate?: string }) => {
-            const res = await fetch(`/api/orders/${id}/status`, {
-                method: "PATCH",
+    // Update Status Mutation
+    const updateStatusMutation = useMutation({
+        mutationFn: async ({ orderId, status }: { orderId: number; status: string }) => {
+            const res = await fetch(`/api/admin/orders/${orderId}/status`, {
+                method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status, courierName, trackingNumber, estimatedDeliveryDate }),
+                credentials: "include",
+                body: JSON.stringify({ status }),
             });
             if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.message || "Failed to update status");
+                const error = await res.json();
+                throw new Error(error.message || "Failed to update status");
             }
             return res.json();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [api.orders.list.path] });
+            queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
             toast({
                 title: "Status Updated",
-                description: "Order status has been updated successfully.",
+                description: `Order status changed successfully`,
             });
-            // Reset modal state
-            setShippingModalOpen(false);
-            setCourierName("");
-            setTrackingNumber("");
-            setEstimatedDeliveryDate("");
-            setSelectedOrderId(null);
-            setPendingStatus(null);
+            setSelectedOrder(null);
         },
         onError: (error: Error) => {
             toast({
                 title: "Update Failed",
-                description: error.message || "Could not update order status.",
+                description: error.message,
                 variant: "destructive",
             });
         },
     });
 
-    const handleStatusChange = (id: number, status: string) => {
-        if (status === "shipped") {
-            setSelectedOrderId(id);
-            setPendingStatus(status);
-            setShippingModalOpen(true);
-        } else {
-            updateStatus.mutate({ id, status });
-        }
+    const handleStatusUpdate = (orderId: number, newStatus: string) => {
+        updateStatusMutation.mutate({ orderId, status: newStatus });
     };
 
-    const confirmShipping = () => {
-        if (selectedOrderId && pendingStatus) {
-            updateStatus.mutate({
-                id: selectedOrderId,
-                status: pendingStatus,
-                courierName,
-                trackingNumber,
-                estimatedDeliveryDate
-            });
-        }
-    };
-
-    const filteredOrders = orders?.filter((order) =>
-        order.id.toString().includes(search) ||
-        order.user.name.toLowerCase().includes(search.toLowerCase()) ||
-        order.user.email.toLowerCase().includes(search.toLowerCase())
-    );
-
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case "pending": return "bg-yellow-100 text-yellow-800";
-            case "paid": return "bg-blue-100 text-blue-800";
-            case "packed": return "bg-indigo-100 text-indigo-800";
-            case "shipped": return "bg-purple-100 text-purple-800";
-            case "out_for_delivery": return "bg-orange-100 text-orange-800";
-            case "delivered": return "bg-green-100 text-green-800";
-            case "cancelled": return "bg-red-100 text-red-800";
-            default: return "bg-gray-100 text-gray-800";
-        }
-    };
+    if (isLoading) {
+        return (
+            <div className="flex bg-background h-screen items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+            </div>
+        );
+    }
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold tracking-tight">Orders</h2>
-                <div className="relative w-full max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search ID, Name, Email..."
-                        className="pl-9"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                </div>
-            </div>
-
-            {isLoading ? (
-                <div className="flex justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-accent" />
-                </div>
-            ) : (
-                <div className="bg-white rounded-lg border border-border overflow-hidden shadow-sm">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-muted/50 text-muted-foreground uppercase text-xs">
-                                <tr>
-                                    <th className="px-6 py-3">Order ID</th>
-                                    <th className="px-6 py-3">Customer</th>
-                                    <th className="px-6 py-3">Date</th>
-                                    <th className="px-6 py-3">Total</th>
-                                    <th className="px-6 py-3">Payment</th>
-                                    <th className="px-6 py-3">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                                {filteredOrders?.map((order) => (
-                                    <tr key={order.id} className="hover:bg-muted/30">
-                                        <td className="px-6 py-4 font-medium text-primary">#{order.id}</td>
-                                        <td className="px-6 py-4">
-                                            <div className="font-medium text-foreground">{order.user.name}</div>
-                                            <div className="text-xs text-muted-foreground">{order.user.email}</div>
-                                        </td>
-                                        <td className="px-6 py-4 text-muted-foreground">
-                                            {new Date(order.createdAt!).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-6 py-4 font-bold">₹{order.totalAmount}</td>
-                                        <td className="px-6 py-4">
-                                            <Badge variant="outline" className={order.paymentStatus === 'paid' ? 'border-green-500 text-green-700' : 'border-yellow-500 text-yellow-700'}>
-                                                {order.paymentStatus}
-                                            </Badge>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <Select
-                                                value={order.status}
-                                                onValueChange={(val) => handleStatusChange(order.id, val)}
-                                                disabled={updateStatus.isPending}
-                                            >
-                                                <SelectTrigger className={`w-[140px] h-8 ${getStatusColor(order.status)} border-0`}>
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="pending">Pending</SelectItem>
-                                                    <SelectItem value="paid">Paid</SelectItem>
-                                                    <SelectItem value="packed">Packed</SelectItem>
-                                                    <SelectItem value="shipped">Shipped</SelectItem>
-                                                    <SelectItem value="out_for_delivery">Out for Delivery</SelectItem>
-                                                    <SelectItem value="delivered">Delivered</SelectItem>
-                                                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {filteredOrders?.length === 0 && (
-                                    <tr>
-                                        <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
-                                            No orders found
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+        <AdminLayout
+            title="Orders Management"
+            subtitle="View and manage customer orders"
+        >
+            {/* Filters */}
+            <Card className="mb-6">
+                <CardContent className="py-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Search by Order ID, Customer Name or Email..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-9"
+                            />
+                        </div>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-[200px]">
+                                <SelectValue placeholder="Filter by status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Orders</SelectItem>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="paid">Paid</SelectItem>
+                                <SelectItem value="processing">Processing</SelectItem>
+                                <SelectItem value="shipped">Shipped</SelectItem>
+                                <SelectItem value="delivered">Delivered</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
-                </div>
-            )}
+                </CardContent>
+            </Card>
 
-            {/* Shipping Details Modal */}
-            <Dialog open={shippingModalOpen} onOpenChange={setShippingModalOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Enter Shipping Details</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="courier">Courier Name</Label>
-                            <Input
-                                id="courier"
-                                placeholder="e.g. FedEx, DHL, BlueDart"
-                                value={courierName}
-                                onChange={(e) => setCourierName(e.target.value)}
-                            />
+            {/* Orders Table */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Orders ({data?.total || 0})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Order ID</TableHead>
+                                <TableHead>Customer</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Amount</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {data?.orders?.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                        No orders found
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                data?.orders?.map((order: Order) => {
+                                    const Icon = statusIcons[order.status] || Package;
+                                    return (
+                                        <TableRow key={order.id}>
+                                            <TableCell className="font-medium">#{order.id}</TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">{order.user.name}</span>
+                                                    <span className="text-xs text-muted-foreground">{order.user.email}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                {format(new Date(order.createdAt), "MMM d, yyyy HH:mm")}
+                                            </TableCell>
+                                            <TableCell>₹{parseFloat(order.totalAmount).toLocaleString()}</TableCell>
+                                            <TableCell>
+                                                <Badge className={`${statusColors[order.status] || "bg-gray-100"} flex items-center gap-1 w-fit`}>
+                                                    <Icon className="h-3 w-3" />
+                                                    <span className="capitalize">{order.status}</span>
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Dialog>
+                                                    <DialogTrigger asChild>
+                                                        <Button variant="outline" size="sm">
+                                                            Manage Status
+                                                        </Button>
+                                                    </DialogTrigger>
+                                                    <DialogContent>
+                                                        <DialogHeader>
+                                                            <DialogTitle>Update Order Status #{order.id}</DialogTitle>
+                                                            <DialogDescription>
+                                                                Change the status of this order.
+                                                            </DialogDescription>
+                                                        </DialogHeader>
+                                                        <div className="grid gap-4 py-4">
+                                                            <div className="grid grid-cols-4 items-center gap-4">
+                                                                <Label htmlFor="status" className="text-right">
+                                                                    Status
+                                                                </Label>
+                                                                <Select
+                                                                    defaultValue={order.status}
+                                                                    onValueChange={(val) => handleStatusUpdate(order.id, val)}
+                                                                >
+                                                                    <SelectTrigger className="col-span-3">
+                                                                        <SelectValue placeholder="Select status" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="pending">Pending</SelectItem>
+                                                                        <SelectItem value="paid">Paid</SelectItem>
+                                                                        <SelectItem value="processing">Processing</SelectItem>
+                                                                        <SelectItem value="shipped">Shipped</SelectItem>
+                                                                        <SelectItem value="out_for_delivery">Out for Delivery</SelectItem>
+                                                                        <SelectItem value="delivered">Delivered</SelectItem>
+                                                                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                        </div>
+                                                    </DialogContent>
+                                                </Dialog>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })
+                            )}
+                        </TableBody>
+                    </Table>
+
+                    {/* Pagination */}
+                    {data?.total > 20 && (
+                        <div className="flex justify-center items-center gap-2 mt-4">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <span className="text-sm text-muted-foreground">
+                                Page {page} of {Math.ceil(data.total / 20)}
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage(p => p + 1)}
+                                disabled={page >= Math.ceil(data.total / 20)}
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="tracking">Tracking Number</Label>
-                            <Input
-                                id="tracking"
-                                placeholder="Tracking ID"
-                                value={trackingNumber}
-                                onChange={(e) => setTrackingNumber(e.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="estimated-delivery">Estimated Delivery Date</Label>
-                            <Input
-                                id="estimated-delivery"
-                                type="date"
-                                value={estimatedDeliveryDate}
-                                onChange={(e) => setEstimatedDeliveryDate(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShippingModalOpen(false)}>Cancel</Button>
-                        <Button onClick={confirmShipping} disabled={updateStatus.isPending}>
-                            {updateStatus.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Update Status
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </AdminLayout>
     );
 }

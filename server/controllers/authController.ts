@@ -173,10 +173,13 @@ export class AuthController {
     static login = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
         // Validate input
         api.auth.login.input.parse(req.body);
-        const { email } = req.body;
+        const { username } = req.body;  // Extract username (matches schema and passport strategy)
 
-        // \u26a0\ufe0f PHASE 1: Check if account is locked BEFORE authentication
-        const user = await userRepository.findByUsername(email);
+        logger.info(`[Auth] Login attempt for: ${username}`);
+
+        // ⚠️ PHASE 1: Check if account is locked BEFORE authentication
+        const user = await userRepository.findByUsername(username);
+        logger.info(`[Auth] User found: ${!!user}`);
 
         if (user && user.lockoutUntil && user.lockoutUntil > new Date()) {
             const minutesRemaining = Math.ceil((user.lockoutUntil.getTime() - Date.now()) / 60000);

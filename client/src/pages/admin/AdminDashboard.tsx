@@ -26,9 +26,23 @@ import {
 import { Loader2, DollarSign, ShoppingBag, Package } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { AdminLayout } from "@/components/layout";
 
-interface OrderStats {
-    [key: string]: number;
+interface DashboardStats {
+    orders: Record<string, number>;
+    products: Record<string, number>;
+    users: Record<string, number>;
+    revenue: {
+        total: number;
+        daily: DailySales[];
+    };
+    overview: {
+        totalOrders: number;
+        activeProducts: number;
+        pendingProducts: number;
+        totalSellers: number;
+        totalUsers: number;
+    };
 }
 
 interface DailySales {
@@ -43,19 +57,15 @@ interface TopProduct {
 
 export default function AdminDashboard() {
     // Queries
-    const { data: orderStats, isLoading: statsLoading } = useQuery<OrderStats>({
-        queryKey: ["/api/admin/stats/orders"],
-    });
-
-    const { data: dailySales, isLoading: salesLoading } = useQuery<DailySales[]>({
-        queryKey: ["/api/admin/stats/daily-sales?days=30"],
+    const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
+        queryKey: ["/api/admin/stats/dashboard"],
     });
 
     const { data: topProducts, isLoading: productsLoading } = useQuery<TopProduct[]>({
         queryKey: ["/api/admin/stats/top-products"],
     });
 
-    if (statsLoading || salesLoading || productsLoading) {
+    if (statsLoading || productsLoading) {
         return (
             <div className="flex h-[50vh] items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
@@ -63,34 +73,29 @@ export default function AdminDashboard() {
         );
     }
 
-    // Transform Order Stats for Pie Chart
-    const pieData = orderStats
-        ? Object.keys(orderStats).map((status) => ({
+    // Pie Chart Data
+    const pieData = stats?.orders
+        ? Object.keys(stats.orders).map((status) => ({
             name: status,
-            value: Number(orderStats[status]),
+            value: Number(stats.orders[status]),
         }))
         : [];
 
     const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
 
-    // Calculate totals
-    const totalRevenue = dailySales?.reduce(
-        (acc: number, curr: DailySales) => acc + Number(curr.total),
-        0
-    );
-    const totalOrders = pieData.reduce((acc, curr) => acc + curr.value, 0);
 
     return (
-        <div className="space-y-8">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+        <AdminLayout
+            title="Admin Dashboard"
+            subtitle="Overview of platform performance and key metrics"
+            actions={
                 <Link href="/admin/campaigns">
                     <Button>Manage Campaigns</Button>
                 </Link>
-            </div>
-
+            }
+        >
             {/* Summary Cards */}
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
@@ -98,7 +103,7 @@ export default function AdminDashboard() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            ${totalRevenue?.toFixed(2) || "0.00"}
+                            ${stats?.revenue.total.toFixed(2) || "0.00"}
                         </div>
                         <p className="text-xs text-muted-foreground">
                             Last 30 days
@@ -112,7 +117,7 @@ export default function AdminDashboard() {
                         <ShoppingBag className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{totalOrders}</div>
+                        <div className="text-2xl font-bold">{stats?.overview.totalOrders || 0}</div>
                         <p className="text-xs text-muted-foreground">
                             All time
                         </p>
@@ -125,9 +130,22 @@ export default function AdminDashboard() {
                         <Package className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">--</div>
+                        <div className="text-2xl font-bold">{stats?.overview.activeProducts || 0}</div>
                         <p className="text-xs text-muted-foreground">
-                            (Metric pending)
+                            {stats?.overview.pendingProducts || 0} pending review
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Sellers</CardTitle>
+                        <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats?.overview.totalSellers || 0}</div>
+                        <p className="text-xs text-muted-foreground">
+                            {stats?.overview.totalUsers || 0} total users
                         </p>
                     </CardContent>
                 </Card>
@@ -142,7 +160,7 @@ export default function AdminDashboard() {
                     <CardContent className="pl-2">
                         <div className="h-[300px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={dailySales || []}>
+                                <LineChart data={stats?.revenue.daily || []}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis
                                         dataKey="date"
@@ -230,6 +248,6 @@ export default function AdminDashboard() {
                     </div>
                 </CardContent>
             </Card>
-        </div>
+        </AdminLayout>
     );
 }

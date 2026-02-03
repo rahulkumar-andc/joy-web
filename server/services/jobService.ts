@@ -26,16 +26,42 @@ const sentReminders = new Map<number, Date>();
 // ============================================================================
 
 export class JobService {
+    // Concurrency locks to prevent overlapping job executions
+    private static isRunning = {
+        abandonedCarts: false,
+        stockReservations: false,
+    };
+
     static init() {
         // Run abandoned cart check every hour
-        cron.schedule('0 * * * *', () => {
-            logger.info("Running Abandoned Cart Check...");
-            this.checkAbandonedCarts();
+        cron.schedule('0 * * * *', async () => {
+            if (this.isRunning.abandonedCarts) {
+                logger.warn("Abandoned cart job still running, skipping this cycle");
+                return;
+            }
+
+            this.isRunning.abandonedCarts = true;
+            try {
+                logger.info("Running Abandoned Cart Check...");
+                await this.checkAbandonedCarts();
+            } finally {
+                this.isRunning.abandonedCarts = false;
+            }
         });
 
         // Run stock reservation cleanup every 5 minutes
         cron.schedule('*/5 * * * *', async () => {
-            await stockReservationService.releaseExpiredReservations();
+            if (this.isRunning.stockReservations) {
+                logger.warn("Stock reservation cleanup still running, skipping this cycle");
+                return;
+            }
+
+            this.isRunning.stockReservations = true;
+            try {
+                await stockReservationService.releaseExpiredReservations();
+            } finally {
+                this.isRunning.stockReservations = false;
+            }
         });
 
         // Clean up old reminder tracking (every 24 hours)
@@ -43,7 +69,7 @@ export class JobService {
             this.cleanupReminderTracking();
         });
 
-        logger.info("JobService initialized: Cron jobs scheduled (abandoned carts, stock reservations).");
+        logger.info("JobService initialized: Cron jobs scheduled with concurrency control (abandoned carts, stock reservations).");
     }
 
     /**

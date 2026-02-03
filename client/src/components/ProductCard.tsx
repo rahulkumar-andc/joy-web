@@ -1,11 +1,13 @@
 import { Link, useLocation } from "wouter";
 import { type Product } from "@shared/schema";
-import { ShoppingBag, Heart, Eye } from "lucide-react";
+import { ShoppingBag, Heart, Eye, Plus, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAddToCart } from "@/hooks/use-cart";
 import { useAddToWishlist, useRemoveFromWishlist, useIsInWishlist } from "@/hooks/use-wishlist";
 import { useAuth } from "@/hooks/use-auth";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useCallback } from "react";
+import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
   product: Product;
@@ -20,17 +22,28 @@ export function ProductCard({ product, onQuickView }: ProductCardProps) {
   const removeFromWishlist = useRemoveFromWishlist();
   const { data: wishlistStatus } = useIsInWishlist(product.id);
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [showAddedFeedback, setShowAddedFeedback] = useState(false);
+
+  const handleAddToCart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!user) {
       navigate("/auth");
       return;
     }
-    addToCartMutation.mutate({ productId: product.id, quantity: 1 });
-  };
+    addToCartMutation.mutate(
+      { productId: product.id, quantity: 1 },
+      {
+        onSuccess: () => {
+          setShowAddedFeedback(true);
+          setTimeout(() => setShowAddedFeedback(false), 1500);
+        },
+      }
+    );
+  }, [user, navigate, addToCartMutation, product.id]);
 
-  const handleWishlistToggle = (e: React.MouseEvent) => {
+  const handleWishlistToggle = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!user) {
@@ -42,97 +55,238 @@ export function ProductCard({ product, onQuickView }: ProductCardProps) {
     } else {
       addToWishlist.mutate(product.id);
     }
-  };
+  }, [user, navigate, wishlistStatus, removeFromWishlist, addToWishlist, product.id]);
 
   const isInWishlist = wishlistStatus?.inWishlist;
+  const hasSecondImage = product.images.length > 1;
+
+  // Calculate discount percentage if applicable
+  const discountPercentage = product.discountPrice
+    ? Math.round(((Number(product.discountPrice) - Number(product.price)) / Number(product.discountPrice)) * 100)
+    : null;
 
   return (
-    <motion.div
+    <motion.article
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.4 }}
-      className="group relative bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300"
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Badges */}
       <div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
-        {product.discountPrice && (
-          <span className="bg-destructive text-white text-[10px] font-bold px-2 py-1 rounded-sm tracking-wider uppercase">
-            Sale
-          </span>
+        {discountPercentage && discountPercentage > 0 && (
+          <motion.span
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="bg-destructive text-white text-[10px] font-bold px-2.5 py-1 rounded-full tracking-wider uppercase shadow-sm"
+          >
+            -{discountPercentage}%
+          </motion.span>
         )}
         {product.isNewArrival && (
-          <span className="bg-accent text-white text-[10px] font-bold px-2 py-1 rounded-sm tracking-wider uppercase">
+          <motion.span
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.1 }}
+            className="bg-accent text-white text-[10px] font-bold px-2.5 py-1 rounded-full tracking-wider uppercase shadow-sm"
+          >
             New
-          </span>
+          </motion.span>
         )}
       </div>
 
-      {/* Wishlist Heart Button - Always visible, redirects if needed */}
-      <button
+      {/* Wishlist Heart Button */}
+      <motion.button
         onClick={handleWishlistToggle}
-        className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white/80 hover:bg-white shadow-sm transition-all"
+        whileTap={{ scale: 0.9 }}
+        className={cn(
+          "absolute top-3 right-3 z-10 p-2.5 rounded-full shadow-md transition-all duration-300",
+          isInWishlist
+            ? "bg-red-50 text-red-500"
+            : "bg-white/90 hover:bg-white text-gray-400 hover:text-red-400"
+        )}
+        aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
       >
         <Heart
-          className={`w-5 h-5 transition-colors ${isInWishlist ? "fill-red-500 text-red-500" : "text-gray-400 hover:text-red-400"
-            }`}
+          className={cn(
+            "w-5 h-5 transition-all",
+            isInWishlist && "fill-red-500 text-red-500 scale-110"
+          )}
         />
-      </button>
+      </motion.button>
 
-      {/* Image Container */}
-      <Link href={`/product/${product.id}`} className="block relative aspect-[3/4] overflow-hidden bg-gray-100">
-        <img
+      {/* Image Container with Hover Swap */}
+      <Link href={`/product/${product.id}`} className="block relative aspect-[3/4] overflow-hidden bg-warm-beige">
+        {/* Primary Image */}
+        <motion.img
           src={product.images[0]}
           alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="absolute inset-0 w-full h-full object-cover"
+          animate={{
+            opacity: isHovered && hasSecondImage ? 0 : 1,
+            scale: isHovered ? 1.05 : 1
+          }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
           loading="lazy"
         />
 
-        {/* Hover Overlay Actions */}
-        <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-gradient-to-t from-black/50 to-transparent">
+        {/* Secondary Image (shown on hover) */}
+        {hasSecondImage && (
+          <motion.img
+            src={product.images[1]}
+            alt={`${product.name} - alternate view`}
+            className="absolute inset-0 w-full h-full object-cover"
+            initial={{ opacity: 0 }}
+            animate={{
+              opacity: isHovered ? 1 : 0,
+              scale: isHovered ? 1.05 : 1
+            }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            loading="lazy"
+          />
+        )}
+
+        {/* Quick Actions Overlay */}
+        <motion.div
+          className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/60 via-black/30 to-transparent"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : 20 }}
+          transition={{ duration: 0.3 }}
+        >
           <div className="flex gap-2 justify-center">
-            <Button
-              size="sm"
-              className="bg-white text-primary hover:bg-accent hover:text-white transition-colors flex-1"
-              onClick={handleAddToCart}
-              disabled={addToCartMutation.isPending}
+            <motion.div
+              className="flex-1"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
-              <ShoppingBag className="w-4 h-4 mr-2" />
-              {addToCartMutation.isPending ? "Adding..." : "Add to Cart"}
-            </Button>
-            {onQuickView && (
               <Button
                 size="sm"
-                variant="outline"
-                className="bg-white/90 hover:bg-white border-0"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onQuickView(product);
-                }}
+                className={cn(
+                  "w-full font-semibold transition-all duration-300",
+                  showAddedFeedback
+                    ? "bg-green-500 hover:bg-green-600 text-white"
+                    : "bg-white text-primary hover:bg-accent hover:text-white"
+                )}
+                onClick={handleAddToCart}
+                disabled={addToCartMutation.isPending}
               >
-                <Eye className="w-4 h-4" />
+                <AnimatePresence mode="wait">
+                  {showAddedFeedback ? (
+                    <motion.span
+                      key="added"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="flex items-center"
+                    >
+                      <Check className="w-4 h-4 mr-2" />
+                      Added!
+                    </motion.span>
+                  ) : addToCartMutation.isPending ? (
+                    <motion.span
+                      key="adding"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="flex items-center"
+                    >
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                      </motion.div>
+                      Adding...
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="add"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="flex items-center"
+                    >
+                      <ShoppingBag className="w-4 h-4 mr-2" />
+                      Add to Cart
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </Button>
+            </motion.div>
+
+            {onQuickView && (
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="bg-white/90 hover:bg-white border-0 shadow-sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onQuickView(product);
+                  }}
+                  aria-label="Quick view"
+                >
+                  <Eye className="w-4 h-4" />
+                </Button>
+              </motion.div>
             )}
           </div>
-        </div>
+        </motion.div>
       </Link>
 
-      {/* Info */}
-      <div className="p-4">
-        <div className="text-xs text-muted-foreground mb-1 font-medium">{product.brand || "Steal the Deal"}</div>
+      {/* Product Info */}
+      <div className="p-4 space-y-2">
+        {/* Brand */}
+        <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+          {product.brand || "Steal the Deal"}
+        </div>
+
+        {/* Title */}
         <Link href={`/product/${product.id}`}>
-          <h3 className="font-display text-lg leading-tight mb-2 hover:text-accent transition-colors truncate">
+          <h3 className="font-display text-lg leading-tight hover:text-accent transition-colors line-clamp-2">
             {product.name}
           </h3>
         </Link>
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-primary">₹{product.price}</span>
+
+        {/* Price */}
+        <div className="flex items-center gap-3 pt-1">
+          <span className="font-bold text-lg text-primary">
+            ₹{product.price.toLocaleString()}
+          </span>
           {product.discountPrice && (
-            <span className="text-sm text-muted-foreground line-through">₹{product.discountPrice}</span>
+            <>
+              <span className="text-sm text-muted-foreground line-through">
+                ₹{product.discountPrice.toLocaleString()}
+              </span>
+              <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                Save ₹{(Number(product.discountPrice) - Number(product.price)).toLocaleString()}
+              </span>
+            </>
           )}
         </div>
+
+        {/* Quick Size Preview (if sizes exist) */}
+        {product.sizes && product.sizes.length > 0 && (
+          <div className="flex items-center gap-1 pt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <span className="text-xs text-muted-foreground mr-1">Sizes:</span>
+            {product.sizes.slice(0, 5).map((size) => (
+              <span
+                key={size}
+                className="text-xs px-1.5 py-0.5 border border-border rounded bg-muted/50"
+              >
+                {size}
+              </span>
+            ))}
+            {product.sizes.length > 5 && (
+              <span className="text-xs text-muted-foreground">+{product.sizes.length - 5}</span>
+            )}
+          </div>
+        )}
       </div>
-    </motion.div>
+    </motion.article>
   );
 }

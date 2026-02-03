@@ -348,8 +348,10 @@ export class OrderController {
         if (!req.isAuthenticated()) throw new AppError("Login required", 401);
 
         if ((req.user as any).role === 'admin') {
-            const orders = await orderRepository.getAllOrders();
-            return res.json(orders);
+            const page = parseInt(req.query.page as string) || 1;
+            const limit = parseInt(req.query.limit as string) || 20;
+            const result = await orderRepository.getAllOrders(page, limit);
+            return res.json(result.orders);
         }
 
         const orders = await orderRepository.getOrders((req.user as any).id);
@@ -360,8 +362,14 @@ export class OrderController {
         if (!req.isAuthenticated() || (req.user as any).role !== 'admin') {
             throw new AppError("Admin access required", 403);
         }
-        const orders = await orderRepository.getAllOrders();
-        res.json(orders);
+
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 20;
+        const status = req.query.status as string;
+        const search = req.query.search as string;
+
+        const result = await orderRepository.getAllOrders(page, limit, { status, search });
+        res.json(result);
     });
 
     // GET /api/orders/:id - Get single order for tracking

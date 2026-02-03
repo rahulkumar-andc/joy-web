@@ -1,4 +1,4 @@
-import { db } from "../../db";
+import { db } from "@server/db";
 import { campaignVariants, variantAnalytics, type CampaignVariant, type InsertCampaignVariant } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 

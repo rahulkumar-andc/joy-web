@@ -5,15 +5,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertHeroCampaignSchema, type HeroCampaign, type InsertHeroCampaign } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Plus, MoreVertical, Calendar, Eye, MousePointerClick, Loader2, Edit, Trash, Play, Pause } from "lucide-react";
+import { Trash2, Plus, MoreVertical, Calendar, Eye, MousePointerClick, Loader2, Edit, Trash, Play, Pause, AlertTriangle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { AdminLayout } from "@/components/layout";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { format } from "date-fns";
 
 export default function AdminCampaigns() {
     const { toast } = useToast();
@@ -42,9 +46,6 @@ export default function AdminCampaigns() {
             textColor: "#ffffff",
             overlayOpacity: "0.4",
             targetAudience: "all",
-            // Initialize endTime as null or undefined. 
-            // Note: Schema expects Date | null | undefined. Form input gives string.
-            // We'll handle conversion in render/submit if needed, or rely on coercion.
             endTime: null,
         },
     });
@@ -95,6 +96,24 @@ export default function AdminCampaigns() {
         },
         onError: (error: Error) => {
             toast({ title: "Failed to delete campaign", description: error.message, variant: "destructive" });
+        }
+    });
+
+    const toggleMutation = useMutation({
+        mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
+            const res = await apiRequest("PATCH", `/api/admin/hero/${id}/toggle`, { isActive });
+            return res.json();
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ["/api/admin/hero"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/hero"] });
+            toast({
+                title: variables.isActive ? "Campaign activated" : "Campaign deactivated",
+                description: variables.isActive ? "All other campaigns have been deactivated." : undefined
+            });
+        },
+        onError: (error: Error) => {
+            toast({ title: "Failed to toggle campaign", description: error.message, variant: "destructive" });
         }
     });
 
@@ -171,12 +190,18 @@ export default function AdminCampaigns() {
         setIsOpen(true);
     };
 
-    if (isLoading) return <Loader2 className="h-8 w-8 animate-spin mx-auto mt-20" />;
+    if (isLoading) return (
+        <AdminLayout title="Campaigns" subtitle="Manage hero section campaigns">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mt-20" />
+        </AdminLayout>
+    );
 
     return (
-        <div className="container mx-auto py-10">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold">Campaign Management</h1>
+        <AdminLayout
+            title="Campaigns Management"
+            subtitle="Manage your store's hero banners and active campaigns."
+        >
+            <div className="flex justify-end mb-6">
                 <Dialog open={isOpen} onOpenChange={setIsOpen}>
                     <DialogTrigger asChild>
                         <Button onClick={handleAddNew}><Plus className="mr-2 h-4 w-4" /> New Campaign</Button>
@@ -378,35 +403,66 @@ export default function AdminCampaigns() {
                             <div>
                                 <CardTitle className="text-xl font-bold flex items-center gap-2">
                                     {campaign.name}
-                                    {campaign.isActive && <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Active</span>}
-                                    <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">{campaign.type}</span>
+                                    {campaign.isActive && <Badge variant="default" className="bg-green-600">Active</Badge>}
+                                    <Badge variant="secondary">{campaign.type}</Badge>
                                 </CardTitle>
+                                <CardDescription>
+                                    {campaign.isActive
+                                        ? "Currently live on the storefront"
+                                        : "Inactive (not visible to users)"}
+                                </CardDescription>
                             </div>
                             <div className="flex gap-2">
-                                <Button variant="outline" size="icon" onClick={() => handleEdit(campaign)}>
-                                    <Edit className="h-4 w-4" />
+                                <Button
+                                    variant={campaign.isActive ? "secondary" : "default"}
+                                    size="sm"
+                                    onClick={() => toggleMutation.mutate({ id: campaign.id, isActive: !campaign.isActive })}
+                                    disabled={toggleMutation.isPending}
+                                >
+                                    {campaign.isActive ? (
+                                        <><Pause className="h-4 w-4 mr-1" /> Deactivate</>
+                                    ) : (
+                                        <><Play className="h-4 w-4 mr-1" /> Activate</>
+                                    )}
                                 </Button>
-                                <Button variant="destructive" size="icon" onClick={() => {
+                                <Button variant="outline" size="sm" onClick={() => handleEdit(campaign)}>
+                                    <Edit className="h-4 w-4 mr-1" /> Edit
+                                </Button>
+                                <Button variant="destructive" size="sm" onClick={() => {
                                     if (confirm("Are you sure?")) deleteMutation.mutate(campaign.id);
                                 }}>
-                                    <Trash className="h-4 w-4" />
+                                    <Trash className="h-4 w-4 mr-1" /> Delete
                                 </Button>
                             </div>
                         </CardHeader>
                         <CardContent>
                             <div className="grid md:grid-cols-2 gap-4">
-                                <div>
-                                    <p className="font-semibold">{campaign.title}</p>
-                                    <p className="text-sm text-gray-500">{campaign.subtitle}</p>
-                                    <p className="text-xs text-gray-400 mt-2">Priority: {campaign.priority}</p>
+                                <div className="space-y-2">
+                                    <div>
+                                        <p className="font-semibold text-lg">{campaign.title}</p>
+                                        <p className="text-sm text-gray-500">{campaign.subtitle}</p>
+                                    </div>
+                                    <div className="flex gap-4 text-sm text-gray-600">
+                                        <div className="flex items-center gap-1">
+                                            <MousePointerClick className="h-4 w-4" />
+                                            <span>Priority: {campaign.priority}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <Calendar className="h-4 w-4" />
+                                            <span>{campaign.endTime ? format(new Date(campaign.endTime), "MMM d, yyyy") : "No End Date"}</span>
+                                        </div>
+                                    </div>
+                                    <div className="pt-2">
+                                        <Badge variant="outline" className="text-xs">Audience: {campaign.targetAudience}</Badge>
+                                    </div>
                                 </div>
                                 <div>
                                     {campaign.mediaType === 'video' ? (
                                         <div className="aspect-video bg-black rounded-md flex items-center justify-center text-white">
-                                            <Play className="h-8 w-8" /> Video
+                                            <Play className="h-8 w-8 mr-2" /> Video Content
                                         </div>
                                     ) : (
-                                        <img src={campaign.mediaUrl} alt={campaign.title} className="aspect-video object-cover rounded-md" />
+                                        <img src={campaign.mediaUrl} alt={campaign.title} className="aspect-video object-cover rounded-md border" />
                                     )}
                                 </div>
                             </div>
@@ -414,12 +470,12 @@ export default function AdminCampaigns() {
                     </Card>
                 ))}
                 {campaigns?.length === 0 && (
-                    <div className="text-center py-20 text-gray-500">
-                        No campaigns found. Create one to get started.
+                    <div className="text-center py-20 bg-muted/20 rounded-lg border-dashed border-2">
+                        <p className="text-muted-foreground mb-4">No campaigns found. Create one to get started.</p>
+                        <Button onClick={handleAddNew}><Plus className="mr-2 h-4 w-4" /> Create First Campaign</Button>
                     </div>
                 )}
             </div>
-        </div>
+        </AdminLayout>
     );
 }
-

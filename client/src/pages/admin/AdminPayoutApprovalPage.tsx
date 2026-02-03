@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AdminLayout } from "@/components/layout";
 import {
     Card,
     CardContent,
-    CardDescription,
     CardHeader,
-    CardTitle
+    CardTitle,
+    CardDescription
 } from "@/components/ui/card";
 import {
     Table,
@@ -18,8 +19,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
     SelectContent,
@@ -35,66 +34,66 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Navbar } from "@/components/Navbar";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import {
     Loader2,
-    Check,
-    X,
+    Search,
     ChevronLeft,
     ChevronRight,
-    Wallet,
-    IndianRupee,
-    Clock
+    DollarSign,
+    Clock,
+    FileText
 } from "lucide-react";
 import { format } from "date-fns";
 
-interface PendingPayout {
+const statusColors: Record<string, string> = {
+    requested: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    pending_approval: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+    approved: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    processing: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+    completed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    failed: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+    cancelled: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
+};
+
+interface Payout {
     id: number;
+    payoutNumber: string;
     amount: string;
     status: string;
-    requestedAt: string;
-    seller: {
-        id: number;
-        shopName: string;
-        businessEmail: string;
-        accountNumber: string;
-        ifscCode: string;
-        bankName: string;
-        accountHolderName: string;
-    };
-    wallet: {
-        availableBalance: string;
-    };
+    shopName: string;
+    sellerName: string;
+    bankAccountName: string;
+    bankAccountNumber: string;
+    bankIfscCode: string;
+    createdAt: string;
+    approvedAt?: string;
+    processedAt?: string;
+    failureReason?: string;
 }
-
-const statusColors: Record<string, string> = {
-    pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-    processing: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-    completed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-    rejected: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-};
 
 export default function AdminPayoutApprovalPage() {
     const { toast } = useToast();
     const queryClient = useQueryClient();
 
     const [page, setPage] = useState(1);
-    const [statusFilter, setStatusFilter] = useState<string>("pending");
-    const [processDialogOpen, setProcessDialogOpen] = useState(false);
-    const [selectedPayout, setSelectedPayout] = useState<PendingPayout | null>(null);
-    const [action, setAction] = useState<"approve" | "reject">("approve");
-    const [transactionId, setTransactionId] = useState("");
-    const [note, setNote] = useState("");
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState<string>("all");
+    const [selectedPayout, setSelectedPayout] = useState<Payout | null>(null);
+    const [actionNote, setActionNote] = useState("");
+    const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
 
+    // Fetch Payouts
     const { data, isLoading } = useQuery({
-        queryKey: ["admin-payouts", page, statusFilter],
+        queryKey: ["admin-payouts", page, statusFilter, search],
         queryFn: async () => {
             const params = new URLSearchParams({
                 page: page.toString(),
                 limit: "20",
             });
             if (statusFilter !== "all") params.set("status", statusFilter);
+            if (search) params.set("search", search);
 
             const res = await fetch(`/api/admin/payouts?${params}`, {
                 credentials: "include"
@@ -104,359 +103,254 @@ export default function AdminPayoutApprovalPage() {
         },
     });
 
-    const processMutation = useMutation({
-        mutationFn: async ({ payoutId, action, details }: {
-            payoutId: number;
-            action: "approve" | "reject";
-            details?: { transactionId?: string; note?: string };
-        }) => {
-            const res = await fetch(`/api/admin/payouts/${payoutId}/process`, {
+    const mutation = useMutation({
+        mutationFn: async ({ id, action, note }: { id: number; action: string; note?: string }) => {
+            const res = await fetch(`/api/admin/payouts/${id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify({ action, ...details }),
+                body: JSON.stringify({ action, note }),
             });
             if (!res.ok) {
                 const error = await res.json();
-                throw new Error(error.message || "Failed to process payout");
+                throw new Error(error.error || "Action failed");
             }
             return res.json();
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["admin-payouts"] });
-            toast({
-                title: "Payout Processed",
-                description: `Payout has been ${action}d`,
-            });
-            setProcessDialogOpen(false);
+            toast({ title: "Success", description: "Payout status updated" });
+            setIsRejectDialogOpen(false);
+            setActionNote("");
             setSelectedPayout(null);
-            setTransactionId("");
-            setNote("");
         },
         onError: (error: Error) => {
-            toast({
-                title: "Processing Failed",
-                description: error.message,
-                variant: "destructive",
-            });
+            toast({ title: "Error", description: error.message, variant: "destructive" });
         },
     });
 
-    const handleProcess = (payout: PendingPayout, processAction: "approve" | "reject") => {
-        setSelectedPayout(payout);
-        setAction(processAction);
-        setProcessDialogOpen(true);
-    };
-
-    const confirmProcess = () => {
-        if (!selectedPayout) return;
-
-        const details: any = { note };
-        if (action === "approve") {
-            if (!transactionId) {
-                toast({
-                    title: "Transaction ID Required",
-                    description: "Please provide a transaction ID",
-                    variant: "destructive",
-                });
-                return;
-            }
-            details.transactionId = transactionId;
+    const handleAction = (payout: Payout, action: string) => {
+        if (action === 'reject') {
+            setSelectedPayout(payout);
+            setIsRejectDialogOpen(true);
+            return;
         }
 
-        processMutation.mutate({
-            payoutId: selectedPayout.id,
-            action,
-            details,
-        });
+        if (confirm(`Are you sure you want to ${action} this payout request for ₹${payout.amount}?`)) {
+            mutation.mutate({ id: payout.id, action });
+        }
     };
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
+            <AdminLayout title="Payouts" subtitle="Manage seller withdrawals">
+                <div className="flex h-60 items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+                </div>
+            </AdminLayout>
         );
     }
 
     return (
-        <div className="min-h-screen bg-background">
-            <Navbar />
-            <main className="container mx-auto px-4 py-8">
-                {/* Header */}
-                <div className="mb-6">
-                    <h1 className="text-3xl font-bold">Payout Approval</h1>
-                    <p className="text-muted-foreground">
-                        Review and process seller payout requests
-                    </p>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <Card>
-                        <CardContent className="py-4">
-                            <div className="text-2xl font-bold text-yellow-600">
-                                {data?.stats?.pending || 0}
-                            </div>
-                            <p className="text-sm text-muted-foreground">Pending</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="py-4">
-                            <div className="text-2xl font-bold text-blue-600">
-                                {data?.stats?.processing || 0}
-                            </div>
-                            <p className="text-sm text-muted-foreground">Processing</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="py-4">
-                            <div className="text-2xl font-bold text-green-600">
-                                ₹{parseFloat(data?.stats?.totalPending || "0").toLocaleString()}
-                            </div>
-                            <p className="text-sm text-muted-foreground">Total Pending Amount</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="py-4">
-                            <div className="text-2xl font-bold text-green-600">
-                                {data?.stats?.completedToday || 0}
-                            </div>
-                            <p className="text-sm text-muted-foreground">Completed Today</p>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Filters */}
-                <Card className="mb-6">
-                    <CardContent className="py-4">
-                        <div className="flex gap-4">
-                            <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                <SelectTrigger className="w-[200px]">
-                                    <SelectValue placeholder="Filter by status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Payouts</SelectItem>
-                                    <SelectItem value="pending">Pending</SelectItem>
-                                    <SelectItem value="processing">Processing</SelectItem>
-                                    <SelectItem value="completed">Completed</SelectItem>
-                                    <SelectItem value="rejected">Rejected</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Payouts Table */}
+        <AdminLayout
+            title="Payouts Management"
+            subtitle="Process and track seller withdrawal requests"
+        >
+            {/* KPI Cards */}
+            <div className="grid gap-4 md:grid-cols-3 mb-6">
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Payout Requests ({data?.total || 0})</CardTitle>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
+                        <Clock className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        {data?.payouts?.length === 0 ? (
-                            <div className="text-center py-12">
-                                <Wallet className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                                <h3 className="text-lg font-semibold mb-2">No Payout Requests</h3>
-                                <p className="text-muted-foreground">
-                                    {statusFilter === "pending"
-                                        ? "All payout requests have been processed"
-                                        : "No payouts found for this status"}
-                                </p>
-                            </div>
-                        ) : (
-                            <>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Seller</TableHead>
-                                            <TableHead>Bank Details</TableHead>
-                                            <TableHead>Amount</TableHead>
-                                            <TableHead>Wallet Balance</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Requested</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {data?.payouts?.map((payout: PendingPayout) => (
-                                            <TableRow key={payout.id}>
-                                                <TableCell>
-                                                    <div className="text-sm">
-                                                        <div className="font-medium">{payout.seller.shopName}</div>
-                                                        <div className="text-muted-foreground">{payout.seller.businessEmail}</div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="text-sm">
-                                                        <div className="font-medium">{payout.seller.accountHolderName}</div>
-                                                        <div className="text-muted-foreground">
-                                                            {payout.seller.accountNumber?.replace(/.(?=.{4})/g, '*')}
-                                                        </div>
-                                                        <div className="text-xs text-muted-foreground">
-                                                            {payout.seller.bankName} - {payout.seller.ifscCode}
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="font-semibold text-lg">
-                                                        ₹{parseFloat(payout.amount).toLocaleString()}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="text-sm">
-                                                        ₹{parseFloat(payout.wallet.availableBalance).toLocaleString()}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge className={statusColors[payout.status] || ""}>
-                                                        {payout.status}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-sm text-muted-foreground">
-                                                    {format(new Date(payout.requestedAt), "MMM d, yyyy HH:mm")}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    {payout.status === "pending" && (
-                                                        <div className="flex justify-end gap-2">
-                                                            <Button
-                                                                size="sm"
-                                                                variant="default"
-                                                                onClick={() => handleProcess(payout, "approve")}
-                                                            >
-                                                                <Check className="h-4 w-4 mr-1" />
-                                                                Approve
-                                                            </Button>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="destructive"
-                                                                onClick={() => handleProcess(payout, "reject")}
-                                                            >
-                                                                <X className="h-4 w-4 mr-1" />
-                                                                Reject
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                    {payout.status !== "pending" && (
-                                                        <Badge variant="outline" className="capitalize">
-                                                            {payout.status}
-                                                        </Badge>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-
-                                {/* Pagination */}
-                                {data?.totalPages > 1 && (
-                                    <div className="flex justify-center items-center gap-2 mt-4">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                                            disabled={page === 1}
-                                        >
-                                            <ChevronLeft className="h-4 w-4" />
-                                        </Button>
-                                        <span className="text-sm text-muted-foreground">
-                                            Page {page} of {data.totalPages}
-                                        </span>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setPage(p => p + 1)}
-                                            disabled={page >= data.totalPages}
-                                        >
-                                            <ChevronRight className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                )}
-                            </>
-                        )}
+                        <div className="text-2xl font-bold">{data?.payouts?.filter((p: Payout) => p.status === 'requested').length || 0}</div>
+                        <p className="text-xs text-muted-foreground">Requires attention</p>
                     </CardContent>
                 </Card>
-            </main>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Processing</CardTitle>
+                        <Loader2 className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{data?.payouts?.filter((p: Payout) => p.status === 'processing' || p.status === 'approved').length || 0}</div>
+                        <p className="text-xs text-muted-foreground">In bank queue</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{data?.total || 0}</div>
+                        <p className="text-xs text-muted-foreground">All time</p>
+                    </CardContent>
+                </Card>
+            </div>
 
-            {/* Process Payout Dialog */}
-            <Dialog open={processDialogOpen} onOpenChange={setProcessDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>
-                            {action === "approve" ? "Approve" : "Reject"} Payout
-                        </DialogTitle>
-                        <DialogDescription>
-                            {action === "approve"
-                                ? `Process payout of ₹${parseFloat(selectedPayout?.amount || "0").toLocaleString()} to ${selectedPayout?.seller.shopName}`
-                                : `Reject payout request from ${selectedPayout?.seller.shopName}`}
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-4">
-                        {action === "approve" ? (
-                            <>
-                                <div className="p-4 bg-muted rounded-lg space-y-2">
-                                    <div className="flex justify-between">
-                                        <span className="text-sm font-medium">Amount:</span>
-                                        <span className="text-sm font-bold">₹{parseFloat(selectedPayout?.amount || "0").toLocaleString()}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm font-medium">Account:</span>
-                                        <span className="text-sm">{selectedPayout?.seller.accountNumber}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm font-medium">IFSC:</span>
-                                        <span className="text-sm">{selectedPayout?.seller.ifscCode}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm font-medium">Bank:</span>
-                                        <span className="text-sm">{selectedPayout?.seller.bankName}</span>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="transactionId">Transaction ID *</Label>
-                                    <Input
-                                        id="transactionId"
-                                        placeholder="Enter transaction/reference ID"
-                                        value={transactionId}
-                                        onChange={(e) => setTransactionId(e.target.value)}
-                                    />
-                                    <p className="text-xs text-muted-foreground">
-                                        Enter the transaction ID from your payment gateway
-                                    </p>
-                                </div>
-                            </>
-                        ) : null}
-
-                        <div className="space-y-2">
-                            <Label htmlFor="note">Note (Optional)</Label>
-                            <Textarea
-                                id="note"
-                                placeholder="Add any additional notes..."
-                                value={note}
-                                onChange={(e) => setNote(e.target.value)}
+            {/* Filters */}
+            <Card className="mb-6">
+                <CardContent className="py-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Search by Shop Name or Payout ID..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-9"
                             />
                         </div>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-[200px]">
+                                <SelectValue placeholder="Filter by status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Statuses</SelectItem>
+                                <SelectItem value="requested">Requested</SelectItem>
+                                <SelectItem value="approved">Approved</SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
+                                <SelectItem value="cancelled">Rejected/Cancelled</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
+                </CardContent>
+            </Card>
 
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setProcessDialogOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button
-                            className={action === "approve" ? "bg-green-600 hover:bg-green-700" : ""}
-                            variant={action === "reject" ? "destructive" : "default"}
-                            onClick={confirmProcess}
-                            disabled={processMutation.isPending || (action === "approve" && !transactionId)}
-                        >
-                            {processMutation.isPending && (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            {/* Payouts Table */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Payout Requests</CardTitle>
+                    <CardDescription>Review and manage disbursement requests.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Payout ID</TableHead>
+                                <TableHead>Seller</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Amount</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Bank Info</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {data?.payouts?.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                                        No payout requests found
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                data?.payouts?.map((payout: Payout) => (
+                                    <TableRow key={payout.id}>
+                                        <TableCell className="font-medium font-mono">{payout.payoutNumber}</TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="font-medium">{payout.shopName}</span>
+                                                <span className="text-xs text-muted-foreground">{payout.sellerName}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            {format(new Date(payout.createdAt), "MMM d, yyyy")}
+                                        </TableCell>
+                                        <TableCell className="font-bold">₹{parseFloat(payout.amount).toLocaleString()}</TableCell>
+                                        <TableCell>
+                                            <Badge className={`${statusColors[payout.status] || "bg-gray-100"}`}>
+                                                {payout.status.replace("_", " ")}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="text-xs">
+                                                <p className="font-semibold">{payout.bankAccountName || "Bank"}</p>
+                                                <p>Acct: ••••{payout.bankAccountNumber.slice(-4)}</p>
+                                                <p>IFSC: {payout.bankIfscCode}</p>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            {payout.status === 'requested' && (
+                                                <div className="flex justify-end gap-2">
+                                                    <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700" onClick={() => handleAction(payout, 'approve')}>
+                                                        Approve
+                                                    </Button>
+                                                    <Button size="sm" variant="destructive" onClick={() => handleAction(payout, 'reject')}>
+                                                        Reject
+                                                    </Button>
+                                                </div>
+                                            )}
+                                            {payout.status === 'approved' && (
+                                                <Button size="sm" variant="secondary" onClick={() => handleAction(payout, 'process')}>
+                                                    Mark Processed
+                                                </Button>
+                                            )}
+                                            {['completed', 'cancelled', 'failed'].includes(payout.status) && (
+                                                <Button size="sm" variant="ghost" disabled>
+                                                    <FileText className="h-4 w-4 mr-1" /> Details
+                                                </Button>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                ))
                             )}
-                            {action === "approve" ? "Process Payout" : "Reject Payout"}
+                        </TableBody>
+                    </Table>
+
+                    {/* Pagination */}
+                    {data?.total > 20 && (
+                        <div className="flex justify-center items-center gap-2 mt-4">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <span className="text-sm text-muted-foreground">
+                                Page {page} of {Math.ceil(data.total / 20)}
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage(p => p + 1)}
+                                disabled={page >= Math.ceil(data.total / 20)}
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Reject Payout Request</DialogTitle>
+                        <DialogDescription>
+                            Provide a reason for rejecting this payout. The amount will be refunded to the seller's wallet.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Textarea
+                        placeholder="Reason for rejection..."
+                        value={actionNote}
+                        onChange={(e) => setActionNote(e.target.value)}
+                    />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsRejectDialogOpen(false)}>Cancel</Button>
+                        <Button
+                            variant="destructive"
+                            onClick={() => selectedPayout && mutation.mutate({ id: selectedPayout.id, action: 'reject', note: actionNote })}
+                            disabled={!actionNote.trim()}
+                        >
+                            Reject & Refund
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </AdminLayout>
     );
 }

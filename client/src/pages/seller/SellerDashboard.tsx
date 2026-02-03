@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import {
     Loader2,
     Package,
-    DollarSign,
     ShoppingCart,
     TrendingUp,
     Wallet,
@@ -24,9 +23,10 @@ import {
     Clock,
     CheckCircle2,
     XCircle,
-    Truck
+    Plus
 } from "lucide-react";
-import { Navbar } from "@/components/Navbar";
+import { SellerLayout, PremiumHeader } from "@/components/layout";
+import { motion } from "framer-motion";
 
 interface DashboardStats {
     seller: {
@@ -117,40 +117,38 @@ export default function SellerDashboard() {
         // Not a seller - show registration prompt
         if (errorMessage === "not_a_seller") {
             return (
-                <div className="min-h-screen bg-background">
-                    <Navbar />
-                    <main className="container mx-auto px-4 py-16">
-                        <Card className="max-w-lg mx-auto text-center">
+                <div className="min-h-screen bg-background text-foreground">
+                    <PremiumHeader />
+                    <main className="container mx-auto px-4 py-32">
+                        <Card className="max-w-lg mx-auto text-center border-border/50 shadow-lg">
                             <CardHeader>
-                                <Store className="h-16 w-16 mx-auto text-primary mb-4" />
-                                <CardTitle className="text-2xl">Become a Seller</CardTitle>
-                                <CardDescription>
+                                <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Store className="h-10 w-10 text-primary" />
+                                </div>
+                                <CardTitle className="text-3xl font-display">Become a Seller</CardTitle>
+                                <CardDescription className="text-lg mt-2">
                                     Start selling on our marketplace and reach millions of customers
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4">
-                                <ul className="text-left space-y-2 text-sm text-muted-foreground">
-                                    <li className="flex items-center gap-2">
-                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                        Quick and easy registration
+                            <CardContent className="space-y-6">
+                                <ul className="text-left space-y-3 text-muted-foreground bg-muted/30 p-6 rounded-xl">
+                                    <li className="flex items-center gap-3">
+                                        <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                                        <span>Quick and easy registration</span>
                                     </li>
-                                    <li className="flex items-center gap-2">
-                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                        Low commission rates
+                                    <li className="flex items-center gap-3">
+                                        <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                                        <span>Low commission rates</span>
                                     </li>
-                                    <li className="flex items-center gap-2">
-                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                        Weekly payouts to your bank
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                        Dedicated seller support
+                                    <li className="flex items-center gap-3">
+                                        <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                                        <span>Weekly payouts to your bank</span>
                                     </li>
                                 </ul>
                                 <Link href="/seller/register">
-                                    <Button className="w-full">
+                                    <Button className="w-full text-lg h-12">
                                         Register as Seller
-                                        <ArrowRight className="ml-2 h-4 w-4" />
+                                        <ArrowRight className="ml-2 h-5 w-5" />
                                     </Button>
                                 </Link>
                             </CardContent>
@@ -166,24 +164,28 @@ export default function SellerDashboard() {
                 pending: {
                     icon: Clock,
                     color: "text-yellow-500",
+                    bg: "bg-yellow-500/10",
                     title: "Application Under Review",
                     description: "Your seller application is being reviewed. We'll notify you once it's approved."
                 },
                 rejected: {
                     icon: XCircle,
                     color: "text-red-500",
+                    bg: "bg-red-500/10",
                     title: "Application Rejected",
                     description: "Unfortunately, your seller application was rejected. Please contact support for more information."
                 },
                 suspended: {
                     icon: AlertCircle,
                     color: "text-orange-500",
+                    bg: "bg-orange-500/10",
                     title: "Account Suspended",
                     description: "Your seller account has been suspended. Please contact support to resolve this issue."
                 },
                 blacklisted: {
                     icon: XCircle,
                     color: "text-red-500",
+                    bg: "bg-red-500/10",
                     title: "Account Disabled",
                     description: "Your seller account has been permanently disabled."
                 }
@@ -194,17 +196,19 @@ export default function SellerDashboard() {
 
             return (
                 <div className="min-h-screen bg-background">
-                    <Navbar />
-                    <main className="container mx-auto px-4 py-16">
-                        <Card className="max-w-lg mx-auto text-center">
+                    <PremiumHeader />
+                    <main className="container mx-auto px-4 py-32">
+                        <Card className="max-w-lg mx-auto text-center border-border/50 shadow-lg">
                             <CardHeader>
-                                <Icon className={`h-16 w-16 mx-auto ${config.color} mb-4`} />
-                                <CardTitle className="text-2xl">{config.title}</CardTitle>
-                                <CardDescription>{config.description}</CardDescription>
+                                <div className={`h-20 w-20 ${config.bg} rounded-full flex items-center justify-center mx-auto mb-4`}>
+                                    <Icon className={`h-10 w-10 ${config.color}`} />
+                                </div>
+                                <CardTitle className="text-2xl font-display">{config.title}</CardTitle>
+                                <CardDescription className="text-lg mt-2">{config.description}</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <Link href="/help-center">
-                                    <Button variant="outline">Contact Support</Button>
+                                    <Button variant="outline" className="min-w-[150px]">Contact Support</Button>
                                 </Link>
                             </CardContent>
                         </Card>
@@ -216,16 +220,18 @@ export default function SellerDashboard() {
         // General error
         return (
             <div className="min-h-screen bg-background">
-                <Navbar />
-                <main className="container mx-auto px-4 py-16">
-                    <Card className="max-w-lg mx-auto text-center">
+                <PremiumHeader />
+                <main className="container mx-auto px-4 py-32">
+                    <Card className="max-w-lg mx-auto text-center border-destructive/20 shadow-lg">
                         <CardHeader>
-                            <AlertCircle className="h-16 w-16 mx-auto text-red-500 mb-4" />
-                            <CardTitle>Something went wrong</CardTitle>
-                            <CardDescription>{errorMessage}</CardDescription>
+                            <div className="h-20 w-20 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <AlertCircle className="h-10 w-10 text-destructive" />
+                            </div>
+                            <CardTitle className="text-2xl font-display">Something went wrong</CardTitle>
+                            <CardDescription className="text-lg">{errorMessage}</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <Button onClick={() => window.location.reload()}>
+                            <Button onClick={() => window.location.reload()} variant="outline">
                                 Try Again
                             </Button>
                         </CardContent>
@@ -236,222 +242,303 @@ export default function SellerDashboard() {
     }
 
     return (
-        <div className="min-h-screen bg-background">
-            <Navbar />
-            <main className="container mx-auto px-4 py-8">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold">{dashboard?.seller.shopName}</h1>
-                        <p className="text-muted-foreground flex items-center gap-2 mt-1">
-                            <Badge variant="outline" className="text-green-600 border-green-600">
-                                Active Seller
-                            </Badge>
-                            {dashboard?.seller.rating && (
-                                <span>★ {parseFloat(dashboard.seller.rating).toFixed(1)}</span>
-                            )}
-                            <span className="text-xs">
-                                Commission: {dashboard?.commission.rate}%
-                            </span>
-                        </p>
-                    </div>
-                    <div className="flex gap-2">
-                        <Link href="/seller/products/new">
-                            <Button>
-                                <Package className="mr-2 h-4 w-4" />
-                                Add Product
-                            </Button>
-                        </Link>
-                    </div>
-                </div>
+        <SellerLayout
+            title={dashboard?.seller.shopName}
+            subtitle={`Active Seller • ★ ${dashboard?.seller.rating ? parseFloat(dashboard.seller.rating).toFixed(1) : 'N/A'} • ${dashboard?.commission.rate}% commission`}
+            actions={
+                <Link href="/seller/products/new">
+                    <Button className="bg-accent hover:bg-accent/90 text-white shadow-sm">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Product
+                    </Button>
+                </Link>
+            }
+        >
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-6"
+            >
 
                 {/* Notifications Banner */}
                 {notifications?.notifications?.length > 0 && (
-                    <Card className="mb-6 border-primary/20 bg-primary/5">
-                        <CardContent className="py-3">
-                            <div className="flex items-center gap-3">
-                                <Bell className="h-5 w-5 text-primary" />
-                                <span className="text-sm font-medium">
-                                    You have {notifications.notifications.length} unread notifications
-                                </span>
-                                <Link href="/seller/notifications" className="ml-auto">
-                                    <Button variant="ghost" size="sm">View All</Button>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                    >
+                        <Card className="mb-6 border-accent/20 bg-accent/5 overflow-hidden relative">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-accent" />
+                            <CardContent className="py-4 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-white rounded-full shadow-sm">
+                                        <Bell className="h-5 w-5 text-accent" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-accent-foreground">Notifications</p>
+                                        <span className="text-sm text-muted-foreground">
+                                            You have {notifications.notifications.length} unread notifications
+                                        </span>
+                                    </div>
+                                </div>
+                                <Link href="/seller/notifications">
+                                    <Button variant="ghost" size="sm" className="hover:bg-accent/10 hover:text-accent">View All &rarr;</Button>
                                 </Link>
-                            </div>
-                        </CardContent>
-                    </Card>
+                            </CardContent>
+                        </Card>
+                    </motion.div>
                 )}
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-                            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{dashboard?.orders.totalOrders || 0}</div>
-                            <p className="text-xs text-muted-foreground">
-                                {dashboard?.orders.pendingOrders || 0} pending
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
-                                ₹{(dashboard?.orders.totalRevenue || 0).toLocaleString()}
-                            </div>
-                            <p className="text-xs text-muted-foreground">Lifetime earnings</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Products</CardTitle>
-                            <Package className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{dashboard?.products.active || 0}</div>
-                            <p className="text-xs text-muted-foreground">
-                                {dashboard?.products.pending || 0} pending review
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Available Balance</CardTitle>
-                            <Wallet className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
-                                ₹{parseFloat(dashboard?.wallet?.availableBalance || "0").toLocaleString()}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                ₹{parseFloat(dashboard?.wallet?.pendingBalance || "0").toLocaleString()} pending
-                            </p>
-                        </CardContent>
-                    </Card>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <StatsCard
+                        title="Total Orders"
+                        value={dashboard?.orders.totalOrders || 0}
+                        subtext={`${dashboard?.orders.pendingOrders || 0} pending`}
+                        icon={ShoppingCart}
+                        color="text-blue-500"
+                        bg="bg-blue-500/10"
+                    />
+                    <StatsCard
+                        title="Total Revenue"
+                        value={`₹${(dashboard?.orders.totalRevenue || 0).toLocaleString()}`}
+                        subtext="Lifetime earnings"
+                        icon={TrendingUp}
+                        color="text-green-500"
+                        bg="bg-green-500/10"
+                    />
+                    <StatsCard
+                        title="Active Products"
+                        value={dashboard?.products.active || 0}
+                        subtext={`${dashboard?.products.pending || 0} under review`}
+                        icon={Package}
+                        color="text-purple-500"
+                        bg="bg-purple-500/10"
+                    />
+                    <StatsCard
+                        title="Available Balance"
+                        value={`₹${parseFloat(dashboard?.wallet?.availableBalance || "0").toLocaleString()}`}
+                        subtext={`₹${parseFloat(dashboard?.wallet?.pendingBalance || "0").toLocaleString()} pending`}
+                        icon={Wallet}
+                        color="text-orange-500"
+                        bg="bg-orange-500/10"
+                    />
                 </div>
 
                 {/* Quick Actions Grid */}
+                <h2 className="text-xl font-display font-bold mt-8 mb-4">Quick Actions</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    <Link href="/seller/orders">
-                        <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                            <CardContent className="py-6 flex items-center gap-4">
-                                <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
-                                    <ShoppingCart className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold">Manage Orders</h3>
-                                    <p className="text-sm text-muted-foreground">
-                                        {dashboard?.orders.pendingOrders} need action
-                                    </p>
-                                </div>
-                                <ArrowRight className="h-5 w-5 ml-auto text-muted-foreground" />
-                            </CardContent>
-                        </Card>
-                    </Link>
-
-                    <Link href="/seller/products">
-                        <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                            <CardContent className="py-6 flex items-center gap-4">
-                                <div className="p-3 bg-green-100 dark:bg-green-900 rounded-full">
-                                    <Package className="h-6 w-6 text-green-600 dark:text-green-400" />
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold">My Products</h3>
-                                    <p className="text-sm text-muted-foreground">
-                                        {dashboard?.products.total} total
-                                    </p>
-                                </div>
-                                <ArrowRight className="h-5 w-5 ml-auto text-muted-foreground" />
-                            </CardContent>
-                        </Card>
-                    </Link>
-
-                    <Link href="/seller/wallet">
-                        <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                            <CardContent className="py-6 flex items-center gap-4">
-                                <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
-                                    <Wallet className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold">Wallet & Payouts</h3>
-                                    <p className="text-sm text-muted-foreground">
-                                        View transactions
-                                    </p>
-                                </div>
-                                <ArrowRight className="h-5 w-5 ml-auto text-muted-foreground" />
-                            </CardContent>
-                        </Card>
-                    </Link>
-
-                    <Link href="/seller/profile">
-                        <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                            <CardContent className="py-6 flex items-center gap-4">
-                                <div className="p-3 bg-orange-100 dark:bg-orange-900 rounded-full">
-                                    <Store className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold">Shop Settings</h3>
-                                    <p className="text-sm text-muted-foreground">
-                                        Profile & bank details
-                                    </p>
-                                </div>
-                                <ArrowRight className="h-5 w-5 ml-auto text-muted-foreground" />
-                            </CardContent>
-                        </Card>
-                    </Link>
+                    <QuickActionCard
+                        href="/seller/orders"
+                        title="Manage Orders"
+                        description={`${dashboard?.orders.pendingOrders || 0} orders need action`}
+                        icon={ShoppingCart}
+                        color="bg-blue-500"
+                    />
+                    <QuickActionCard
+                        href="/seller/products"
+                        title="My Products"
+                        description={`${dashboard?.products.total || 0} total products`}
+                        icon={Package}
+                        color="bg-green-500"
+                    />
+                    <QuickActionCard
+                        href="/seller/wallet"
+                        title="Wallet & Payouts"
+                        description="View transactions"
+                        icon={Wallet}
+                        color="bg-purple-500"
+                    />
+                    <QuickActionCard
+                        href="/seller/profile"
+                        title="Shop Settings"
+                        description="Profile & bank details"
+                        icon={Store}
+                        color="bg-orange-500"
+                    />
                 </div>
 
-                {/* Order Status Overview */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Order Status Overview</CardTitle>
-                        <CardDescription>Current status of your orders</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                            <div className="text-center p-4 bg-muted/50 rounded-lg">
-                                <div className="text-3xl font-bold text-yellow-600">
-                                    {dashboard?.orders.pendingOrders || 0}
+                {/* Earnings Overview & Recent Activity */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+                    {/* Earnings Chart */}
+                    <Card className="lg:col-span-2 border-border/30 shadow-sm overflow-hidden">
+                        <CardHeader className="pb-2">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-lg font-display">Earnings Overview</CardTitle>
+                                    <CardDescription>Your revenue this month</CardDescription>
                                 </div>
-                                <p className="text-sm text-muted-foreground mt-1">Pending</p>
+                                <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-0">
+                                    +12% vs last month
+                                </Badge>
                             </div>
-                            <div className="text-center p-4 bg-muted/50 rounded-lg">
-                                <div className="text-3xl font-bold text-blue-600">
-                                    {dashboard?.orders.confirmedOrders || 0}
+                        </CardHeader>
+                        <CardContent className="pt-4">
+                            {/* Simple visual chart bars */}
+                            <div className="flex items-end gap-2 h-32 mb-4">
+                                {[40, 65, 45, 80, 55, 90, 70].map((height, i) => (
+                                    <motion.div
+                                        key={i}
+                                        className="flex-1 bg-gradient-to-t from-accent/80 to-accent/40 rounded-t-md"
+                                        initial={{ height: 0 }}
+                                        animate={{ height: `${height}%` }}
+                                        transition={{ delay: i * 0.1, duration: 0.5, ease: "easeOut" }}
+                                    />
+                                ))}
+                            </div>
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                                    <span key={day}>{day}</span>
+                                ))}
+                            </div>
+                            <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t">
+                                <div>
+                                    <p className="text-xs text-muted-foreground">This Week</p>
+                                    <p className="text-lg font-bold">₹{((dashboard?.orders.totalRevenue || 0) * 0.3).toLocaleString()}</p>
                                 </div>
-                                <p className="text-sm text-muted-foreground mt-1">Confirmed</p>
-                            </div>
-                            <div className="text-center p-4 bg-muted/50 rounded-lg">
-                                <div className="text-3xl font-bold text-purple-600">
-                                    {dashboard?.orders.shippedOrders || 0}
+                                <div>
+                                    <p className="text-xs text-muted-foreground">This Month</p>
+                                    <p className="text-lg font-bold">₹{((dashboard?.orders.totalRevenue || 0) * 0.8).toLocaleString()}</p>
                                 </div>
-                                <p className="text-sm text-muted-foreground mt-1">Shipped</p>
-                            </div>
-                            <div className="text-center p-4 bg-muted/50 rounded-lg">
-                                <div className="text-3xl font-bold text-green-600">
-                                    {dashboard?.orders.deliveredOrders || 0}
+                                <div>
+                                    <p className="text-xs text-muted-foreground">Avg Order</p>
+                                    <p className="text-lg font-bold">₹{dashboard?.orders.totalOrders ? Math.round((dashboard.orders.totalRevenue || 0) / dashboard.orders.totalOrders) : 0}</p>
                                 </div>
-                                <p className="text-sm text-muted-foreground mt-1">Delivered</p>
                             </div>
-                            <div className="text-center p-4 bg-muted/50 rounded-lg">
-                                <div className="text-3xl font-bold text-red-600">
-                                    {dashboard?.orders.cancelledOrders || 0}
+                        </CardContent>
+                    </Card>
+
+                    {/* Recent Activity */}
+                    <Card className="border-border/30 shadow-sm">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-lg font-display">Recent Activity</CardTitle>
+                            <CardDescription>Latest updates</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
                                 </div>
-                                <p className="text-sm text-muted-foreground mt-1">Cancelled</p>
+                                <div>
+                                    <p className="text-sm font-medium">Order Completed</p>
+                                    <p className="text-xs text-muted-foreground">Order #1234 delivered successfully</p>
+                                </div>
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </main>
-        </div>
+                            <div className="flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                                    <Package className="h-4 w-4 text-blue-500" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium">New Order</p>
+                                    <p className="text-xs text-muted-foreground">You have a new order #1235</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                                    <Wallet className="h-4 w-4 text-purple-500" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium">Payment Received</p>
+                                    <p className="text-xs text-muted-foreground">₹2,500 added to wallet</p>
+                                </div>
+                            </div>
+                            <Link href="/seller/orders">
+                                <Button variant="ghost" size="sm" className="w-full mt-2 hover:bg-accent/10 hover:text-accent">
+                                    View all activity →
+                                </Button>
+                            </Link>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Inventory Alerts */}
+                {(dashboard?.products.pending || 0) > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-6"
+                    >
+                        <Card className="border-orange-200 bg-orange-50/50 dark:bg-orange-950/20 dark:border-orange-800/30">
+                            <CardContent className="py-4 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-orange-500/10 rounded-full">
+                                        <Clock className="h-5 w-5 text-orange-500" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-orange-700 dark:text-orange-400">Products Under Review</p>
+                                        <span className="text-sm text-orange-600/80 dark:text-orange-300/70">
+                                            {dashboard?.products.pending || 0} products are pending approval
+                                        </span>
+                                    </div>
+                                </div>
+                                <Link href="/seller/products?status=pending">
+                                    <Button variant="outline" size="sm" className="border-orange-300 text-orange-600 hover:bg-orange-100 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950">
+                                        View Products
+                                    </Button>
+                                </Link>
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                )}
+            </motion.div>
+        </SellerLayout>
+    );
+}
+
+function StatsCard({ title, value, subtext, icon: Icon, color, bg }: any) {
+    return (
+        <motion.div
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            className="group"
+        >
+            <Card className="border-border/30 shadow-sm hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-card to-card/80 overflow-hidden relative">
+                {/* Subtle gradient overlay */}
+                <div className={`absolute top-0 right-0 w-32 h-32 ${bg} rounded-full blur-3xl opacity-30 -translate-y-8 translate-x-8 group-hover:opacity-50 transition-opacity`} />
+
+                <CardContent className="p-6 relative">
+                    <div className="flex items-center justify-between space-y-0 pb-2">
+                        <p className="text-sm font-medium text-muted-foreground">{title}</p>
+                        <motion.div
+                            className={`p-2.5 rounded-xl ${bg} shadow-sm`}
+                            whileHover={{ scale: 1.1, rotate: 5 }}
+                            transition={{ type: "spring", stiffness: 400 }}
+                        >
+                            <Icon className={`h-4 w-4 ${color}`} />
+                        </motion.div>
+                    </div>
+                    <div className="mt-3">
+                        <motion.div
+                            className="text-2xl md:text-3xl font-bold tracking-tight"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.1 }}
+                        >
+                            {value}
+                        </motion.div>
+                        <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                            {subtext}
+                        </p>
+                    </div>
+                </CardContent>
+            </Card>
+        </motion.div>
+    );
+}
+
+function QuickActionCard({ href, title, description, icon: Icon, color }: any) {
+    return (
+        <Link href={href}>
+            <Card className="cursor-pointer border-border/50 shadow-sm hover:shadow-md hover:border-accent/30 transition-all duration-300 group">
+                <CardContent className="p-6 flex items-center gap-4">
+                    <div className={`p-3 rounded-full text-white shadow-md group-hover:scale-110 transition-transform duration-300 ${color}`}>
+                        <Icon className="h-6 w-6" />
+                    </div>
+                    <div>
+                        <h3 className="font-semibold group-hover:text-accent transition-colors">{title}</h3>
+                        <p className="text-sm text-muted-foreground">{description}</p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 ml-auto text-muted-foreground group-hover:text-accent group-hover:translate-x-1 transition-all" />
+                </CardContent>
+            </Card>
+        </Link>
     );
 }

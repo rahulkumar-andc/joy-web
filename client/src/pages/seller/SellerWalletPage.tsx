@@ -35,7 +35,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Navbar } from "@/components/Navbar";
+import { SellerLayout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
 import {
     Loader2,
@@ -186,9 +186,11 @@ export default function SellerWalletPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
+            <SellerLayout title="Wallet & Payouts">
+                <div className="h-[50vh] flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            </SellerLayout>
         );
     }
 
@@ -199,25 +201,21 @@ export default function SellerWalletPage() {
     const totalWithdrawn = parseFloat(wallet?.totalWithdrawn || "0");
 
     return (
-        <div className="min-h-screen bg-background">
-            <Navbar />
-            <main className="container mx-auto px-4 py-8">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                    <div>
-                        <h1 className="text-3xl font-bold">Wallet & Payouts</h1>
-                        <p className="text-muted-foreground">
-                            Manage your earnings and request payouts
-                        </p>
-                    </div>
-                    <Button
-                        onClick={() => setPayoutDialogOpen(true)}
-                        disabled={availableBalance <= 0}
-                    >
-                        <Download className="mr-2 h-4 w-4" />
-                        Request Payout
-                    </Button>
-                </div>
+        <SellerLayout
+            title="Wallet & Payouts"
+            subtitle="Manage your earnings and request payouts"
+            actions={
+                <Button
+                    onClick={() => setPayoutDialogOpen(true)}
+                    disabled={availableBalance <= 0}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                    <Download className="mr-2 h-4 w-4" />
+                    Request Payout
+                </Button>
+            }
+        >
+            <div className="space-y-6">
 
                 {/* Balance Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -404,7 +402,7 @@ export default function SellerWalletPage() {
                         )}
                     </CardContent>
                 </Card>
-            </main>
+            </div>
 
             {/* Payout Request Dialog */}
             <Dialog open={payoutDialogOpen} onOpenChange={setPayoutDialogOpen}>
@@ -468,6 +466,6 @@ export default function SellerWalletPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </SellerLayout>
     );
 }

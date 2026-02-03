@@ -3,9 +3,9 @@ import { heroCampaignRepository } from "./repository";
 import { heroService } from "./service";
 import { insertHeroCampaignSchema, heroAnalytics, insertHeroAnalyticsSchema } from "@shared/schema";
 import { z } from "zod";
-import { logger } from "../../logger";
-import { db } from "../../db";
-import { upload } from "../../upload";
+import { logger } from "@server/logger";
+import { db } from "@server/db";
+import { upload } from "@server/upload";
 
 // ============================================================================
 // Types and Interfaces
@@ -363,6 +363,56 @@ adminHeroRouter.delete("/:id", async (req: Request, res: Response, next: NextFun
             res.sendStatus(204);
         } else {
             res.status(400).json({ message: result.error });
+        }
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
+ * PATCH /api/admin/hero/:id/toggle
+ * Quick toggle campaign active status
+ * Enforces single-active-campaign constraint:
+ * When activating a campaign, all other campaigns are deactivated
+ */
+adminHeroRouter.patch("/:id/toggle", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const id = parseInt(req.params.id as string, 10);
+        const { isActive } = req.body;
+
+        if (typeof isActive !== 'boolean') {
+            return res.status(400).json({ message: "isActive must be a boolean" });
+        }
+
+        // If activating, deactivate all other campaigns first
+        if (isActive) {
+            const allCampaigns = await heroService.getAllCampaigns();
+            for (const campaign of allCampaigns) {
+                if (campaign.id !== id && campaign.isActive) {
+                    await heroService.toggleCampaignStatus(campaign.id, false);
+                    logger.info({
+                        message: "Deactivated campaign for single-active constraint",
+                        campaignId: campaign.id,
+                        campaignName: campaign.name,
+                    });
+                }
+            }
+        }
+
+        const campaign = await heroService.toggleCampaignStatus(id, isActive);
+
+        if (campaign) {
+            heroCache.invalidate();
+            res.setHeader('Cache-Tag', CACHE_TAG);
+            res.setHeader('X-Cache-Invalidate', CACHE_TAG);
+            logger.info({
+                message: "Campaign status toggled",
+                campaignId: id,
+                isActive,
+            });
+            res.json(campaign);
+        } else {
+            res.status(404).json({ message: "Campaign not found" });
         }
     } catch (error) {
         next(error);

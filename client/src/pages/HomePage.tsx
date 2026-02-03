@@ -1,6 +1,6 @@
 import { useHomepage, useProducts } from "@/hooks/use-products";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
+import { PremiumHeader, PremiumFooter } from "@/components/layout";
+import { ScrollReveal, StaggerContainer, StaggerItem } from "@/components/animations";
 import { ProductCard } from "@/components/ProductCard";
 import { RecentlyViewed } from "@/components/RecentlyViewed";
 import { ProductSkeleton } from "@/components/ProductSkeleton";
@@ -53,7 +53,7 @@ export default function HomePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background font-body">
-        <Navbar />
+        <PremiumHeader isLandingPage />
         <div className="container mx-auto px-4 py-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {[...Array(8)].map((_, i) => (
@@ -68,7 +68,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-background font-body">
       <SEO />
-      <Navbar />
+      <PremiumHeader isLandingPage />
 
       {/* Hero Section */}
       <HeroSystem />
@@ -101,37 +101,39 @@ export default function HomePage() {
       </section>
 
       {/* Trending Categories */}
-      <section className="py-20 bg-background">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-display font-bold text-primary mb-4">Trending Categories</h2>
-            <p className="text-muted-foreground">Explore our most popular collections</p>
-          </div>
+      <ScrollReveal direction="up" delay={0.1}>
+        <section className="py-20 bg-background">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-display font-bold text-primary mb-4">Trending Categories</h2>
+              <p className="text-muted-foreground">Explore our most popular collections</p>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { name: "Women's Collection", img: "https://images.unsplash.com/photo-1550614000-4b9519e0037a?q=80&w=800&auto=format&fit=crop", link: "/shop?category=women" },
-              { name: "Men's Collection", img: "https://images.unsplash.com/photo-1617137968427-85924c809a22?q=80&w=800&auto=format&fit=crop", link: "/shop?category=men" },
-              { name: "Accessories", img: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?q=80&w=800&auto=format&fit=crop", link: "/shop?category=accessories" },
-            ].map((cat, idx) => (
-              <Link key={idx} href={cat.link} className="group relative h-96 rounded-2xl overflow-hidden cursor-pointer">
-                <img
-                  src={cat.img}
-                  alt={cat.name}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
-                <div className="absolute bottom-0 inset-x-0 p-8">
-                  <h3 className="text-2xl font-display font-bold text-white mb-2">{cat.name}</h3>
-                  <span className="inline-flex items-center text-white/90 font-medium group-hover:translate-x-2 transition-transform">
-                    Shop Now <ArrowRight className="ml-2 w-4 h-4" />
-                  </span>
-                </div>
-              </Link>
-            ))}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                { name: "Women's Collection", img: "https://images.unsplash.com/photo-1550614000-4b9519e0037a?q=80&w=800&auto=format&fit=crop", link: "/shop?category=women" },
+                { name: "Men's Collection", img: "https://images.unsplash.com/photo-1617137968427-85924c809a22?q=80&w=800&auto=format&fit=crop", link: "/shop?category=men" },
+                { name: "Accessories", img: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?q=80&w=800&auto=format&fit=crop", link: "/shop?category=accessories" },
+              ].map((cat, idx) => (
+                <Link key={idx} href={cat.link} className="group relative h-96 rounded-2xl overflow-hidden cursor-pointer">
+                  <img
+                    src={cat.img}
+                    alt={cat.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
+                  <div className="absolute bottom-0 inset-x-0 p-8">
+                    <h3 className="text-2xl font-display font-bold text-white mb-2">{cat.name}</h3>
+                    <span className="inline-flex items-center text-white/90 font-medium group-hover:translate-x-2 transition-transform">
+                      Shop Now <ArrowRight className="ml-2 w-4 h-4" />
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </ScrollReveal>
 
       {/* Dynamic Sections from DB */}
       {homepageData?.map((section) => (
@@ -222,7 +224,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <Footer />
+      <PremiumFooter />
     </div>
   );
 }

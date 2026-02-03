@@ -5,7 +5,7 @@
  * Works with Cloudflare, Vercel, Fastly, AWS CloudFront, etc.
  */
 
-import { logger } from "../../logger";
+import { logger } from "@server/logger";
 
 // ============================================================================
 // Types

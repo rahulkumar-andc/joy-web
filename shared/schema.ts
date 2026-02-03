@@ -66,7 +66,7 @@ export const products = pgTable("products", {
   // Product Moderation (for multi-vendor marketplace)
   moderationStatus: text("moderation_status", {
     enum: ["pending", "approved", "rejected", "disabled"]
-  }).default("approved").notNull(), // Default approved for backward compatibility
+  }).default("pending").notNull(), // Default pending - requires admin approval
   rejectionReason: text("rejection_reason"),
   moderatedBy: integer("moderated_by").references(() => users.id),
   moderatedAt: timestamp("moderated_at"),
