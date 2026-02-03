@@ -29,26 +29,8 @@ export async function registerRoutes(
   // Redis session store (faster, scalable)
   const sessionStore = new RedisStore({
     client: redis as any, // Upstash Redis client is compatible
-    prefix: "sess:", // Prefix session keys to avoid conflicts
+    prefix: "sess:v2:", // Prefix session keys to avoid conflicts and rotate corrupted sessions
     ttl: 30 * 24 * 60 * 60, // 30 days in seconds
-    serializer: {
-      parse: (json: string) => {
-        try {
-          const result = JSON.parse(json);
-          // Ensure valid object to prevent corrupted session (missing cookie) crash
-          if (result && typeof result === "object" && !Array.isArray(result)) {
-            return result;
-          }
-          console.warn(`Redis session validation failed for key: ${json.substring(0, 20)}...`);
-          return null;
-        } catch (err) {
-          // Gracefully handle corrupted session data by treating it as missing
-          console.error("Redis session parse error (resetting session):", err);
-          return null;
-        }
-      },
-      stringify: (obj: any) => JSON.stringify(obj),
-    },
   });
 
   // Initialize WebSocket Service
@@ -62,6 +44,8 @@ export async function registerRoutes(
       saveUninitialized: false,
       cookie: {
         secure: config.NODE_ENV === "production",
+        sameSite: "lax",
+        httpOnly: true,
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       },
     })

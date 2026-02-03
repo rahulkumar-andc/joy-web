@@ -28,23 +28,24 @@ We introduced `redisGet<T>` and `redisSet` helpers that are used by `cacheServic
 
 ### 2. Connect-Redis Session Fix (`server/routes.ts`)
 
-We configured `RedisStore` with a custom `serializer`.
+### 2. Connect-Redis Session Fix (`server/routes.ts`)
+
+We REMOVED the custom `serializer` from `RedisStore`.
+
+- **Why**: `connect-redis` expects a specific internal object structure (containing `cookie` metadata). Overriding serialization manually often strips this metadata or returns malformed objects (e.g., `{}`), leading to errors like `Cannot read properties of undefined (reading 'expires')`.
+- **Solution**: We let `connect-redis` handle JSON serialization/deserialization natively. It correctly manages the session envelope.
+- **Config**:
+  - `serializer`: Removed (using default)
+  - `cookie`: Added `sameSite: "lax"` and `httpOnly: true` for security.
 
 ```typescript
-serializer: {
-  parse: (json: string) => {
-    try {
-      return JSON.parse(json);
-    } catch (err) {
-      console.error("Redis session parse error:", err);
-      return null; // Return null (trigger session reset) instead of crashing
-    }
-  },
-  stringify: (obj: any) => JSON.stringify(obj),
-}
+const sessionStore = new RedisStore({
+  client: redis,
+  prefix: "sess:",
+  ttl: 30 * 24 * 60 * 60,
+});
 ```
 
-This ensures that if a user's session data in Redis is corrupted, their session is reset (logged out) rather than the server crashing for everyone.
 
 ### 3. Cart Caching (`server/controllers/orderController.ts`)
 
