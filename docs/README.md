@@ -140,6 +140,30 @@ Code-Structure/
 | `npm start`      | Start production server               |
 | `npm run check`  | TypeScript type checking              |
 | `npm run db:push`| Push database schema changes          |
+| `npm test`       | Run test suite                        |
+
+---
+
+## 🐳 Docker Deployment
+
+Build and run locally:
+```bash
+docker build -t joy-web .
+docker run -p 5000:5000 --env-file .env joy-web
+```
+
+CI/CD automatically pushes images to GitHub Container Registry on merge to `main`.
+
+---
+
+## 🔄 CI/CD Pipelines
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| **CI Pipeline** | Push/PR to main | Tests, lint, build |
+| **Docker Build** | Push to main | Build & push to GHCR |
+| **Lighthouse** | Push/PR | Performance audit (fails if <80) |
+| **Deploy Production** | Push to main | Deploy to production |
 
 ---
 

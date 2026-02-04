@@ -37,7 +37,6 @@ jobs:
         env:
           NODE_ENV: production
           SESSION_SECRET: lighthouse-ci-test-secret-key
-          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
 
       - name: Wait for server to be ready
         run: |

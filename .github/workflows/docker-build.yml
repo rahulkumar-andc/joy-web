@@ -62,7 +62,7 @@ jobs:
 
       - name: Image digest
         if: github.event_name != 'pull_request'
-        run: echo "Image pushed with digest ${{ steps.build.outputs.digest }}"
+        run: echo "Image successfully pushed to GHCR"
 
   security-scan:
     name: Security Scan
