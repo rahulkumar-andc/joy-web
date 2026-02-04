@@ -159,6 +159,7 @@ Code-Structure/
 - **Shopping Cart** - Add/remove items, quantity management
 - **Wishlist** - Save favorite products
 - **Reseller System** - Commission-based affiliate program with dedicated dashboard
+- **Courier Dashboard** - Dedicated interface for delivery personnel to manage assigned orders
 - **Admin Portal** - Comprehensive management for Orders, Products, Resellers, Payouts, Coupons, Campaigns, and Content
 - **Marketing Tools** - Hero Banner Campaigns, Coupon Management
 - **Security** - RBAC (Role-Based Access Control), Fraud Detection
@@ -196,6 +197,7 @@ Code-Structure/
 | Admin   | Full system access (Resellers, Payouts, Campaigns, RBAC) |
 | Manager | Product, Order, and Coupon management     |
 | Reseller| Reseller Dashboard, Affiliate Links, Payout History |
+| Courier | Courier Dashboard, Assigned Order Tracking        |
 | User    | Shopping, Cart, Wishlist, Order History   |
 
 ---
