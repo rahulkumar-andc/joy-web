@@ -91,7 +91,7 @@ async function createTestUsers() {
                     .values({
                         userId: user.id,
                         roleId,
-                        assignedBy: 1, // Admin user
+                        grantedBy: 1, // Admin user
                     })
                     .onConflictDoNothing();
 
