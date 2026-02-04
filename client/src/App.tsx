@@ -30,6 +30,7 @@ const NotFound = lazy(() => import("@/pages/not-found"));
 
 // Protected / Utility Pages
 const ProtectedRoute = lazy(() => import("@/lib/protected-route"));
+const RoleDashboardRedirect = lazy(() => import("@/components/RoleDashboardRedirect"));
 const OrderSuccessPage = lazy(() => import("@/pages/OrderSuccessPage"));
 const OrderFailurePage = lazy(() => import("@/pages/OrderFailurePage"));
 
@@ -122,6 +123,7 @@ function Router() {
     <Suspense fallback={<LoadingSpinner />}>
       <Switch>
         <Route path="/" component={HomePage} />
+        <Route path="/dashboard" component={RoleDashboardRedirect} />
         <Route path="/shop" component={ShopPage} />
 
         {/* Discovery Routes */}

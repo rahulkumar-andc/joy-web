@@ -2,6 +2,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link, useRoute } from "wouter";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useCheckPermission } from "@/hooks/use-rbac";
+import { useMemo } from "react";
 import {
     LayoutDashboard,
     Users,
@@ -16,7 +18,9 @@ import {
     Store,
     Layers,
     Shield,
-    Ticket
+    Ticket,
+    BarChart3,
+    Truck
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -24,75 +28,113 @@ interface AdminSidebarProps {
     setOpen: (open: boolean) => void;
 }
 
-const adminNavItems = [
+interface NavItem {
+    title: string;
+    href: string;
+    icon: React.ElementType;
+    requiredPermission?: { domain: string; action: string };
+}
+
+const adminNavItems: NavItem[] = [
     {
         title: "Overview",
         href: "/admin",
         icon: LayoutDashboard,
+        // No permission required - visible to all admin roles
     },
     {
         title: "Product Moderation",
         href: "/admin/products/moderation",
         icon: ShieldAlert,
+        requiredPermission: { domain: "catalog", action: "approve" },
     },
     {
         title: "All Products",
         href: "/admin/products",
         icon: Package,
+        requiredPermission: { domain: "catalog", action: "read" },
     },
     {
         title: "Orders",
         href: "/admin/orders",
         icon: ShoppingCart,
+        requiredPermission: { domain: "orders", action: "read" },
     },
     {
         title: "Users",
         href: "/admin/users",
         icon: Users,
+        requiredPermission: { domain: "users", action: "read" },
     },
     {
         title: "Sellers",
         href: "/admin/sellers",
         icon: Store,
+        requiredPermission: { domain: "sellers", action: "read" },
     },
     {
-        title: "Users",
-        href: "/admin/users",
-        icon: Users,
+        title: "Deliveries",
+        href: "/admin/deliveries",
+        icon: Truck,
+        requiredPermission: { domain: "delivery", action: "manage" },
     },
     {
         title: "Campaigns",
         href: "/admin/campaigns",
         icon: Megaphone,
+        requiredPermission: { domain: "system", action: "manage" },
+    },
+    {
+        title: "Analytics",
+        href: "/admin/analytics",
+        icon: BarChart3,
+        requiredPermission: { domain: "reports", action: "read" },
     },
     {
         title: "Payouts",
         href: "/admin/payouts",
         icon: CircleDollarSign,
+        requiredPermission: { domain: "finance", action: "read" },
     },
     {
         title: "Coupons",
         href: "/admin/coupons",
         icon: Ticket,
+        requiredPermission: { domain: "catalog", action: "update" },
     },
     {
         title: "Shipping Rules",
         href: "/admin/shipping",
         icon: Layers,
+        requiredPermission: { domain: "shipping", action: "read" },
     },
     {
         title: "Access Control",
         href: "/admin/rbac",
         icon: Shield,
+        requiredPermission: { domain: "roles", action: "manage" },
     },
     {
         title: "Settings",
         href: "/admin/settings",
         icon: Settings,
+        requiredPermission: { domain: "system", action: "manage" },
     },
 ];
 
 export function AdminSidebar({ open, setOpen }: AdminSidebarProps) {
+    const { checkPermission, isLoading } = useCheckPermission();
+
+    // Filter nav items based on user's permissions
+    const visibleNavItems = useMemo(() => {
+        return adminNavItems.filter((item) => {
+            // If no permission required, show to all
+            if (!item.requiredPermission) return true;
+            // Check if user has the required permission
+            return checkPermission(item.requiredPermission.domain, item.requiredPermission.action);
+        });
+    }, [checkPermission]);
+
     return (
         <motion.aside
             initial={false}
@@ -131,7 +173,7 @@ export function AdminSidebar({ open, setOpen }: AdminSidebarProps) {
 
             {/* Navigation */}
             <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-                {adminNavItems.map((item) => (
+                {visibleNavItems.map((item) => (
                     <SidebarItem
                         key={item.href}
                         href={item.href}

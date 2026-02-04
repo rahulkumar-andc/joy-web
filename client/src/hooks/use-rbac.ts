@@ -120,6 +120,64 @@ export function useMyPermissions() {
     });
 }
 
+/**
+ * Hook to check if the current user has a specific permission.
+ * 
+ * @example
+ * const { checkPermission, isLoading } = useCheckPermission();
+ * const canViewOrders = checkPermission('orders', 'read');
+ * const canManageUsers = checkPermission('users', 'manage');
+ */
+export function useCheckPermission() {
+    const { data: myPerms, isLoading, error } = useMyPermissions();
+
+    /**
+     * Check if user has a specific permission.
+     * @param domain - The permission domain (e.g., 'orders', 'users', 'catalog')
+     * @param action - The permission action (e.g., 'read', 'create', 'manage')
+     * @returns true if user has the permission, false otherwise
+     */
+    const checkPermission = (domain: string, action: string): boolean => {
+        if (!myPerms?.permissions) return false;
+
+        // Check for exact match
+        if (myPerms.permissions.includes(`${domain}:${action}`)) {
+            return true;
+        }
+
+        // Check for 'manage' permission on the domain (grants all actions)
+        if (myPerms.permissions.includes(`${domain}:manage`)) {
+            return true;
+        }
+
+        // Check for system:manage (superadmin - has all permissions)
+        if (myPerms.permissions.includes('system:manage')) {
+            return true;
+        }
+
+        return false;
+    };
+
+    /**
+     * Check if user has any of the specified roles.
+     * @param roleNames - Array of role names to check
+     * @returns true if user has any of the specified roles
+     */
+    const hasRole = (...roleNames: string[]): boolean => {
+        if (!myPerms?.roles) return false;
+        return roleNames.some(role => myPerms.roles.includes(role));
+    };
+
+    return {
+        checkPermission,
+        hasRole,
+        permissions: myPerms?.permissions || [],
+        roles: myPerms?.roles || [],
+        isLoading,
+        error
+    };
+}
+
 export function usePendingApprovals() {
     return useQuery<{ approvals: ApprovalRequest[] }>({
         queryKey: ["rbac-approvals"],

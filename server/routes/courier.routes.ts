@@ -11,6 +11,7 @@ import { catchAsync } from '../utils/catchAsync';
 import { AppError } from '../utils/AppError';
 import { deliveryService } from '../services/deliveryService';
 import { requireAuth } from '../middleware/auth';
+import { requireRole, requireDeliveryPartner, ADMIN_ROLES, OPS_ROLES } from '../middleware/requireRole';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -58,8 +59,9 @@ const updateStatusSchema = z.object({
 /**
  * GET /api/courier/orders
  * Get all orders assigned to the current courier
+ * Protected: DELIVERY_PARTNER and OPS roles only
  */
-courierRouter.get('/api/courier/orders', requireAuth, catchAsync(async (req: Request, res: Response) => {
+courierRouter.get('/api/courier/orders', requireAuth, requireDeliveryPartner(), catchAsync(async (req: Request, res: Response) => {
     const userId = (req.user as any)?.id;
 
     if (!userId) {
@@ -78,8 +80,9 @@ courierRouter.get('/api/courier/orders', requireAuth, catchAsync(async (req: Req
 /**
  * GET /api/courier/orders/:id
  * Get specific order details for courier
+ * Protected: DELIVERY_PARTNER and OPS roles only
  */
-courierRouter.get('/api/courier/orders/:id', requireAuth, catchAsync(async (req: Request, res: Response) => {
+courierRouter.get('/api/courier/orders/:id', requireAuth, requireDeliveryPartner(), catchAsync(async (req: Request, res: Response) => {
     const userId = (req.user as any)?.id;
     const orderId = parseInt(req.params.id as string);
 
@@ -107,8 +110,9 @@ courierRouter.get('/api/courier/orders/:id', requireAuth, catchAsync(async (req:
 /**
  * POST /api/orders/:id/pickup
  * Mark order as picked up
+ * Protected: DELIVERY_PARTNER and OPS roles only
  */
-courierRouter.post('/api/orders/:id/pickup', requireAuth, catchAsync(async (req: Request, res: Response) => {
+courierRouter.post('/api/orders/:id/pickup', requireAuth, requireDeliveryPartner(), catchAsync(async (req: Request, res: Response) => {
     const userId = (req.user as any)?.id;
     const orderId = parseInt(req.params.id as string);
 
@@ -136,8 +140,9 @@ courierRouter.post('/api/orders/:id/pickup', requireAuth, catchAsync(async (req:
 /**
  * POST /api/orders/:id/in-transit
  * Mark order as in transit
+ * Protected: DELIVERY_PARTNER and OPS roles only
  */
-courierRouter.post('/api/orders/:id/in-transit', requireAuth, catchAsync(async (req: Request, res: Response) => {
+courierRouter.post('/api/orders/:id/in-transit', requireAuth, requireDeliveryPartner(), catchAsync(async (req: Request, res: Response) => {
     const userId = (req.user as any)?.id;
     const orderId = parseInt(req.params.id as string);
 
@@ -165,8 +170,9 @@ courierRouter.post('/api/orders/:id/in-transit', requireAuth, catchAsync(async (
 /**
  * POST /api/orders/:id/deliver
  * Complete delivery with proof of delivery image
+ * Protected: DELIVERY_PARTNER and OPS roles only
  */
-courierRouter.post('/api/orders/:id/deliver', requireAuth, upload.single('podImage'), catchAsync(async (req: Request, res: Response) => {
+courierRouter.post('/api/orders/:id/deliver', requireAuth, requireDeliveryPartner(), upload.single('podImage'), catchAsync(async (req: Request, res: Response) => {
     const userId = (req.user as any)?.id;
     const orderId = parseInt(req.params.id as string);
 
@@ -209,8 +215,9 @@ courierRouter.post('/api/orders/:id/deliver', requireAuth, upload.single('podIma
 /**
  * GET /api/admin/deliveries/suspicious
  * Get all suspicious deliveries for admin review
+ * Protected: Admin and OPS roles only
  */
-courierRouter.get('/api/admin/deliveries/suspicious', requireAuth, catchAsync(async (req: Request, res: Response) => {
+courierRouter.get('/api/admin/deliveries/suspicious', requireAuth, requireRole(...ADMIN_ROLES, ...OPS_ROLES), catchAsync(async (req: Request, res: Response) => {
     // TODO: Add admin role check
 
     const deliveries = await deliveryService.getSuspiciousDeliveries();
@@ -225,8 +232,9 @@ courierRouter.get('/api/admin/deliveries/suspicious', requireAuth, catchAsync(as
 /**
  * GET /api/admin/deliveries/couriers
  * Get available couriers for assignment
+ * Protected: Admin and OPS roles only
  */
-courierRouter.get('/api/admin/deliveries/couriers', requireAuth, catchAsync(async (req: Request, res: Response) => {
+courierRouter.get('/api/admin/deliveries/couriers', requireAuth, requireRole(...ADMIN_ROLES, ...OPS_ROLES), catchAsync(async (req: Request, res: Response) => {
     // TODO: Add admin role check
 
     const couriers = await deliveryService.getAvailableCouriers();
@@ -240,8 +248,9 @@ courierRouter.get('/api/admin/deliveries/couriers', requireAuth, catchAsync(asyn
 /**
  * POST /api/admin/orders/:id/assign-courier
  * Assign a courier to an order
+ * Protected: Admin and OPS roles only
  */
-courierRouter.post('/api/admin/orders/:id/assign-courier', requireAuth, catchAsync(async (req: Request, res: Response) => {
+courierRouter.post('/api/admin/orders/:id/assign-courier', requireAuth, requireRole(...ADMIN_ROLES, ...OPS_ROLES), catchAsync(async (req: Request, res: Response) => {
     const orderId = parseInt(req.params.id as string);
     const { courierId } = req.body;
 
@@ -264,8 +273,9 @@ courierRouter.post('/api/admin/orders/:id/assign-courier', requireAuth, catchAsy
 /**
  * GET /api/admin/orders/pending-cod
  * Get orders pending COD settlement
+ * Protected: Admin roles only (finance access)
  */
-courierRouter.get('/api/admin/orders/pending-cod', requireAuth, catchAsync(async (req: Request, res: Response) => {
+courierRouter.get('/api/admin/orders/pending-cod', requireAuth, requireRole(...ADMIN_ROLES), catchAsync(async (req: Request, res: Response) => {
     // TODO: Add L10 role check
 
     const orders = await deliveryService.getPendingCodSettlements();
@@ -279,9 +289,10 @@ courierRouter.get('/api/admin/orders/pending-cod', requireAuth, catchAsync(async
 
 /**
  * POST /api/admin/orders/:id/settle-cod
- * Mark COD as settled (Business Admin L10 only)
+ * Mark COD as settled (Admin only - requires finance access)
+ * Protected: Admin roles only
  */
-courierRouter.post('/api/admin/orders/:id/settle-cod', requireAuth, catchAsync(async (req: Request, res: Response) => {
+courierRouter.post('/api/admin/orders/:id/settle-cod', requireAuth, requireRole(...ADMIN_ROLES), catchAsync(async (req: Request, res: Response) => {
     const userId = (req.user as any)?.id;
     const orderId = parseInt(req.params.id as string);
 
