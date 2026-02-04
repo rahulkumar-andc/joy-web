@@ -29,7 +29,7 @@ describe('Order Creation Flow', () => {
         const product = await productRepository.create({
             name: 'Test Product',
             description: 'Test Description',
-            price: '100.00',
+            mrp: '100.00',
             stockQuantity: 10,
             images: ['test.jpg'],
             categoryId: null

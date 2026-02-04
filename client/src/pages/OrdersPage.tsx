@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Package, ChevronRight, ShoppingBag, RotateCcw } from "lucide-react";
+import { Package, ChevronRight, ShoppingBag, RotateCcw, Eye, Truck } from "lucide-react";
 import { RefundRequestModal } from "@/components/RefundRequestModal";
 
 export default function OrdersPage() {
@@ -100,7 +100,26 @@ export default function OrdersPage() {
                                                 Payment: {order.paymentStatus}
                                             </p>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            {/* Track Order - show for all non-pending orders */}
+                                            {order.status !== "pending" && (
+                                                <Link href={`/orders/${order.id}/track`}>
+                                                    <Button variant="outline" size="sm" className="flex items-center gap-2">
+                                                        <Eye className="w-4 h-4" />
+                                                        Track Order
+                                                    </Button>
+                                                </Link>
+                                            )}
+
+                                            {/* Delivery status indicator for shipped orders */}
+                                            {(order.status === "shipped" || order.status === "out_for_delivery") && order.courierName && (
+                                                <Badge variant="secondary" className="flex items-center gap-1">
+                                                    <Truck className="w-3 h-3" />
+                                                    {order.courierName}
+                                                </Badge>
+                                            )}
+
+                                            {/* Request Refund - only for delivered orders */}
                                             {order.status === "delivered" && (
                                                 <RefundRequestModal
                                                     orderId={order.id}

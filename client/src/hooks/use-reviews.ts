@@ -19,8 +19,14 @@ export function useProductRating(productId: number) {
         queryKey: ["/api/products", productId, "rating"],
         queryFn: async () => {
             const res = await fetch(`/api/products/${productId}/rating`);
-            if (!res.ok) return { rating: 0, count: 0 };
-            return await res.json();
+            if (!res.ok) return { avgRating: 0, totalRatings: 0, distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } };
+            const data = await res.json();
+            // Handle both old format { rating, count } and new format { avgRating, totalRatings, distribution }
+            return {
+                avgRating: data.avgRating ?? data.rating ?? 0,
+                totalRatings: data.totalRatings ?? data.count ?? 0,
+                distribution: data.distribution ?? { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+            };
         },
         enabled: !!productId,
     });

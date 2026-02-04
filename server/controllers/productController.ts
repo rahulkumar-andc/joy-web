@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { productRepository } from "../repositories/productRepository";
 import { reviewRepository } from "../repositories/reviewRepository";
+import { orderRepository } from "../repositories/orderRepository";
 import { cacheService, CacheKeys, CacheTTL } from "../cache";
 import { api } from "@shared/routes";
 import { catchAsync } from "../utils/catchAsync";
@@ -12,6 +13,7 @@ import { insertProductSchema } from "@shared/schema";
 import { AuditService } from "../services/auditService";
 import { sanitizeHtml } from "../utils/sanitize";
 import { imagekitService } from "../services/imagekitService";
+import { boughtTogetherService } from "../services/boughtTogetherService";
 
 export class ProductController {
 
@@ -183,22 +185,69 @@ export class ProductController {
 
     static createReview = catchAsync(async (req: Request, res: Response) => {
         const input = api.reviews.create.input.parse(req.body);
+        const userId = (req.user as any).id;
+        const productId = parseInt(req.params.productId as string);
+
+        // Check if user has purchased this product
+        const verifiedPurchase = await orderRepository.hasUserPurchasedProduct(userId, productId);
 
         // ⚠️ Sanitize review comment to prevent XSS
         const review = await reviewRepository.create({
-            userId: (req.user as any).id,
-            productId: parseInt(req.params.productId as string),
+            userId,
+            productId,
             rating: input.rating,
             comment: input.comment ? sanitizeHtml(input.comment) : input.comment,
+            title: (input as any).title,
+            images: (input as any).images,
+            verifiedPurchase,
         });
         res.status(201).json(review);
     });
 
+    static voteHelpful = catchAsync(async (req: Request, res: Response) => {
+        const reviewId = parseInt(req.params.reviewId as string);
+        const userId = (req.user as any).id;
+
+        const result = await reviewRepository.voteHelpful(reviewId, userId);
+
+        if (!result.success) {
+            return res.status(200).json({
+                message: "Already voted",
+                helpfulCount: result.helpfulCount
+            });
+        }
+
+        res.json({
+            message: "Vote recorded",
+            helpfulCount: result.helpfulCount
+        });
+    });
+
+    static getBoughtTogether = catchAsync(async (req: Request, res: Response) => {
+        const productId = parseInt(req.params.productId as string);
+
+        const cacheKey = `bought-together:${productId}`;
+        const cached = await cacheService.get(cacheKey);
+        if (cached) return res.json(cached);
+
+        const products = await boughtTogetherService.getBoughtTogether(productId);
+
+        await cacheService.set(cacheKey, products, 3600); // 1 hour cache
+        res.json(products);
+    });
+
     static getRating = catchAsync(async (req: Request, res: Response) => {
         const productId = parseInt(req.params.productId as string);
-        const rating = await reviewRepository.getProductAverageRating(productId);
-        const reviews = await reviewRepository.getProductReviews(productId);
-        res.json({ rating, count: reviews.length });
+
+        // Use cache for rating distribution (15 minute TTL)
+        const cacheKey = `product:rating:${productId}`;
+        const cached = await cacheService.get(cacheKey);
+        if (cached) return res.json(cached);
+
+        const distribution = await reviewRepository.getRatingDistribution(productId);
+
+        await cacheService.set(cacheKey, distribution, 900); // 15 minutes
+        res.json(distribution);
     });
 
     // Bulk Import

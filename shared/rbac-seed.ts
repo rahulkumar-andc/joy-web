@@ -90,6 +90,15 @@ const DEFAULT_ROLES: InsertRole[] = [
         isActive: true,
     },
     {
+        name: "DELIVERY_PARTNER",
+        displayName: "Delivery Partner",
+        description: "In-house courier for order pickups and deliveries",
+        hierarchyLevel: 80,
+        scopeType: "region",
+        isSystemRole: true,
+        isActive: true,
+    },
+    {
         name: "USER",
         displayName: "User",
         description: "Regular platform user",
@@ -159,6 +168,12 @@ const DEFAULT_PERMISSIONS: InsertPermission[] = [
     { domain: "shipping", action: "read", description: "View shipping settings" },
     { domain: "shipping", action: "update", description: "Update shipping settings" },
     { domain: "shipping", action: "manage", description: "Full shipping management" },
+
+    // Delivery (In-House Courier)
+    { domain: "delivery", action: "read", description: "View assigned deliveries" },
+    { domain: "delivery", action: "update", description: "Update delivery status" },
+    { domain: "delivery", action: "assign", description: "Assign couriers to orders" },
+    { domain: "delivery", action: "manage", description: "Full delivery management" },
 ];
 
 // Role → Permission mappings
@@ -174,6 +189,7 @@ const ROLE_PERMISSION_MAP: Record<string, { domain: string; action: string; reso
         { domain: "finance", action: "manage" },
         { domain: "reports", action: "read" },
         { domain: "shipping", action: "manage" },
+        { domain: "delivery", action: "manage" },
     ],
     BUSINESS_ADMIN: [
         { domain: "catalog", action: "manage" },
@@ -187,6 +203,8 @@ const ROLE_PERMISSION_MAP: Record<string, { domain: string; action: string; reso
     OPS_ADMIN: [
         { domain: "orders", action: "manage" },
         { domain: "reports", action: "read" },
+        { domain: "delivery", action: "manage" },
+        { domain: "delivery", action: "assign" },
     ],
     SUPPORT_ADMIN: [
         { domain: "orders", action: "read" },
@@ -205,6 +223,8 @@ const ROLE_PERMISSION_MAP: Record<string, { domain: string; action: string; reso
     OPS_MANAGER: [
         { domain: "orders", action: "read" },
         { domain: "orders", action: "update" },
+        { domain: "delivery", action: "read" },
+        { domain: "delivery", action: "assign" },
     ],
     SUPPORT_AGENT: [
         { domain: "orders", action: "read" },
@@ -225,6 +245,11 @@ const ROLE_PERMISSION_MAP: Record<string, { domain: string; action: string; reso
         { domain: "catalog", action: "read" },
         { domain: "catalog", action: "create" },
         { domain: "catalog", action: "update" },
+        { domain: "orders", action: "read" },
+    ],
+    DELIVERY_PARTNER: [
+        { domain: "delivery", action: "read" },
+        { domain: "delivery", action: "update" },
         { domain: "orders", action: "read" },
     ],
     USER: [

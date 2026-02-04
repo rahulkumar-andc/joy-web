@@ -43,7 +43,7 @@ export function RecentlyViewed({ excludeId }: { excludeId?: number }) {
                         <h3 className="text-sm font-medium truncate group-hover:text-accent transition-colors">
                             {product!.name}
                         </h3>
-                        <p className="text-sm text-muted-foreground">₹{product!.price}</p>
+                        <p className="text-sm text-muted-foreground">₹{product!.mrp}</p>
                     </Link>
                 ))}
             </div>

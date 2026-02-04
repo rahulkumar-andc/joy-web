@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Truck, PartyPopper, Package, AlertCircle, RefreshCw, Info } from "lucide-react";
 import api from "@/lib/api";
 import { format } from "date-fns";
+import { AdminLayout } from "@/components/layout";
 
 // ============================================================================
 // CONSTANTS
@@ -272,179 +273,49 @@ export default function AdminShippingSettings() {
     // ========================================================================
 
     return (
-        <div className="space-y-6 max-w-2xl mx-auto">
-            {/* Header */}
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-                    <Truck className="h-6 w-6" />
-                    Shipping Settings
-                </h2>
-                <p className="text-muted-foreground">
-                    Configure shipping costs and free shipping rules
-                </p>
-            </div>
+        <AdminLayout title="Shipping Settings" subtitle="Configure shipping costs and free shipping rules">
+            <div className="space-y-6 max-w-2xl mx-auto">
+                {/* Header */}
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+                        <Truck className="h-6 w-6" />
+                        Shipping Settings
+                    </h2>
+                    <p className="text-muted-foreground">
+                        Configure shipping costs and free shipping rules
+                    </p>
+                </div>
 
-            {/* Role indicator for Business Admin */}
-            {!isSuperAdmin && userLevel <= 10 && (
-                <Alert>
-                    <Info className="h-4 w-4" />
-                    <AlertDescription>
-                        Thresholds are pre-approved by Super Admin.
-                        You can select from available options.
-                    </AlertDescription>
-                </Alert>
-            )}
+                {/* Role indicator for Business Admin */}
+                {!isSuperAdmin && userLevel <= 10 && (
+                    <Alert>
+                        <Info className="h-4 w-4" />
+                        <AlertDescription>
+                            Thresholds are pre-approved by Super Admin.
+                            You can select from available options.
+                        </AlertDescription>
+                    </Alert>
+                )}
 
-            {/* ============================================================ */}
-            {/* SECTION 1: Base Shipping */}
-            {/* ============================================================ */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <Package className="h-5 w-5" />
-                        Base Shipping
-                    </CardTitle>
-                    <CardDescription>
-                        Default shipping cost when free shipping doesn't apply
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-center justify-between py-2">
-                        <div>
-                            <Label className="text-base">Default Shipping Cost</Label>
-                            <p className="text-sm text-muted-foreground">
-                                Charged when order doesn't qualify for free shipping
-                            </p>
-                        </div>
-                        {isSuperAdmin ? (
-                            <div className="flex items-center gap-2">
-                                <span className="text-muted-foreground">₹</span>
-                                <Input
-                                    type="number"
-                                    className="w-24 text-right"
-                                    value={getValue(SETTING_KEYS.DEFAULT_SHIPPING_COST)}
-                                    onChange={(e) => updateValue(SETTING_KEYS.DEFAULT_SHIPPING_COST, e.target.value)}
-                                />
-                            </div>
-                        ) : (
-                            <div className="text-xl font-semibold text-muted-foreground">
-                                ₹{getValue(SETTING_KEYS.DEFAULT_SHIPPING_COST)}
-                            </div>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* ============================================================ */}
-            {/* SECTION 2: Free Shipping Rules */}
-            {/* ============================================================ */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <Truck className="h-5 w-5" />
-                        Free Shipping Rules
-                    </CardTitle>
-                    <CardDescription>
-                        Configure when customers get free shipping
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {/* Master Toggle */}
-                    <div className="flex items-center justify-between py-3 border-b">
-                        <div>
-                            <Label className="text-base">Enable Free Shipping</Label>
-                            <p className="text-sm text-muted-foreground">
-                                Master switch for free shipping eligibility
-                            </p>
-                        </div>
-                        <Switch
-                            checked={freeShippingEnabled}
-                            onCheckedChange={(checked) =>
-                                updateValue(SETTING_KEYS.FREE_SHIPPING_ENABLED, checked ? "true" : "false")
-                            }
-                            disabled={!isSuperAdmin}
-                        />
-                    </div>
-
-                    {/* Threshold */}
-                    <div className={`flex items-center justify-between py-3 transition-opacity ${!freeShippingEnabled ? "opacity-50" : ""
-                        }`}>
-                        <div>
-                            <Label className="text-base">Free Shipping Threshold</Label>
-                            <p className="text-sm text-muted-foreground">
-                                Minimum order value for free shipping
-                            </p>
-                        </div>
-                        {isSuperAdmin ? (
-                            <div className="flex items-center gap-2">
-                                <span className="text-muted-foreground">₹</span>
-                                <Input
-                                    type="number"
-                                    className="w-24 text-right"
-                                    value={getValue(SETTING_KEYS.FREE_SHIPPING_THRESHOLD)}
-                                    onChange={(e) => updateValue(SETTING_KEYS.FREE_SHIPPING_THRESHOLD, e.target.value)}
-                                    disabled={!freeShippingEnabled}
-                                />
-                            </div>
-                        ) : (
-                            <Select
-                                value={getValue(SETTING_KEYS.FREE_SHIPPING_THRESHOLD)}
-                                onValueChange={(value) => updateValue(SETTING_KEYS.FREE_SHIPPING_THRESHOLD, value)}
-                                disabled={!freeShippingEnabled || !canEdit(SETTING_KEYS.FREE_SHIPPING_THRESHOLD)}
-                            >
-                                <SelectTrigger className="w-32">
-                                    <SelectValue placeholder="Select..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {APPROVED_THRESHOLDS.map((val) => (
-                                        <SelectItem key={val} value={val}>₹{val}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* ============================================================ */}
-            {/* SECTION 3: Festive Mode */}
-            {/* ============================================================ */}
-            <Card className="border-amber-200 bg-gradient-to-br from-amber-50/30 to-orange-50/30">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <PartyPopper className="h-5 w-5 text-amber-600" />
-                        Festive Mode
-                    </CardTitle>
-                    <CardDescription>
-                        Lower threshold during promotional periods
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {/* Toggle */}
-                    <div className="flex items-center justify-between py-3 border-b border-amber-100">
-                        <div>
-                            <Label className="text-base">Enable Festive Mode</Label>
-                            <p className="text-sm text-muted-foreground">
-                                Applies festive threshold instead of regular
-                            </p>
-                        </div>
-                        <Switch
-                            checked={festiveEnabled}
-                            onCheckedChange={(checked) =>
-                                updateValue(SETTING_KEYS.FESTIVE_MODE_ENABLED, checked ? "true" : "false")
-                            }
-                            // Business Admin can toggle festive mode
-                            disabled={userLevel > 10}
-                        />
-                    </div>
-
-                    {/* Festive Threshold - Only shown when festive mode is ON */}
-                    {festiveEnabled && (
-                        <div className="flex items-center justify-between py-3">
+                {/* ============================================================ */}
+                {/* SECTION 1: Base Shipping */}
+                {/* ============================================================ */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                            <Package className="h-5 w-5" />
+                            Base Shipping
+                        </CardTitle>
+                        <CardDescription>
+                            Default shipping cost when free shipping doesn't apply
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-center justify-between py-2">
                             <div>
-                                <Label className="text-base">Festive Threshold</Label>
+                                <Label className="text-base">Default Shipping Cost</Label>
                                 <p className="text-sm text-muted-foreground">
-                                    Lower threshold for festive period
+                                    Charged when order doesn't qualify for free shipping
                                 </p>
                             </div>
                             {isSuperAdmin ? (
@@ -453,15 +324,75 @@ export default function AdminShippingSettings() {
                                     <Input
                                         type="number"
                                         className="w-24 text-right"
-                                        value={getValue(SETTING_KEYS.FESTIVE_THRESHOLD)}
-                                        onChange={(e) => updateValue(SETTING_KEYS.FESTIVE_THRESHOLD, e.target.value)}
+                                        value={getValue(SETTING_KEYS.DEFAULT_SHIPPING_COST)}
+                                        onChange={(e) => updateValue(SETTING_KEYS.DEFAULT_SHIPPING_COST, e.target.value)}
+                                    />
+                                </div>
+                            ) : (
+                                <div className="text-xl font-semibold text-muted-foreground">
+                                    ₹{getValue(SETTING_KEYS.DEFAULT_SHIPPING_COST)}
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* ============================================================ */}
+                {/* SECTION 2: Free Shipping Rules */}
+                {/* ============================================================ */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                            <Truck className="h-5 w-5" />
+                            Free Shipping Rules
+                        </CardTitle>
+                        <CardDescription>
+                            Configure when customers get free shipping
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {/* Master Toggle */}
+                        <div className="flex items-center justify-between py-3 border-b">
+                            <div>
+                                <Label className="text-base">Enable Free Shipping</Label>
+                                <p className="text-sm text-muted-foreground">
+                                    Master switch for free shipping eligibility
+                                </p>
+                            </div>
+                            <Switch
+                                checked={freeShippingEnabled}
+                                onCheckedChange={(checked) =>
+                                    updateValue(SETTING_KEYS.FREE_SHIPPING_ENABLED, checked ? "true" : "false")
+                                }
+                                disabled={!isSuperAdmin}
+                            />
+                        </div>
+
+                        {/* Threshold */}
+                        <div className={`flex items-center justify-between py-3 transition-opacity ${!freeShippingEnabled ? "opacity-50" : ""
+                            }`}>
+                            <div>
+                                <Label className="text-base">Free Shipping Threshold</Label>
+                                <p className="text-sm text-muted-foreground">
+                                    Minimum order value for free shipping
+                                </p>
+                            </div>
+                            {isSuperAdmin ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-muted-foreground">₹</span>
+                                    <Input
+                                        type="number"
+                                        className="w-24 text-right"
+                                        value={getValue(SETTING_KEYS.FREE_SHIPPING_THRESHOLD)}
+                                        onChange={(e) => updateValue(SETTING_KEYS.FREE_SHIPPING_THRESHOLD, e.target.value)}
+                                        disabled={!freeShippingEnabled}
                                     />
                                 </div>
                             ) : (
                                 <Select
-                                    value={getValue(SETTING_KEYS.FESTIVE_THRESHOLD)}
-                                    onValueChange={(value) => updateValue(SETTING_KEYS.FESTIVE_THRESHOLD, value)}
-                                    disabled={!canEdit(SETTING_KEYS.FESTIVE_THRESHOLD)}
+                                    value={getValue(SETTING_KEYS.FREE_SHIPPING_THRESHOLD)}
+                                    onValueChange={(value) => updateValue(SETTING_KEYS.FREE_SHIPPING_THRESHOLD, value)}
+                                    disabled={!freeShippingEnabled || !canEdit(SETTING_KEYS.FREE_SHIPPING_THRESHOLD)}
                                 >
                                     <SelectTrigger className="w-32">
                                         <SelectValue placeholder="Select..." />
@@ -474,63 +405,135 @@ export default function AdminShippingSettings() {
                                 </Select>
                             )}
                         </div>
-                    )}
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
 
-            {/* ============================================================ */}
-            {/* FOOTER: Save Button + Audit Info */}
-            {/* ============================================================ */}
-            <div className="flex items-center justify-between pt-4 border-t">
-                <div className="text-sm text-muted-foreground">
-                    {lastUpdatedInfo && (
-                        <span>Last updated {lastUpdatedInfo.time}</span>
-                    )}
-                </div>
-                <Button
-                    onClick={handleSave}
-                    disabled={!hasChanges || updateMutation.isPending}
-                    size="lg"
-                >
-                    {updateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Save Changes
-                </Button>
-            </div>
-
-            {/* ============================================================ */}
-            {/* CONFIRMATION DIALOG */}
-            {/* ============================================================ */}
-            <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Confirm Changes</DialogTitle>
-                        <DialogDescription>
-                            Shipping rules affect checkout revenue. Are you sure you want to save these changes?
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <div className="space-y-2 text-sm">
-                            {pendingChanges.map(({ key, value }) => (
-                                <div key={key} className="flex justify-between p-2 bg-muted rounded">
-                                    <span className="text-muted-foreground">{key}</span>
-                                    <span className="font-mono">
-                                        {getOriginalValue(key)} → {value}
-                                    </span>
-                                </div>
-                            ))}
+                {/* ============================================================ */}
+                {/* SECTION 3: Festive Mode */}
+                {/* ============================================================ */}
+                <Card className="border-amber-200 bg-gradient-to-br from-amber-50/30 to-orange-50/30">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                            <PartyPopper className="h-5 w-5 text-amber-600" />
+                            Festive Mode
+                        </CardTitle>
+                        <CardDescription>
+                            Lower threshold during promotional periods
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {/* Toggle */}
+                        <div className="flex items-center justify-between py-3 border-b border-amber-100">
+                            <div>
+                                <Label className="text-base">Enable Festive Mode</Label>
+                                <p className="text-sm text-muted-foreground">
+                                    Applies festive threshold instead of regular
+                                </p>
+                            </div>
+                            <Switch
+                                checked={festiveEnabled}
+                                onCheckedChange={(checked) =>
+                                    updateValue(SETTING_KEYS.FESTIVE_MODE_ENABLED, checked ? "true" : "false")
+                                }
+                                // Business Admin can toggle festive mode
+                                disabled={userLevel > 10}
+                            />
                         </div>
+
+                        {/* Festive Threshold - Only shown when festive mode is ON */}
+                        {festiveEnabled && (
+                            <div className="flex items-center justify-between py-3">
+                                <div>
+                                    <Label className="text-base">Festive Threshold</Label>
+                                    <p className="text-sm text-muted-foreground">
+                                        Lower threshold for festive period
+                                    </p>
+                                </div>
+                                {isSuperAdmin ? (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground">₹</span>
+                                        <Input
+                                            type="number"
+                                            className="w-24 text-right"
+                                            value={getValue(SETTING_KEYS.FESTIVE_THRESHOLD)}
+                                            onChange={(e) => updateValue(SETTING_KEYS.FESTIVE_THRESHOLD, e.target.value)}
+                                        />
+                                    </div>
+                                ) : (
+                                    <Select
+                                        value={getValue(SETTING_KEYS.FESTIVE_THRESHOLD)}
+                                        onValueChange={(value) => updateValue(SETTING_KEYS.FESTIVE_THRESHOLD, value)}
+                                        disabled={!canEdit(SETTING_KEYS.FESTIVE_THRESHOLD)}
+                                    >
+                                        <SelectTrigger className="w-32">
+                                            <SelectValue placeholder="Select..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {APPROVED_THRESHOLDS.map((val) => (
+                                                <SelectItem key={val} value={val}>₹{val}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* ============================================================ */}
+                {/* FOOTER: Save Button + Audit Info */}
+                {/* ============================================================ */}
+                <div className="flex items-center justify-between pt-4 border-t">
+                    <div className="text-sm text-muted-foreground">
+                        {lastUpdatedInfo && (
+                            <span>Last updated {lastUpdatedInfo.time}</span>
+                        )}
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
-                            Cancel
-                        </Button>
-                        <Button onClick={confirmSave} disabled={updateMutation.isPending}>
-                            {updateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                            Confirm Changes
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
+                    <Button
+                        onClick={handleSave}
+                        disabled={!hasChanges || updateMutation.isPending}
+                        size="lg"
+                    >
+                        {updateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Save Changes
+                    </Button>
+                </div>
+
+                {/* ============================================================ */}
+                {/* CONFIRMATION DIALOG */}
+                {/* ============================================================ */}
+                <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Confirm Changes</DialogTitle>
+                            <DialogDescription>
+                                Shipping rules affect checkout revenue. Are you sure you want to save these changes?
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <div className="space-y-2 text-sm">
+                                {pendingChanges.map(({ key, value }) => (
+                                    <div key={key} className="flex justify-between p-2 bg-muted rounded">
+                                        <span className="text-muted-foreground">{key}</span>
+                                        <span className="font-mono">
+                                            {getOriginalValue(key)} → {value}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+                                Cancel
+                            </Button>
+                            <Button onClick={confirmSave} disabled={updateMutation.isPending}>
+                                {updateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                Confirm Changes
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+        </AdminLayout>
     );
 }

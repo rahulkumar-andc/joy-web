@@ -47,7 +47,11 @@ import {
     Truck,
     CheckCircle,
     XCircle,
-    Clock
+    Clock,
+    AlertTriangle,
+    User,
+    MapPin,
+    Banknote
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -64,6 +68,15 @@ interface Order {
         email: string;
     };
     paymentStatus?: string;
+    // Delivery System Fields
+    deliveryStatus?: string;
+    assignedCourier?: number;
+    courierName?: string;
+    isSuspiciousDelivery?: boolean;
+    suspiciousReason?: string;
+    codAmount?: string;
+    codCollected?: boolean;
+    paymentSettled?: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -92,6 +105,8 @@ export default function AdminOrders() {
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [codDialogOrder, setCodDialogOrder] = useState<Order | null>(null);
+    const [codAmount, setCodAmount] = useState("");
 
     // Fetch Orders
     const { data, isLoading } = useQuery({
@@ -115,9 +130,18 @@ export default function AdminOrders() {
     // Update Status Mutation
     const updateStatusMutation = useMutation({
         mutationFn: async ({ orderId, status }: { orderId: number; status: string }) => {
-            const res = await fetch(`/api/admin/orders/${orderId}/status`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
+            // Extract CSRF token from cookie
+            const csrfToken = document.cookie
+                .split("; ")
+                .find(row => row.startsWith("CSRF-TOKEN="))
+                ?.split("=")[1];
+
+            const res = await fetch(`/api/orders/${orderId}/status`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": csrfToken || ""
+                },
                 credentials: "include",
                 body: JSON.stringify({ status }),
             });
@@ -143,6 +167,56 @@ export default function AdminOrders() {
             });
         },
     });
+
+    // COD Collection Mutation
+    const collectCodMutation = useMutation({
+        mutationFn: async ({ orderId, amountCollected }: { orderId: number; amountCollected: string }) => {
+            const csrfToken = document.cookie
+                .split("; ")
+                .find(row => row.startsWith("CSRF-TOKEN="))
+                ?.split("=")[1];
+
+            const res = await fetch(`/api/admin/orders/${orderId}/collect-cod`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": csrfToken || ""
+                },
+                credentials: "include",
+                body: JSON.stringify({ amountCollected }),
+            });
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.message || "Failed to collect COD");
+            }
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+            toast({
+                title: "COD Collected",
+                description: "Cash on delivery amount has been marked as collected.",
+            });
+            setCodDialogOrder(null);
+            setCodAmount("");
+        },
+        onError: (error: Error) => {
+            toast({
+                title: "Collection Failed",
+                description: error.message,
+                variant: "destructive",
+            });
+        },
+    });
+
+    const handleCollectCod = () => {
+        if (codDialogOrder) {
+            collectCodMutation.mutate({
+                orderId: codDialogOrder.id,
+                amountCollected: codAmount || codDialogOrder.codAmount || "0"
+            });
+        }
+    };
 
     const handleStatusUpdate = (orderId: number, newStatus: string) => {
         updateStatusMutation.mutate({ orderId, status: newStatus });
@@ -206,13 +280,14 @@ export default function AdminOrders() {
                                 <TableHead>Date</TableHead>
                                 <TableHead>Amount</TableHead>
                                 <TableHead>Status</TableHead>
+                                <TableHead>Delivery</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {data?.orders?.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                                         No orders found
                                     </TableCell>
                                 </TableRow>
@@ -220,8 +295,17 @@ export default function AdminOrders() {
                                 data?.orders?.map((order: Order) => {
                                     const Icon = statusIcons[order.status] || Package;
                                     return (
-                                        <TableRow key={order.id}>
-                                            <TableCell className="font-medium">#{order.id}</TableCell>
+                                        <TableRow key={order.id} className={order.isSuspiciousDelivery ? "bg-red-50 dark:bg-red-900/10" : ""}>
+                                            <TableCell className="font-medium">
+                                                <div className="flex items-center gap-2">
+                                                    #{order.id}
+                                                    {order.isSuspiciousDelivery && (
+                                                        <span title={order.suspiciousReason || "Suspicious delivery"}>
+                                                            <AlertTriangle className="h-4 w-4 text-red-500" />
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col">
                                                     <span className="font-medium">{order.user.name}</span>
@@ -231,12 +315,39 @@ export default function AdminOrders() {
                                             <TableCell>
                                                 {format(new Date(order.createdAt), "MMM d, yyyy HH:mm")}
                                             </TableCell>
-                                            <TableCell>₹{parseFloat(order.totalAmount).toLocaleString()}</TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    <span>₹{parseFloat(order.totalAmount).toLocaleString()}</span>
+                                                    {order.codAmount && parseFloat(order.codAmount) > 0 && (
+                                                        <span className="text-xs text-yellow-600 dark:text-yellow-400">
+                                                            COD: ₹{parseFloat(order.codAmount).toLocaleString()}
+                                                            {order.codCollected && <span className="text-green-600"> (Collected)</span>}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </TableCell>
                                             <TableCell>
                                                 <Badge className={`${statusColors[order.status] || "bg-gray-100"} flex items-center gap-1 w-fit`}>
                                                     <Icon className="h-3 w-3" />
                                                     <span className="capitalize">{order.status}</span>
                                                 </Badge>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col gap-1">
+                                                    {order.deliveryStatus ? (
+                                                        <Badge variant="outline" className="w-fit capitalize">
+                                                            {order.deliveryStatus === 'in_transit' ? 'In Transit' : order.deliveryStatus}
+                                                        </Badge>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">Not assigned</span>
+                                                    )}
+                                                    {order.courierName && (
+                                                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                                            <User className="h-3 w-3" />
+                                                            {order.courierName}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <Dialog>
@@ -278,6 +389,22 @@ export default function AdminOrders() {
                                                         </div>
                                                     </DialogContent>
                                                 </Dialog>
+
+                                                {/* COD Collection Button */}
+                                                {order.codAmount && parseFloat(order.codAmount) > 0 && !order.codCollected && (
+                                                    <Button
+                                                        variant="default"
+                                                        size="sm"
+                                                        className="ml-2 bg-yellow-600 hover:bg-yellow-700"
+                                                        onClick={() => {
+                                                            setCodDialogOrder(order);
+                                                            setCodAmount(order.codAmount || "");
+                                                        }}
+                                                    >
+                                                        <Banknote className="h-4 w-4 mr-1" />
+                                                        Collect COD
+                                                    </Button>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     );
@@ -312,6 +439,70 @@ export default function AdminOrders() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* COD Collection Dialog */}
+            <Dialog open={!!codDialogOrder} onOpenChange={(open) => !open && setCodDialogOrder(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Collect COD Payment</DialogTitle>
+                        <DialogDescription>
+                            Confirm cash collection for Order #{codDialogOrder?.id}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label className="text-right">Expected Amount</Label>
+                            <div className="col-span-3 font-medium">
+                                ₹{codDialogOrder?.codAmount ? parseFloat(codDialogOrder.codAmount).toLocaleString() : "0"}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="collected-amount" className="text-right">
+                                Collected Amount
+                            </Label>
+                            <Input
+                                id="collected-amount"
+                                type="number"
+                                value={codAmount}
+                                onChange={(e) => setCodAmount(e.target.value)}
+                                placeholder="Enter amount collected"
+                                className="col-span-3"
+                            />
+                        </div>
+                        {codAmount && codDialogOrder?.codAmount && parseFloat(codAmount) !== parseFloat(codDialogOrder.codAmount) && (
+                            <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
+                                <AlertTriangle className="h-4 w-4" />
+                                <span className="text-sm">Amount mismatch - this will be logged</span>
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setCodDialogOrder(null)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleCollectCod}
+                            disabled={collectCodMutation.isPending}
+                            className="bg-yellow-600 hover:bg-yellow-700"
+                        >
+                            {collectCodMutation.isPending ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Processing...
+                                </>
+                            ) : (
+                                <>
+                                    <Banknote className="h-4 w-4 mr-2" />
+                                    Confirm Collection
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AdminLayout>
     );
 }

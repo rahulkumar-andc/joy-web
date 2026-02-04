@@ -26,7 +26,7 @@ export async function seedDatabase() {
         await productRepository.create({
             name: "Classic White Tee",
             description: "Premium cotton essential t-shirt.",
-            price: "29.99",
+            mrp: "29.99",
             categoryId: men.id,
             stockQuantity: 100,
             images: ["https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80"],
@@ -40,7 +40,7 @@ export async function seedDatabase() {
         await productRepository.create({
             name: "Leather Moto Jacket",
             description: "Genuine leather jacket with classic styling.",
-            price: "199.99",
+            mrp: "199.99",
             categoryId: men.id,
             stockQuantity: 50,
             images: ["https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?auto=format&fit=crop&q=80"],
@@ -53,7 +53,7 @@ export async function seedDatabase() {
         await productRepository.create({
             name: "Summer Floral Dress",
             description: "Lightweight and breezy dress for warm days.",
-            price: "59.99",
+            mrp: "59.99",
             categoryId: women.id,
             stockQuantity: 75,
             images: ["https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&q=80"],
@@ -66,7 +66,7 @@ export async function seedDatabase() {
         await productRepository.create({
             name: "Leather Crossbody Bag",
             description: "Stylish and functional bag for everyday use.",
-            price: "89.99",
+            mrp: "89.99",
             categoryId: accessories.id,
             stockQuantity: 30,
             images: ["https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&q=80"],

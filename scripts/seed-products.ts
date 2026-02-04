@@ -22,7 +22,7 @@ async function seedProducts() {
     const product = await productRepository.create({
         name: "Test Classic Tee",
         description: "Premium cotton essential t-shirt for testing.",
-        price: "29.99",
+        mrp: "29.99",
         categoryId: men.id,
         stockQuantity: 100,
         images: ["https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80"],

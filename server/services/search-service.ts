@@ -50,7 +50,7 @@ const FILTERABLE_ATTRIBUTES = [
     "category",
     "brand",
     "price",
-    "discountPrice",
+    "salePrice",
     "isFeatured",
     "isTrending",
     "isBestSeller",
@@ -74,7 +74,7 @@ export interface ProductDocument {
     name: string;
     description: string;
     price: number;
-    discountPrice: number | null;
+    salePrice: number | null;
     categoryId: number | null;
     category: string | null;
     brand: string | null;
@@ -97,8 +97,8 @@ function toSearchDocument(product: Product, categoryName?: string): ProductDocum
         id: product.id,
         name: product.name,
         description: product.description,
-        price: parseFloat(product.price),
-        discountPrice: product.discountPrice ? parseFloat(product.discountPrice) : null,
+        price: parseFloat(product.mrp),
+        salePrice: product.salePrice ? parseFloat(product.salePrice) : null,
         categoryId: product.categoryId,
         category: categoryName || null,
         brand: product.brand,
@@ -321,7 +321,7 @@ export const searchService = {
 
         // Apply basic filters if possible (simplified for fallback)
         if (options?.minPrice) {
-            whereConditions.push(sql`${products.price} >= ${options.minPrice}`);
+            whereConditions.push(sql`${products.mrp} >= ${options.minPrice}`);
         }
 
         const results = await db

@@ -33,6 +33,9 @@ export const csrfMiddleware = (req: Request, res: Response, next: NextFunction) 
 
     // Check coverage: if no token provided or mismatch
     if (!token || token !== req.session.csrfToken) {
+        console.log(`CSRF Error: Method=${req.method} Path=${req.path}`);
+        console.log(`Expected (Session): ${req.session.csrfToken}`);
+        console.log(`Received (Header): ${token}`);
         return res.status(403).json({ message: "Invalid CSRF token" });
     }
 

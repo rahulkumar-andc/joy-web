@@ -165,6 +165,28 @@ Code-Structure/
 - **Reviews & Ratings** - Customer product reviews
 - **UI/UX** - Dark Mode, Infinite Scroll, Search Autocomplete, Mobile Optimized
 
+### 💳 COD & Delivery (New)
+- **COD Collection** - Admin panel to collect and track COD payments
+- **POD Validation** - Proof of Delivery with GPS distance verification
+- **Delivery Status** - Real-time courier status tracking
+- **Mismatch Handling** - Flag and reconcile COD discrepancies
+
+### 📊 Analytics Dashboard (New)
+- **Campaign Analytics** - A/B testing with visual performance charts
+- **Coupon Analytics** - Usage tracking, ROI metrics, revenue impact
+- **Shipping Analytics** - Free vs paid breakdown, threshold analysis
+- **Recharts Visualization** - Bar, line, and pie charts
+
+### 👤 Customer Management (New)
+- **Customer Detail Page** - `/admin/users/:id` for in-depth customer view
+- **Order History** - View all customer orders from admin
+- **Account Actions** - Verify users, promote to admin
+
+### 🔒 GDPR Compliance (New)
+- **Privacy Tab** - Data rights info in user profile
+- **Data Export** - Download personal data
+- **Account Deletion** - GDPR-compliant deletion request form
+
 ---
 
 ## 🔐 User Roles

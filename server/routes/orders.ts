@@ -35,3 +35,5 @@ orderRouter.get("/api/orders/:id", OrderController.getOrderById);
 // Admin: Update Order Status
 orderRouter.patch("/api/orders/:id/status", restrictTo("admin", "manager"), OrderController.updateOrderStatus);
 
+// === ADMIN ORDER ROUTES ===
+orderRouter.get("/api/admin/orders", requireAuth, restrictTo("admin", "manager"), OrderController.getAllOrders);

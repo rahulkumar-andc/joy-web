@@ -91,9 +91,9 @@ export class ProductRepository {
         let query = db.select().from(products).where(whereClause);
 
         if (filters?.sort === 'price_asc') {
-            query.orderBy(sql`CAST(${products.price} AS DECIMAL) ASC`);
+            query.orderBy(sql`CAST(${products.mrp} AS DECIMAL) ASC`);
         } else if (filters?.sort === 'price_desc') {
-            query.orderBy(sql`CAST(${products.price} AS DECIMAL) DESC`);
+            query.orderBy(sql`CAST(${products.mrp} AS DECIMAL) DESC`);
         } else {
             query.orderBy(desc(products.createdAt));
         }
@@ -163,9 +163,9 @@ export class ProductRepository {
 
         // Apply sorting
         if (filters?.sort === 'price_asc') {
-            baseQuery = baseQuery.orderBy(sql`CAST(${products.price} AS DECIMAL) ASC`) as typeof baseQuery;
+            baseQuery = baseQuery.orderBy(sql`CAST(${products.mrp} AS DECIMAL) ASC`) as typeof baseQuery;
         } else if (filters?.sort === 'price_desc') {
-            baseQuery = baseQuery.orderBy(sql`CAST(${products.price} AS DECIMAL) DESC`) as typeof baseQuery;
+            baseQuery = baseQuery.orderBy(sql`CAST(${products.mrp} AS DECIMAL) DESC`) as typeof baseQuery;
         } else {
             baseQuery = baseQuery.orderBy(desc(products.createdAt)) as typeof baseQuery;
         }

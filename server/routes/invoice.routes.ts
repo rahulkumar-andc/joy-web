@@ -20,7 +20,7 @@ router.get(
     '/:id/invoice',
     requireAuth,
     catchAsync(async (req: Request, res: Response) => {
-        const orderId = parseInt(req.params.id);
+        const orderId = parseInt(req.params.id as string);
         const userId = (req.user as any).id;
         const userRole = (req.user as any).role;
 

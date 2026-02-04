@@ -24,7 +24,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
     const updateMutation = useUpdateCartItem();
     const removeMutation = useRemoveFromCart();
 
-    const subtotal = cartItems?.reduce((acc, item) => acc + (Number(item.product.price) * item.item.quantity), 0) || 0;
+    const subtotal = cartItems?.reduce((acc, item) => acc + ((Number(item.product.salePrice) > 0 ? Number(item.product.salePrice) : Number(item.product.mrp)) * item.item.quantity), 0) || 0;
     const itemCount = cartItems?.reduce((acc, item) => acc + item.item.quantity, 0) || 0;
 
     return (
@@ -74,7 +74,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                                         {entry.product.name}
                                                     </Link>
                                                 </h4>
-                                                <p className="text-xs text-muted-foreground mt-1">₹{entry.product.price}</p>
+                                                <p className="text-xs text-muted-foreground mt-1">₹{entry.product.salePrice || entry.product.mrp}</p>
                                                 <div className="text-xs text-muted-foreground mt-1 space-x-2">
                                                     {entry.item.size && <span>{entry.item.size}</span>}
                                                     {entry.item.color && <span>{entry.item.color}</span>}

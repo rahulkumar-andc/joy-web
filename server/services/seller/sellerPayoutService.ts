@@ -16,7 +16,7 @@ export const sellerPayoutService = {
         const conditionsList = [];
 
         if (filters.status && filters.status !== 'all') {
-            conditionsList.push(eq(sellerPayouts.status, filters.status));
+            conditionsList.push(eq(sellerPayouts.status, filters.status as typeof sellerPayouts.status.enumValues[number]));
         }
 
         if (filters.search) {
@@ -73,8 +73,6 @@ export const sellerPayoutService = {
 
             await db.update(sellerPayouts)
                 .set({
-                    status: 'pending_approval', // Or directly to processing? Let's use standard flow
-                    // Actually, let's map 'approve' to 'approved' or 'processing' if manual
                     status: 'approved',
                     approvedBy: adminId,
                     approvedAt: new Date(),

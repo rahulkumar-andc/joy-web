@@ -15,7 +15,8 @@ import {
     LogOut,
     Store,
     Layers,
-    Shield
+    Shield,
+    Ticket
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -68,6 +69,11 @@ const adminNavItems = [
         title: "Payouts",
         href: "/admin/payouts",
         icon: CircleDollarSign,
+    },
+    {
+        title: "Coupons",
+        href: "/admin/coupons",
+        icon: Ticket,
     },
     {
         title: "Shipping Rules",

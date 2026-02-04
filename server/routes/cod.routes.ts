@@ -86,17 +86,21 @@ router.post(
 
         // Send confirmation email
         try {
-            const { sendEmail } = await import("../services/emailService");
+            const { emailService } = await import("../services/emailService");
             const { codCollectedTemplate } = await import("../services/emailTemplates");
             const { userRepository } = await import("../repositories/userRepository");
 
             const user = await userRepository.findById(order.userId);
-            if (user) {
-                await sendEmail(
-                    user.email,
-                    `Payment Received - Order #${orderId}`,
-                    codCollectedTemplate(user.name, orderId, order.codAmount.toString())
-                );
+            if (user && emailService) {
+                const subject = `Payment Received - Order #${orderId}`;
+                const html = codCollectedTemplate(user.name, orderId, order.codAmount.toString());
+                // Use transporter directly if available
+                await (emailService as any).transporter?.sendMail({
+                    from: `"Steal the Deal" <${process.env.SMTP_USER}>`,
+                    to: user.email,
+                    subject,
+                    html,
+                });
             }
         } catch (emailError) {
             logger.error("Failed to send COD collection email", emailError);

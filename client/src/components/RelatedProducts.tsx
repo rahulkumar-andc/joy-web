@@ -25,12 +25,7 @@ export function RelatedProducts({ currentProductId, category }: RelatedProductsP
         : [];
 
     if (isLoading) {
-        return (
-            <div className="mt-16">
-                <h2 className="text-2xl font-display font-bold mb-8">You Might Also Like</h2>
-                <ProductSkeletonGrid count={4} />
-            </div>
-        );
+        return <ProductSkeletonGrid count={4} />;
     }
 
     if (relatedProducts.length === 0) {
@@ -43,10 +38,8 @@ export function RelatedProducts({ currentProductId, category }: RelatedProductsP
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="mt-16 border-t border-border pt-16"
         >
-            <h2 className="text-2xl font-display font-bold mb-8">You Might Also Like</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {relatedProducts.map((product: Product) => (
                     <ProductCard key={product.id} product={product} />
                 ))}

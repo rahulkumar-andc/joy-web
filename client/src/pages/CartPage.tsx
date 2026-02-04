@@ -33,9 +33,9 @@ export default function CartPage() {
   }
 
   const subtotal = cartItems?.reduce((acc, item) => {
-    const price = Number(item.product.discountPrice) > 0
-      ? Number(item.product.discountPrice)
-      : Number(item.product.price);
+    const price = Number(item.product.salePrice) > 0
+      ? Number(item.product.salePrice)
+      : Number(item.product.mrp);
     return acc + (price * item.item.quantity);
   }, 0) || 0;
   // Shipping Calculation
@@ -155,7 +155,7 @@ export default function CartPage() {
                           <h3 className="font-display text-lg font-bold text-primary">
                             <Link href={`/product/${entry.product.id}`}>{entry.product.name}</Link>
                           </h3>
-                          <span className="font-bold">₹{Number(entry.product.price) * entry.item.quantity}</span>
+                          <span className="font-bold">₹{(Number(entry.product.salePrice) > 0 ? Number(entry.product.salePrice) : Number(entry.product.mrp)) * entry.item.quantity}</span>
                         </div>
                         <p className="text-sm text-muted-foreground mb-1">{entry.product.brand}</p>
                         <div className="text-xs text-muted-foreground space-x-3">

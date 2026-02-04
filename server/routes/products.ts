@@ -12,11 +12,11 @@ productsRouter.get(api.products.list.path, ProductController.listProducts);
 
 productsRouter.get(api.products.get.path, ProductController.getProduct);
 
-productsRouter.post(api.products.create.path, restrictTo("admin", "manager", "seller"), ProductController.createProduct);
+productsRouter.post(api.products.create.path, requireAuth, restrictTo("admin", "manager", "seller"), ProductController.createProduct);
 
-productsRouter.patch(api.products.update.path, restrictTo("admin", "manager", "seller"), ProductController.updateProduct);
+productsRouter.patch(api.products.update.path, requireAuth, restrictTo("admin", "manager", "seller"), ProductController.updateProduct);
 
-productsRouter.delete(api.products.delete.path, restrictTo("admin", "manager"), ProductController.deleteProduct);
+productsRouter.delete(api.products.delete.path, requireAuth, restrictTo("admin", "manager"), ProductController.deleteProduct);
 
 // === CATEGORY ROUTES ===
 productsRouter.get(api.categories.list.path, ProductController.listCategories);
@@ -28,10 +28,15 @@ productsRouter.post("/api/products/:productId/reviews", requireAuth, ProductCont
 
 productsRouter.get("/api/products/:productId/rating", ProductController.getRating);
 
+// === REVIEW HELPFUL VOTE ===
+productsRouter.post("/api/reviews/:reviewId/helpful", requireAuth, ProductController.voteHelpful);
+
+// === BOUGHT TOGETHER ===
+productsRouter.get("/api/products/:productId/bought-together", ProductController.getBoughtTogether);
+
 // === UPLOAD ROUTE ===
-productsRouter.post("/api/products/upload", restrictTo("admin", "manager", "seller"), upload.single("image"), ProductController.uploadImage);
+productsRouter.post("/api/products/upload", requireAuth, restrictTo("admin", "manager", "seller"), upload.single("image"), ProductController.uploadImage);
 
 // === BULK IMPORT/EXPORT ===
-productsRouter.post("/api/products/bulk", restrictTo("admin", "manager"), upload.single("file"), ProductController.bulkImport);
-productsRouter.get("/api/products/export", restrictTo("admin", "manager"), ProductController.exportProducts);
-
+productsRouter.post("/api/products/bulk", requireAuth, restrictTo("admin", "manager"), upload.single("file"), ProductController.bulkImport);
+productsRouter.get("/api/products/export", requireAuth, restrictTo("admin", "manager"), ProductController.exportProducts);

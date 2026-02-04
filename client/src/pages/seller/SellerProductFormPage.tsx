@@ -115,8 +115,8 @@ export default function SellerProductFormPage() {
             const payload = {
                 name: data.name,
                 description: data.description,
-                price: data.price, // Keep as string, backend expects decimal
-                discountPrice: data.compareAtPrice || undefined, // Map compareAtPrice -> discountPrice
+                mrp: data.price, // Form field "price" maps to backend "mrp"
+                salePrice: data.compareAtPrice || undefined, // Map compareAtPrice -> salePrice
                 categoryId: data.categoryId,
                 stockQuantity: data.stockQuantity,
                 images,

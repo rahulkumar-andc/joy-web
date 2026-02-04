@@ -77,7 +77,7 @@ export default function WishlistPage() {
                                             {item.product.name}
                                         </h3>
                                     </Link>
-                                    <p className="font-bold text-primary mt-1">₹{item.product.price}</p>
+                                    <p className="font-bold text-primary mt-1">₹{item.product.mrp}</p>
 
                                     <div className="flex gap-2 mt-4">
                                         <Button

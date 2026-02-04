@@ -101,7 +101,7 @@ export class ImportExportService {
                     const product: InsertProduct = {
                         name: row.Name,
                         description: row.Description,
-                        price: row.Price, // string/decimal is fine
+                        mrp: row.Price, // string/decimal is fine
                         stockQuantity: row.Stock ? parseInt(row.Stock, 10) : 0,
                         categoryId: categoryId,
                         brand: row.Brand || null,
@@ -109,7 +109,7 @@ export class ImportExportService {
                         sizes: sizes.length ? sizes : null,
                         colors: colors.length ? colors : null,
                         tags: tags.length ? tags : null,
-                        discountPrice: row.DiscountPrice || null,
+                        salePrice: row.DiscountPrice || null,
                         isFeatured: row.IsFeatured === 'true',
                         showOnHomepage: true // Default to true
                     };
@@ -155,8 +155,8 @@ export class ImportExportService {
                 p.id,
                 this.escapeCsv(p.name),
                 this.escapeCsv(p.description),
-                p.price,
-                p.discountPrice || "",
+                p.mrp,
+                p.salePrice || "",
                 this.escapeCsv(p.category?.name || ""),
                 p.stockQuantity,
                 this.escapeCsv(p.brand || ""),

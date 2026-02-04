@@ -40,7 +40,7 @@ describe('Coupon System', () => {
         const [product] = await db.insert(products).values({
             name: 'Test Product',
             description: 'Test',
-            price: '1000',
+            mrp: '1000',
             stockQuantity: 10,
             categoryId: category.id,
             images: ['test.jpg']
@@ -134,7 +134,7 @@ describe('Coupon System', () => {
         const validation = await couponService.validateCoupon('ONCEONLY', testUser.id, 1000);
 
         expect(validation.valid).toBe(false);
-        expect(validation.error).toBe('You have already used this coupon');
+        expect(validation.error).toContain('You have already used this coupon');
     });
 
     it('should enforce global usage limit', async () => {

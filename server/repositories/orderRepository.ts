@@ -40,7 +40,7 @@ export class OrderRepository {
         const conditionsList = [];
 
         if (filters.status && filters.status !== 'all') {
-            conditionsList.push(eq(orders.status, filters.status));
+            conditionsList.push(sql`${orders.status} = ${filters.status}`);
         }
 
         if (filters.search) {
@@ -114,6 +114,19 @@ export class OrderRepository {
 
     async getOrderItems(orderId: number): Promise<OrderItem[]> {
         return await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+    }
+
+    async hasUserPurchasedProduct(userId: number, productId: number): Promise<boolean> {
+        const result = await db.select({ id: orderItems.id })
+            .from(orderItems)
+            .innerJoin(orders, eq(orderItems.orderId, orders.id))
+            .where(and(
+                eq(orders.userId, userId),
+                eq(orderItems.productId, productId),
+                eq(orders.status, "delivered" as const)
+            ))
+            .limit(1);
+        return result.length > 0;
     }
 }
 

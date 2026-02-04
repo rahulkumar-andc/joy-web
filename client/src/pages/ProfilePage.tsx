@@ -11,9 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, Redirect } from "wouter";
-import { User, Lock, Package, Heart, Loader2, Mail, Phone, MapPin, RotateCcw } from "lucide-react";
+import { User, Lock, Package, Heart, Loader2, Mail, Phone, MapPin, RotateCcw, Shield, Trash2, AlertTriangle, Download, Bell } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
+import { PushNotificationSubscription } from "@/components/PushNotificationSubscription";
 
 function RefundsList() {
     const { data: refunds, isLoading } = useQuery({
@@ -184,6 +185,12 @@ export default function ProfilePage() {
                                 <TabsTrigger value="refunds" className="flex items-center gap-2">
                                     <RotateCcw className="w-4 h-4" /> Refunds
                                 </TabsTrigger>
+                                <TabsTrigger value="privacy" className="flex items-center gap-2">
+                                    <Shield className="w-4 h-4" /> Privacy
+                                </TabsTrigger>
+                                <TabsTrigger value="notifications" className="flex items-center gap-2">
+                                    <Bell className="w-4 h-4" /> Notifications
+                                </TabsTrigger>
                             </TabsList>
 
                             <TabsContent value="profile">
@@ -345,6 +352,81 @@ export default function ProfilePage() {
 
                             <TabsContent value="refunds">
                                 <RefundsList />
+                            </TabsContent>
+
+                            <TabsContent value="privacy">
+                                <div className="space-y-6">
+                                    {/* Your Data Rights */}
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle className="flex items-center gap-2">
+                                                <Shield className="w-5 h-5" /> Your Data Rights
+                                            </CardTitle>
+                                            <CardDescription>
+                                                Under GDPR and data protection laws, you have the right to access, export, and delete your personal data.
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                            <div className="grid gap-4 md:grid-cols-2">
+                                                <div className="p-4 bg-muted/50 rounded-lg">
+                                                    <h4 className="font-medium mb-2">📋 Right to Access</h4>
+                                                    <p className="text-sm text-muted-foreground">View all data we have collected about you including profile, orders, and preferences.</p>
+                                                </div>
+                                                <div className="p-4 bg-muted/50 rounded-lg">
+                                                    <h4 className="font-medium mb-2">📤 Right to Export</h4>
+                                                    <p className="text-sm text-muted-foreground">Download a copy of your personal data in a portable format.</p>
+                                                </div>
+                                            </div>
+                                            <Button variant="outline" className="flex items-center gap-2">
+                                                <Download className="w-4 h-4" /> Export My Data
+                                            </Button>
+                                        </CardContent>
+                                    </Card>
+
+                                    {/* Account Deletion */}
+                                    <Card className="border-red-200 dark:border-red-900">
+                                        <CardHeader>
+                                            <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                                                <Trash2 className="w-5 h-5" /> Delete Account
+                                            </CardTitle>
+                                            <CardDescription>
+                                                Permanently delete your account and all associated data.
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                            <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                                                <div className="flex items-start gap-3">
+                                                    <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                                                    <div>
+                                                        <h4 className="font-medium text-red-800 dark:text-red-200 mb-1">This action is permanent</h4>
+                                                        <p className="text-sm text-red-700 dark:text-red-300">Once you delete your account:</p>
+                                                        <ul className="text-sm text-red-700 dark:text-red-300 list-disc ml-4 mt-2 space-y-1">
+                                                            <li>Your profile and personal information will be erased</li>
+                                                            <li>Order history will be anonymized</li>
+                                                            <li>Saved addresses and payment methods will be removed</li>
+                                                            <li>Wishlist and preferences will be deleted</li>
+                                                            <li>Active subscriptions will be cancelled</li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-4">
+                                                <Link href="/privacy-settings">
+                                                    <Button variant="destructive" className="flex items-center gap-2">
+                                                        <Trash2 className="w-4 h-4" /> Request Account Deletion
+                                                    </Button>
+                                                </Link>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">
+                                                Deletion requests are processed within 30 days as per GDPR requirements.
+                                            </p>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="notifications">
+                                <PushNotificationSubscription />
                             </TabsContent>
                         </Tabs>
                     </div>

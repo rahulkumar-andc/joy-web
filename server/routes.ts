@@ -235,6 +235,14 @@ export async function registerRoutes(
   const circuitBreakerRouter = (await import("./routes/circuit-breaker.routes")).default;
   app.use("/api/admin/circuit-breakers", circuitBreakerRouter);
 
+  // Wishlist Routes
+  const { wishlistRouter } = await import("./routes/wishlist.routes");
+  app.use(wishlistRouter);
+
+  // In-House Delivery System Routes (Courier)
+  const courierRouter = (await import("./routes/courier.routes")).default;
+  app.use(courierRouter);
+
   // === SEED DATA ===
   // Move seeding to background or manual script to avoid blocking startup
   // import("./lib/seeds").then(m => m.seedDatabase()).catch(console.error);

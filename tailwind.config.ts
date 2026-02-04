@@ -75,6 +75,15 @@ export default {
           foreground: "hsl(var(--sidebar-accent-foreground) / <alpha-value>)",
           border: "var(--sidebar-accent-border)"
         },
+        // Flipkart Brand Colors
+        flipkart: {
+          blue: "#2874f0",
+          yellow: "#ffe500",
+          orange: "#fb641b",
+          green: "#388e3c",
+          red: "#ff6161",
+          bg: "#f1f3f6"
+        },
         status: {
           online: "rgb(34 197 94)",
           away: "rgb(245 158 11)",

@@ -44,8 +44,9 @@ export const products = pgTable("products", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description").notNull(),
-  price: decimal("price").notNull(),
-  discountPrice: decimal("discount_price"),
+  // Pricing: mrp = display only (crossed out), salePrice = transactional (what customer pays)
+  mrp: decimal("price").notNull(), // Column stays "price" in DB for now, but semantically it's MRP
+  salePrice: decimal("discount_price"), // Column stays "discount_price" in DB, but semantically it's the sale price
   categoryId: integer("category_id").references(() => categories.id),
   stockQuantity: integer("stock_quantity").default(0).notNull(),
   images: text("images").array().notNull(),
@@ -161,11 +162,29 @@ export const orders = pgTable("orders", {
   codCollectedBy: integer("cod_collected_by").references(() => users.id),
   deliveryInstructions: text("delivery_instructions"),
 
+  // In-House Delivery System
+  assignedCourier: integer("assigned_courier").references(() => users.id),
+  deliveryStatus: text("delivery_status", {
+    enum: ["pending", "picked_up", "in_transit", "delivered"]
+  }).default("pending"),
+  proofOfDeliveryImage: text("proof_of_delivery_image"),
+  podLocation: jsonb("pod_location"), // { lat: number, lng: number }
+  podTimestamp: timestamp("pod_timestamp"),
+  isSuspiciousDelivery: boolean("is_suspicious_delivery").default(false),
+  suspiciousReason: text("suspicious_reason"),
+
+  // COD Settlement
+  paymentSettled: boolean("payment_settled").default(false),
+  settlementTimestamp: timestamp("settlement_timestamp"),
+  settledBy: integer("settled_by").references(() => users.id),
+
   shippingAddress: jsonb("shipping_address").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   userIdIdx: index("order_user_idx").on(table.userId),
   statusIdx: index("order_status_idx").on(table.status),
+  assignedCourierIdx: index("order_assigned_courier_idx").on(table.assignedCourier),
+  deliveryStatusIdx: index("order_delivery_status_idx").on(table.deliveryStatus),
 }));
 
 export const payments = pgTable("payments", {
@@ -223,11 +242,40 @@ export const reviews = pgTable("reviews", {
   userId: integer("user_id").references(() => users.id).notNull(),
   productId: integer("product_id").references(() => products.id).notNull(),
   rating: integer("rating").notNull(),
+  title: text("title"), // Review headline
   comment: text("comment"),
+  images: text("images").array(), // Customer uploaded images
+  verifiedPurchase: boolean("verified_purchase").default(false),
+  helpfulCount: integer("helpful_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  productIdIdx: index("review_product_idx").on(table.productId),
+  userIdIdx: index("review_user_idx").on(table.userId),
+}));
 
 export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true });
+
+// === REVIEW VOTES ===
+export const reviewVotes = pgTable("review_votes", {
+  id: serial("id").primaryKey(),
+  reviewId: integer("review_id").references(() => reviews.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniqueVote: unique().on(table.reviewId, table.userId),
+  reviewIdIdx: index("review_vote_review_idx").on(table.reviewId),
+}));
+
+// === ORDER ITEM PAIRS (Bought Together) ===
+export const orderItemPairs = pgTable("order_item_pairs", {
+  id: serial("id").primaryKey(),
+  productId1: integer("product_id_1").references(() => products.id).notNull(),
+  productId2: integer("product_id_2").references(() => products.id).notNull(),
+  count: integer("count").default(1).notNull(),
+}, (table) => ({
+  uniquePair: unique().on(table.productId1, table.productId2),
+  productId1Idx: index("pair_product1_idx").on(table.productId1),
+}));
 
 // === COUPONS ===
 export const coupons = pgTable("coupons", {

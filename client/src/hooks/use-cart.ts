@@ -108,7 +108,10 @@ export function useCreateOrder() {
         body: JSON.stringify(data),
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Failed to create order");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || "Failed to create order");
+      }
       return api.orders.create.responses[201].parse(await res.json());
     },
     onSuccess: () => {

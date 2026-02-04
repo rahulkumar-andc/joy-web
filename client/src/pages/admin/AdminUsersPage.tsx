@@ -42,7 +42,8 @@ import {
     MoreHorizontal,
     UserCheck,
     UserX,
-    Shield
+    Shield,
+    Eye
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -190,6 +191,11 @@ export default function AdminUsersPage() {
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                 <DropdownMenuItem onClick={() => navigator.clipboard.writeText(user.id.toString())}>
                                                     Copy User ID
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem asChild>
+                                                    <a href={`/admin/users/${user.id}`}>
+                                                        <Eye className="mr-2 h-4 w-4" /> View Details
+                                                    </a>
                                                 </DropdownMenuItem>
 
                                                 {user.role !== 'admin' && (

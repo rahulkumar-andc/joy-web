@@ -6,6 +6,7 @@ export default defineConfig({
         globals: true,
         environment: 'node',
         setupFiles: ['./tests/setup.ts'],
+        fileParallelism: false, // Run test files one at a time to prevent DB conflicts
         coverage: {
             provider: 'v8',
             reporter: ['text', 'json', 'html'],
@@ -32,7 +33,8 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './server'),
-            '@shared': path.resolve(__dirname, './shared')
+            '@shared': path.resolve(__dirname, './shared'),
+            '@server': path.resolve(__dirname, './server')
         }
     }
 });

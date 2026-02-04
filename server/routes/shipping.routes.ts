@@ -50,7 +50,7 @@ async function getUserHierarchyLevel(userId: number): Promise<number> {
 router.post("/calculate", async (req: Request, res: Response) => {
     try {
         const { orderTotal } = z.object({
-            orderTotal: z.number().positive(),
+            orderTotal: z.number().nonnegative(),
         }).parse(req.body);
 
         const result = await shippingSettingsService.calculateShipping(orderTotal);
@@ -80,7 +80,7 @@ router.post("/calculate", async (req: Request, res: Response) => {
  */
 router.get("/settings",
     requireAuth,
-    requirePermission("shipping", "read"),
+    restrictTo("admin", "manager"),
     async (req: Request, res: Response) => {
         try {
             const user = req.user as { id: number };
@@ -191,7 +191,7 @@ router.put("/settings/:key",
  */
 router.get("/audit",
     requireAuth,
-    requirePermission("shipping", "read"),
+    restrictTo("admin"),
     async (req: Request, res: Response) => {
         try {
             const user = req.user as { id: number };
@@ -228,7 +228,7 @@ router.get("/audit",
  */
 router.get("/settings/:key/options",
     requireAuth,
-    requirePermission("shipping", "read"),
+    restrictTo("admin", "manager"),
     async (req: Request, res: Response) => {
         try {
             const key = req.params.key as ShippingSettingKey;
@@ -259,7 +259,7 @@ import { desc, asc } from "drizzle-orm";
  */
 router.get("/presets",
     requireAuth,
-    requirePermission("shipping", "read"),
+    restrictTo("admin", "manager"),
     async (req: Request, res: Response) => {
         try {
             const presets = await db
@@ -282,7 +282,7 @@ router.get("/presets",
  */
 router.post("/presets/:id/apply",
     requireAuth,
-    requirePermission("shipping", "update"),
+    restrictTo("admin", "manager"),
     async (req: Request, res: Response) => {
         try {
             const presetId = parseInt(String(req.params.id));
@@ -448,7 +448,7 @@ import { shippingAnalyticsService } from "../services/shippingAnalyticsService";
  */
 router.get("/analytics",
     requireAuth,
-    requirePermission("shipping", "read"),
+    restrictTo("admin", "manager"),
     async (req: Request, res: Response) => {
         try {
             const { days } = z.object({

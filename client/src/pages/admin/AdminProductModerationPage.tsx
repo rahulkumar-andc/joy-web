@@ -41,6 +41,7 @@ import {
     AlertCircle
 } from "lucide-react";
 import { format } from "date-fns";
+import api from "@/lib/api";
 
 interface PendingProduct {
     id: number;
@@ -89,20 +90,11 @@ export default function AdminProductModerationPage() {
             action: "approve" | "reject";
             reason?: string;
         }) => {
-            const res = await fetch(`/api/admin/products/${productId}/status`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({
-                    status: action === "approve" ? "approved" : "rejected",
-                    reason
-                }),
+            const response = await api.patch(`/api/admin/products/${productId}/status`, {
+                status: action === "approve" ? "approved" : "rejected",
+                reason
             });
-            if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.message || "Failed to moderate product");
-            }
-            return res.json();
+            return response.data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["admin-pending-products"] });

@@ -18,6 +18,7 @@ import { useEffect } from "react";
 import { useShipping } from "@/hooks/use-shipping";
 import { Loader2, MapPin, CreditCard, CheckCircle, Shield, Truck } from "lucide-react";
 import { motion } from "framer-motion";
+import { useToast } from "@/hooks/use-toast";
 
 const shippingSchema = z.object({
   fullName: z.string().min(2, "Name is required"),
@@ -38,6 +39,7 @@ export default function CheckoutPage() {
   const { data: cartItems } = useCart();
   const createOrderMutation = useCreateOrder();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
@@ -188,8 +190,13 @@ export default function CheckoutPage() {
           onSuccess: (orderData) => {
             setLocation(`/order-success?orderId=${orderData.id}&method=cod`);
           },
-          onError: () => {
+          onError: (error: Error) => {
             setIsProcessing(false);
+            toast({
+              title: "Order Failed",
+              description: error.message || "Failed to place your order. Please try again.",
+              variant: "destructive",
+            });
           }
         }
       );
@@ -228,18 +235,26 @@ export default function CheckoutPage() {
           setLocation("/order-failure");
         }
       },
-      onError: () => {
+      onError: (error: Error) => {
         setIsProcessing(false);
+        toast({
+          title: "Order Failed",
+          description: error.message || "Failed to place your order. Please try again.",
+          variant: "destructive",
+        });
       }
     });
   };
 
   const subTotal = cartItems?.reduce((acc, item) => {
-    const price = Number(item.product.discountPrice) > 0
-      ? Number(item.product.discountPrice)
-      : Number(item.product.price);
+    const price = Number(item.product.salePrice) > 0
+      ? Number(item.product.salePrice)
+      : Number(item.product.mrp);
     return acc + (price * item.item.quantity);
   }, 0) || 0;
+
+  // Check if cart is empty
+  const isCartEmpty = !cartItems || cartItems.length === 0;
 
   const { data: shippingData, isLoading: isShippingLoading, isError: isShippingError } = useShipping(subTotal);
   const shippingCharge = shippingData?.shippingCost ?? 0;
@@ -277,10 +292,10 @@ export default function CheckoutPage() {
                   >
                     <div
                       className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${isCompleted
-                          ? "bg-green-500 text-white"
-                          : isActive
-                            ? "bg-accent text-white ring-4 ring-accent/20"
-                            : "bg-muted text-muted-foreground"
+                        ? "bg-green-500 text-white"
+                        : isActive
+                          ? "bg-accent text-white ring-4 ring-accent/20"
+                          : "bg-muted text-muted-foreground"
                         }`}
                     >
                       {isCompleted ? (
@@ -545,17 +560,33 @@ export default function CheckoutPage() {
 
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)}>
-                    <Button
-                      type="submit"
-                      className="w-full bg-accent hover:bg-accent/90 text-white h-12 text-lg"
-                      disabled={createOrderMutation.isPending || (paymentMode === 'cod' && finalTotal > 10000)}
-                    >
-                      {isProcessing
-                        ? "Processing..."
-                        : paymentMode === 'cod'
-                          ? finalTotal > 10000 ? "COD Not Available" : `Place COD Order (₹${finalTotal})`
-                          : finalTotal > 0 ? `Pay ₹${finalTotal}` : "Place Order"}
-                    </Button>
+                    {isCartEmpty ? (
+                      <div className="space-y-3">
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+                          <p className="text-sm font-medium text-yellow-800 mb-2">🛒 Your cart is empty</p>
+                          <p className="text-xs text-yellow-700">Add items to cart before checkout</p>
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={() => setLocation("/shop")}
+                          className="w-full bg-accent hover:bg-accent/90 text-white h-12 text-lg"
+                        >
+                          Browse Products
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        type="submit"
+                        className="w-full bg-accent hover:bg-accent/90 text-white h-12 text-lg"
+                        disabled={createOrderMutation.isPending || isProcessing || (paymentMode === 'cod' && finalTotal > 10000)}
+                      >
+                        {isProcessing
+                          ? "Processing..."
+                          : paymentMode === 'cod'
+                            ? finalTotal > 10000 ? "COD Not Available" : `Place COD Order (₹${finalTotal})`
+                            : finalTotal > 0 ? `Pay ₹${finalTotal}` : "Place Order"}
+                      </Button>
+                    )}
                   </form>
                 </Form>
 
@@ -581,7 +612,11 @@ export default function CheckoutPage() {
                   <div className="flex-1">
                     <p className="font-medium text-sm text-primary line-clamp-2">{entry.product.name}</p>
                     <p className="text-xs text-muted-foreground">Qty: {entry.item.quantity}</p>
-                    <p className="text-sm font-bold">₹{Number(entry.product.price) * entry.item.quantity}</p>
+                    <p className="text-sm font-bold">
+                      ₹{(Number(entry.product.salePrice) > 0
+                        ? Number(entry.product.salePrice)
+                        : Number(entry.product.mrp)) * entry.item.quantity}
+                    </p>
                   </div>
                 </div>
               ))}

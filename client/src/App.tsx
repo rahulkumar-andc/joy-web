@@ -48,6 +48,11 @@ const AdminRefundsPage = lazy(() => import("@/pages/admin/AdminRefundsPage"));
 const AdminReturnDisputesPage = lazy(() => import("@/pages/admin/AdminReturnDisputesPage"));
 const AdminUsersPage = lazy(() => import("@/pages/admin/AdminUsersPage"));
 const AdminRBAC = lazy(() => import("@/pages/admin/AdminRBAC"));
+const AdminShippingSettings = lazy(() => import("@/pages/admin/AdminShippingSettings"));
+const AdminCoupons = lazy(() => import("@/pages/admin/AdminCoupons"));
+const AdminResellers = lazy(() => import("@/pages/admin/AdminResellers"));
+const AdminPayouts = lazy(() => import("@/pages/admin/AdminPayouts"));
+const AdminCustomerDetailPage = lazy(() => import("@/pages/admin/AdminCustomerDetailPage"));
 
 // Seller Pages
 const SellerDashboard = lazy(() => import("@/pages/seller/SellerDashboard"));
@@ -60,6 +65,9 @@ const SellerOrdersPage = lazy(() => import("@/pages/seller/SellerOrdersPage"));
 const SellerReturnRequestsPage = lazy(() => import("@/pages/seller/SellerReturnRequestsPage"));
 const SellerWalletPage = lazy(() => import("@/pages/seller/SellerWalletPage"));
 const SellerProfilePage = lazy(() => import("@/pages/seller/SellerProfilePage"));
+
+// Courier Pages
+const CourierDashboard = lazy(() => import("@/pages/courier/CourierDashboard"));
 
 // Reseller Pages
 const BecomeResellerPage = lazy(() => import("@/pages/reseller").then(m => ({ default: m.BecomeResellerPage })));
@@ -172,6 +180,9 @@ function Router() {
         <Route path="/reseller/payouts" component={ResellerPayoutsPage} />
         <Route path="/reseller/bank" component={ResellerBankSettingsPage} />
 
+        {/* Courier Routes */}
+        <ProtectedRoute path="/courier" component={CourierDashboard} />
+
         {/* Admin Routes */}
         <Route path="/admin" component={AdminPage} />
         <Route path="/admin/products" component={AdminProducts} />
@@ -192,6 +203,7 @@ function Router() {
         <ProtectedRoute path="/seller/profile" component={SellerProfilePage} />
         <Route path="/admin/dashboard" component={AdminDashboard} />
         <Route path="/admin/users" component={AdminUsersPage} />
+        <Route path="/admin/users/:id" component={AdminCustomerDetailPage} />
         <Route path="/admin/sellers" component={AdminSellersPage} />
         <Route path="/admin/products/moderation" component={AdminProductModerationPage} />
         <Route path="/admin/payouts" component={AdminPayoutApprovalPage} />
@@ -201,6 +213,9 @@ function Router() {
         <Route path="/admin/refunds" component={AdminRefundsPage} />
         <Route path="/admin/disputes" component={AdminReturnDisputesPage} />
         <Route path="/admin/rbac" component={AdminRBAC} />
+        <Route path="/admin/shipping" component={AdminShippingSettings} />
+        <Route path="/admin/coupons" component={AdminCoupons} />
+        <Route path="/admin/resellers" component={AdminResellers} />
         <Route path="/privacy-settings" component={PrivacySettings} />
 
         <Route component={NotFound} />

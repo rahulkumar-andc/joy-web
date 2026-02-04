@@ -19,6 +19,7 @@ import { stockReservationService } from "../services/stockReservationService";
 import { logger } from "../logger";
 import { couponService } from "../services/couponService";
 import { shippingSettingsService } from "../services/shippingSettingsService";
+import { webSocketService } from "../services/websocketService";
 
 export class OrderController {
 
@@ -157,9 +158,9 @@ export class OrderController {
         if (cartItems.length === 0) throw new AppError("Cart empty", 400);
 
         let totalAmount = cartItems.reduce((sum: number, item: any) => {
-            const price = Number(item.product.discountPrice) > 0
-                ? Number(item.product.discountPrice)
-                : Number(item.product.price);
+            const price = Number(item.product.salePrice) > 0
+                ? Number(item.product.salePrice)
+                : Number(item.product.mrp);
             return sum + (price * item.quantity);
         }, 0);
         let discountAmount = 0;
@@ -242,12 +243,26 @@ export class OrderController {
                     codCollectedAt: null,
                     codCollectedBy: null,
                     deliveryInstructions: null,
+
+                    // In-House Delivery Defaults
+                    assignedCourier: null,
+                    deliveryStatus: "pending",
+                    proofOfDeliveryImage: null,
+                    podLocation: null,
+                    podTimestamp: null,
+                    isSuspiciousDelivery: false,
+                    suspiciousReason: null,
+
+                    // COD Settlement Defaults
+                    paymentSettled: false,
+                    settlementTimestamp: null,
+                    settledBy: null,
                 }, cartItems.map((item: any) => ({
                     productId: item.productId,
                     quantity: item.quantity,
-                    price: Number(item.product.discountPrice) > 0
-                        ? Number(item.product.discountPrice)
-                        : Number(item.product.price),
+                    price: Number(item.product.salePrice) > 0
+                        ? Number(item.product.salePrice)
+                        : Number(item.product.mrp),
                     size: item.size ?? undefined,
                     color: item.color ?? undefined
                 })));
@@ -332,7 +347,7 @@ export class OrderController {
                     items: cartItems.map((item: any) => ({
                         name: item.product.name,
                         quantity: item.quantity,
-                        price: item.product.price
+                        price: item.product.mrp
                     }))
                 });
             }
@@ -453,6 +468,16 @@ export class OrderController {
                 );
                 await pushNotificationService.sendOrderUpdate(updated.userId, id, status);
             }
+
+            // 🔴 WebSocket: Broadcast real-time order status update to customer
+            webSocketService.broadcastToUser(updated.userId, 'ORDER_STATUS_UPDATE', {
+                orderId: updated.id,
+                status: updated.status,
+                deliveryStatus: updated.deliveryStatus,
+                courierName: updated.courierName,
+                trackingNumber: updated.trackingNumber,
+                estimatedDeliveryDate: updated.estimatedDeliveryDate
+            });
         }
 
         // ⚠️ COMMISSION CALCULATION: Trigger when order is delivered

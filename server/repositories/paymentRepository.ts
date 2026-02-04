@@ -14,7 +14,7 @@ export class PaymentRepository {
                 status: status as any,
                 razorpayPaymentId: paymentId,
                 razorpaySignature: signature,
-                paymentMethod: method,
+                paymentMethod: method as typeof payments.paymentMethod.enumValues[number] | null | undefined,
                 updatedAt: new Date()
             })
             .where(eq(payments.razorpayOrderId, razorpayOrderId))

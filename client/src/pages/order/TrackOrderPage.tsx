@@ -1,8 +1,10 @@
 import { useParams } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Package, Truck, CheckCircle2, XCircle, MapPin, CreditCard, Clock } from "lucide-react";
+import { Loader2, Package, Truck, CheckCircle2, XCircle, MapPin, CreditCard, Clock, Wifi, WifiOff } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
+import { useOrderTracking } from "@/hooks/use-websocket";
+import { useEffect } from "react";
 
 // Map orderState to user-friendly labels
 const STATE_LABELS: Record<string, string> = {
@@ -19,6 +21,10 @@ const STATE_LABELS: Record<string, string> = {
 
 export default function TrackOrderPage() {
     const { id } = useParams();
+    const queryClient = useQueryClient();
+
+    // Real-time order tracking via WebSocket
+    const { isConnected, orderUpdate } = useOrderTracking(id);
 
     const { data: order, isLoading, error } = useQuery({
         queryKey: ["/api/orders", id],
@@ -28,6 +34,13 @@ export default function TrackOrderPage() {
         },
         enabled: !!id,
     });
+
+    // Auto-refetch order data when we receive a WebSocket update
+    useEffect(() => {
+        if (orderUpdate) {
+            queryClient.invalidateQueries({ queryKey: ["/api/orders", id] });
+        }
+    }, [orderUpdate, id, queryClient]);
 
     if (isLoading) {
         return (

@@ -70,13 +70,20 @@ export function ProductManagement() {
   const onSubmit = (data: z.infer<typeof productSchema>) => {
     // Transform simple input to match API schema
     createMutation.mutate({
-      ...data,
+      name: data.name,
+      description: data.description,
+      mrp: data.price, // Form field "price" maps to backend "mrp"
+      stockQuantity: data.stockQuantity,
       images: [data.images],
       categoryId: 1, // hardcoded for MVP simplicity if no category select
     }, {
       onSuccess: () => {
         setIsOpen(false);
         form.reset();
+        toast({ title: "Product created", description: "Product has been added successfully." });
+      },
+      onError: (error) => {
+        toast({ title: "Creation failed", description: error.message, variant: "destructive" });
       }
     });
   };
@@ -103,8 +110,16 @@ export function ProductManagement() {
 
                 try {
                   toast({ title: "Importing...", description: "Please wait." });
+                  const csrfToken = document.cookie
+                    .split("; ")
+                    .find(row => row.startsWith("CSRF-TOKEN="))
+                    ?.split("=")[1];
+
                   const res = await fetch("/api/products/bulk", {
                     method: "POST",
+                    headers: {
+                      "X-CSRF-Token": csrfToken || ""
+                    },
                     body: formData,
                   });
                   const data = await res.json();
@@ -254,7 +269,7 @@ export function ProductManagement() {
                   <img src={product.images[0]} alt={product.name} className="w-10 h-10 object-cover rounded bg-muted" />
                 </TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
-                <TableCell>₹{product.price}</TableCell>
+                <TableCell>₹{product.mrp}</TableCell>
                 <TableCell>{product.stockQuantity}</TableCell>
                 <TableCell className="text-right space-x-2">
                   <Button
@@ -272,11 +287,16 @@ export function ProductManagement() {
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      deleteMutation.mutate(product.id, {
-                        onSuccess: () => {
-                          toast({ title: "Product deleted", description: `${product.name} has been removed.` });
-                        }
-                      });
+                      if (confirm("Are you sure you want to delete this product?")) {
+                        deleteMutation.mutate(product.id, {
+                          onSuccess: () => {
+                            toast({ title: "Product deleted", description: `${product.name} has been removed.` });
+                          },
+                          onError: (error) => {
+                            toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+                          }
+                        });
+                      }
                     }}
                     className="text-destructive hover:bg-destructive/10"
                   >

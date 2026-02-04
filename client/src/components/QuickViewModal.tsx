@@ -81,10 +81,10 @@ export function QuickViewModal({ product, open, onOpenChange }: QuickViewModalPr
                         </div>
 
                         <div className="text-2xl font-bold text-primary mb-4">
-                            ₹{product.price}
-                            {product.discountPrice && (
+                            ₹{(product.salePrice || product.mrp)}
+                            {product.salePrice && (
                                 <span className="ml-2 text-lg text-muted-foreground line-through">
-                                    ₹{product.discountPrice}
+                                    ₹{product.mrp}
                                 </span>
                             )}
                         </div>

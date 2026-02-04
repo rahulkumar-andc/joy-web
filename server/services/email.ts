@@ -1,6 +1,6 @@
 import { logger } from "../logger";
 import nodemailer from "nodemailer";
-import { orderShippedTemplate, orderDeliveredTemplate, orderCancelledTemplate } from "./emailTemplates";
+import { orderShippedTemplate, orderDeliveredTemplate, orderCancelledTemplate, codOrderConfirmationTemplate, codCollectedTemplate } from "./emailTemplates";
 import { createCircuitBreaker, CIRCUIT_OPTIONS } from "../config/circuit-breakers";
 import CircuitBreaker from "opossum";
 
@@ -193,6 +193,26 @@ class EmailService {
   async sendOrderCancelled(user: EmailUser, orderId: number) {
     const subject = `Order #${orderId} has been Cancelled`;
     const html = orderCancelledTemplate(user.name || 'Customer', orderId);
+    return this.sendEmail(user.email, subject, html);
+  }
+
+  /**
+   * Send COD order confirmation email
+   * Called when a Cash on Delivery order is placed
+   */
+  async sendCodConfirmation(user: EmailUser, orderId: number, codAmount: string, deliveryInstructions?: string) {
+    const subject = `Order #${orderId} Confirmed - Cash on Delivery ₹${codAmount}`;
+    const html = codOrderConfirmationTemplate(user.name || 'Customer', orderId, codAmount, deliveryInstructions);
+    return this.sendEmail(user.email, subject, html);
+  }
+
+  /**
+   * Send COD collected confirmation email
+   * Called when courier collects cash payment on delivery
+   */
+  async sendCodCollected(user: EmailUser, orderId: number, codAmount: string) {
+    const subject = `Payment Received for Order #${orderId} ✅`;
+    const html = codCollectedTemplate(user.name || 'Customer', orderId, codAmount);
     return this.sendEmail(user.email, subject, html);
   }
 

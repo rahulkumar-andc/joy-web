@@ -94,8 +94,9 @@ export class UserRepository {
     }
 
     async lockAccount(userId: number, durationMinutes: number = 30): Promise<void> {
+        const lockoutTime = new Date(Date.now() + durationMinutes * 60 * 1000);
         await db.update(users)
-            .set({ lockoutUntil: sql`NOW() + INTERVAL '${sql.raw(durationMinutes.toString())} minutes'` })
+            .set({ lockoutUntil: lockoutTime })
             .where(eq(users.id, userId));
     }
 
@@ -104,7 +105,7 @@ export class UserRepository {
     }
 
     async updateLastLogin(userId: number): Promise<void> {
-        await db.update(users).set({ lastLoginAt: sql`NOW()` }).where(eq(users.id, userId));
+        await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, userId));
     }
 
     async updatePasswordWithTimestamp(userId: number, hashedPassword: string): Promise<void> {

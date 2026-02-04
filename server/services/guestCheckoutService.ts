@@ -65,8 +65,8 @@ export async function getGuestCart(sessionId: string) {
                 product: {
                     id: products.id,
                     name: products.name,
-                    price: products.price,
-                    discountPrice: products.discountPrice,
+                    mrp: products.mrp,
+                    salePrice: products.salePrice,
                     images: products.images,
                     stockQuantity: products.stockQuantity,
                 }
@@ -260,9 +260,9 @@ export async function getGuestCartSummary(sessionId: string): Promise<{
     let itemCount = 0;
 
     for (const item of items) {
-        const price = item.product.discountPrice
-            ? parseFloat(item.product.discountPrice)
-            : parseFloat(item.product.price);
+        const price = item.product.salePrice
+            ? parseFloat(item.product.salePrice)
+            : parseFloat(item.product.mrp);
         subtotal += price * item.quantity;
         itemCount += item.quantity;
     }

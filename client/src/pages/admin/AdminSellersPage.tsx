@@ -119,9 +119,18 @@ export default function AdminSellersPage() {
             action: string;
             note?: string;
         }) => {
+            // Extract CSRF token from cookie
+            const csrfToken = document.cookie
+                .split("; ")
+                .find(row => row.startsWith("CSRF-TOKEN="))
+                ?.split("=")[1];
+
             const res = await fetch(`/api/admin/sellers/${sellerId}/action`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": csrfToken || ""
+                },
                 credentials: "include",
                 body: JSON.stringify({ action, reason: note }),
             });

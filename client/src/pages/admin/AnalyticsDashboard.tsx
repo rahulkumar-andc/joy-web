@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, TrendingUp, Download, Calendar, Eye, MousePointerClick, Trophy, RefreshCw } from "lucide-react";
+import { BarChart3, TrendingUp, Download, Calendar, Eye, MousePointerClick, Trophy, RefreshCw, Truck, Tag, DollarSign, Package } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 interface CampaignStats {
     id: number;
@@ -47,6 +48,27 @@ export default function AnalyticsDashboard() {
         queryKey: ["/api/admin/hero", selectedCampaign, "variants"],
         queryFn: () => apiRequest("GET", `/api/admin/hero/${selectedCampaign}/variants`).then(r => r.json()),
         enabled: !!selectedCampaign,
+    });
+
+    // Fetch coupon analytics
+    const { data: couponData } = useQuery<{
+        period: string;
+        revenueImpact: { totalOrdersWithCoupons: number; totalRevenueWithCoupons: number; totalDiscountGiven: number; };
+        topCouponsByUsage: Array<{ code: string; totalUsage: number; totalRevenue: number; }>;
+        topCouponsByRevenue: Array<{ code: string; totalUsage: number; totalRevenue: number; }>;
+    }>({
+        queryKey: ["/api/admin/analytics/coupons/dashboard"],
+        queryFn: () => fetch("/api/admin/analytics/coupons/dashboard", { credentials: "include" }).then(r => r.json()),
+    });
+
+    // Fetch shipping analytics
+    const { data: shippingData } = useQuery<{
+        summary: { totalOrders: number; freeShippingOrders: number; paidShippingOrders: number; freeShippingPercentage: number; totalShippingRevenue: number; avgOrderValue: number; };
+        dailyBreakdown: Array<{ date: string; totalOrders: number; freeOrders: number; paidOrders: number; shippingRevenue: number; }>;
+        thresholdAnalysis: { ordersBelow499: number; orders499to999: number; ordersAbove999: number; };
+    }>({
+        queryKey: ["/api/admin/shipping/analytics"],
+        queryFn: () => fetch("/api/admin/shipping/analytics?days=" + (dateRange === "7d" ? 7 : dateRange === "30d" ? 30 : 90), { credentials: "include" }).then(r => r.json()),
     });
 
     // Auto-promote mutation
@@ -147,6 +169,12 @@ export default function AnalyticsDashboard() {
                 <TabsList>
                     <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
                     <TabsTrigger value="ab-testing">A/B Testing</TabsTrigger>
+                    <TabsTrigger value="coupons" className="flex items-center gap-1">
+                        <Tag className="h-3 w-3" /> Coupons
+                    </TabsTrigger>
+                    <TabsTrigger value="shipping" className="flex items-center gap-1">
+                        <Truck className="h-3 w-3" /> Shipping
+                    </TabsTrigger>
                 </TabsList>
 
                 {/* Campaigns Tab */}
@@ -288,6 +316,169 @@ export default function AnalyticsDashboard() {
                             )}
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                {/* Coupons Analytics Tab */}
+                <TabsContent value="coupons" className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium">Orders with Coupons</CardTitle>
+                                <Tag className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{couponData?.revenueImpact?.totalOrdersWithCoupons?.toLocaleString() || 0}</div>
+                                <p className="text-xs text-muted-foreground">{couponData?.period}</p>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium">Revenue from Coupon Orders</CardTitle>
+                                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">₹{couponData?.revenueImpact?.totalRevenueWithCoupons?.toLocaleString() || 0}</div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium">Total Discounts</CardTitle>
+                                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">₹{couponData?.revenueImpact?.totalDiscountGiven?.toLocaleString() || 0}</div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Top Coupons by Usage</CardTitle>
+                            <CardDescription>Most frequently used coupon codes</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {couponData?.topCouponsByUsage && couponData.topCouponsByUsage.length > 0 ? (
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <BarChart data={couponData.topCouponsByUsage}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="code" />
+                                        <YAxis />
+                                        <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                                        <Bar dataKey="totalUsage" fill="#8884d8" name="Usage Count" />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="text-center py-8 text-muted-foreground">No coupon data available</div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                {/* Shipping Analytics Tab */}
+                <TabsContent value="shipping" className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+                                <Package className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{shippingData?.summary?.totalOrders?.toLocaleString() || 0}</div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium">Free Shipping</CardTitle>
+                                <Truck className="h-4 w-4 text-green-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-green-600">{shippingData?.summary?.freeShippingPercentage || 0}%</div>
+                                <p className="text-xs text-muted-foreground">{shippingData?.summary?.freeShippingOrders || 0} orders</p>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium">Shipping Revenue</CardTitle>
+                                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">₹{shippingData?.summary?.totalShippingRevenue?.toLocaleString() || 0}</div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium">Avg Order Value</CardTitle>
+                                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">₹{shippingData?.summary?.avgOrderValue?.toLocaleString() || 0}</div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Orders by Value Threshold</CardTitle>
+                                <CardDescription>Distribution of orders relative to free shipping threshold</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {shippingData?.thresholdAnalysis ? (
+                                    <ResponsiveContainer width="100%" height={250}>
+                                        <PieChart>
+                                            <Pie
+                                                data={[
+                                                    { name: "Below ₹499", value: shippingData.thresholdAnalysis.ordersBelow499, color: "#ef4444" },
+                                                    { name: "₹499-999", value: shippingData.thresholdAnalysis.orders499to999, color: "#f59e0b" },
+                                                    { name: "Above ₹999", value: shippingData.thresholdAnalysis.ordersAbove999, color: "#22c55e" },
+                                                ]}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={60}
+                                                outerRadius={80}
+                                                dataKey="value"
+                                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                            >
+                                                {[
+                                                    { color: "#ef4444" },
+                                                    { color: "#f59e0b" },
+                                                    { color: "#22c55e" },
+                                                ].map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                                ))}
+                                            </Pie>
+                                            <Legend />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="text-center py-8 text-muted-foreground">No threshold data</div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Daily Orders Trend</CardTitle>
+                                <CardDescription>Free vs paid shipping orders over time</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {shippingData?.dailyBreakdown && shippingData.dailyBreakdown.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height={250}>
+                                        <LineChart data={shippingData.dailyBreakdown.slice().reverse()}>
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <XAxis dataKey="date" tickFormatter={(v) => new Date(v).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })} />
+                                            <YAxis />
+                                            <Tooltip labelFormatter={(v) => new Date(v).toLocaleDateString()} />
+                                            <Line type="monotone" dataKey="freeOrders" stroke="#22c55e" name="Free Shipping" />
+                                            <Line type="monotone" dataKey="paidOrders" stroke="#ef4444" name="Paid Shipping" />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="text-center py-8 text-muted-foreground">No daily data available</div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
                 </TabsContent>
             </Tabs>
         </div>
