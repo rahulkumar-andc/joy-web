@@ -12,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Plus, MoreVertical, Calendar, Eye, MousePointerClick, Loader2, Edit, Trash, Play, Pause, AlertTriangle } from "lucide-react";
+import { Trash2, Plus, MoreVertical, Calendar, Eye, MousePointerClick, Loader2, Edit, Trash, Play, Pause, AlertTriangle, Upload, Link } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { AdminLayout } from "@/components/layout";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,8 @@ export default function AdminCampaigns() {
     const queryClient = useQueryClient();
     const [isOpen, setIsOpen] = useState(false);
     const [editingCampaign, setEditingCampaign] = useState<HeroCampaign | null>(null);
+    const [mediaSource, setMediaSource] = useState<"url" | "upload">("url");
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     const { data: campaigns, isLoading } = useQuery<HeroCampaign[]>({
         queryKey: ["/api/admin/hero"],
@@ -47,11 +49,19 @@ export default function AdminCampaigns() {
             overlayOpacity: "0.4",
             targetAudience: "all",
             endTime: null,
+            titlePosX: 50,
+            titlePosY: 20,
+            subtitlePosX: 50,
+            subtitlePosY: 40,
+            ctaPosX: 50,
+            ctaPosY: 60,
+            countdownPosX: 50,
+            countdownPosY: 10,
         },
     });
 
     const createMutation = useMutation({
-        mutationFn: async (data: InsertHeroCampaign) => {
+        mutationFn: async (data: InsertHeroCampaign | FormData) => {
             const res = await apiRequest("POST", "/api/admin/hero", data);
             return res.json();
         },
@@ -68,7 +78,7 @@ export default function AdminCampaigns() {
     });
 
     const updateMutation = useMutation({
-        mutationFn: async ({ id, data }: { id: number; data: Partial<InsertHeroCampaign> }) => {
+        mutationFn: async ({ id, data }: { id: number; data: Partial<InsertHeroCampaign> | FormData }) => {
             const res = await apiRequest("PUT", `/api/admin/hero/${id}`, data);
             return res.json();
         },
@@ -139,10 +149,26 @@ export default function AdminCampaigns() {
             endTime: data.endTime instanceof Date ? data.endTime.toISOString() : data.endTime,
         };
 
-        if (editingCampaign) {
-            updateMutation.mutate({ id: editingCampaign.id, data: payload as any });
+        if (mediaSource === "upload" && selectedFile) {
+            const formData = new FormData();
+            Object.entries(payload).forEach(([key, value]) => {
+                if (value !== null && value !== undefined) {
+                    formData.append(key, String(value));
+                }
+            });
+            formData.append("mediaFile", selectedFile);
+
+            if (editingCampaign) {
+                updateMutation.mutate({ id: editingCampaign.id, data: formData });
+            } else {
+                createMutation.mutate(formData);
+            }
         } else {
-            createMutation.mutate(payload as any);
+            if (editingCampaign) {
+                updateMutation.mutate({ id: editingCampaign.id, data: payload as any });
+            } else {
+                createMutation.mutate(payload as any);
+            }
         }
     };
 
@@ -163,6 +189,14 @@ export default function AdminCampaigns() {
             textColor: campaign.textColor,
             overlayOpacity: String(campaign.overlayOpacity),
             targetAudience: campaign.targetAudience as any,
+            titlePosX: campaign.titlePosX ?? 50,
+            titlePosY: campaign.titlePosY ?? 20,
+            subtitlePosX: campaign.subtitlePosX ?? 50,
+            subtitlePosY: campaign.subtitlePosY ?? 40,
+            ctaPosX: campaign.ctaPosX ?? 50,
+            ctaPosY: campaign.ctaPosY ?? 60,
+            countdownPosX: campaign.countdownPosX ?? 50,
+            countdownPosY: campaign.countdownPosY ?? 10,
             endTime: campaign.endTime ? new Date(campaign.endTime) : null,
         });
         setIsOpen(true);
@@ -186,6 +220,14 @@ export default function AdminCampaigns() {
             overlayOpacity: "0.4",
             targetAudience: "all",
             endTime: null,
+            titlePosX: 50,
+            titlePosY: 20,
+            subtitlePosX: 50,
+            subtitlePosY: 40,
+            ctaPosX: 50,
+            ctaPosY: 60,
+            countdownPosX: 50,
+            countdownPosY: 10,
         });
         setIsOpen(true);
     };
@@ -278,6 +320,27 @@ export default function AdminCampaigns() {
 
                                 <div className="space-y-2 border p-4 rounded-md">
                                     <h3 className="font-medium">Media</h3>
+                                    <h3 className="font-medium">Media</h3>
+
+                                    <div className="flex gap-4 mb-4">
+                                        <Button
+                                            type="button"
+                                            variant={mediaSource === "url" ? "default" : "outline"}
+                                            onClick={() => setMediaSource("url")}
+                                            className="w-1/2"
+                                        >
+                                            <Link className="w-4 h-4 mr-2" /> URL
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant={mediaSource === "upload" ? "default" : "outline"}
+                                            onClick={() => setMediaSource("upload")}
+                                            className="w-1/2"
+                                        >
+                                            <Upload className="w-4 h-4 mr-2" /> Upload File
+                                        </Button>
+                                    </div>
+
                                     <div className="grid grid-cols-2 gap-4">
                                         <FormField control={form.control} name="mediaType" render={({ field }) => (
                                             <FormItem>
@@ -292,13 +355,31 @@ export default function AdminCampaigns() {
                                                 <FormMessage />
                                             </FormItem>
                                         )} />
-                                        <FormField control={form.control} name="mediaUrl" render={({ field }) => (
+
+                                        {mediaSource === "url" ? (
+                                            <FormField control={form.control} name="mediaUrl" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Media URL</FormLabel>
+                                                    <FormControl><Input {...field} placeholder="https://..." /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                        ) : (
                                             <FormItem>
-                                                <FormLabel>Media URL</FormLabel>
-                                                <FormControl><Input {...field} placeholder="https://..." /></FormControl>
-                                                <FormMessage />
+                                                <FormLabel>Upload File (Max 50MB)</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="file"
+                                                        accept={form.getValues("mediaType") === "video" ? "video/*" : "image/*"}
+                                                        onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) setSelectedFile(file);
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                {selectedFile && <p className="text-xs text-muted-foreground">Selected: {selectedFile.name}</p>}
                                             </FormItem>
-                                        )} />
+                                        )}
                                     </div>
                                 </div>
 
@@ -341,7 +422,11 @@ export default function AdminCampaigns() {
                                                 <Input
                                                     type="datetime-local"
                                                     {...field}
-                                                    value={field.value ? new Date(field.value).toISOString().slice(0, 16) : ""}
+                                                    value={
+                                                        field.value && !isNaN(new Date(field.value).getTime())
+                                                            ? new Date(field.value).toISOString().slice(0, 16)
+                                                            : ""
+                                                    }
                                                     onChange={e => {
                                                         const date = e.target.value ? new Date(e.target.value) : null;
                                                         field.onChange(date);
@@ -351,6 +436,89 @@ export default function AdminCampaigns() {
                                             <FormMessage />
                                         </FormItem>
                                     )} />
+                                </div>
+
+                                {/* Layout Configuration */}
+                                <div className="space-y-4 pt-4 border-t">
+                                    <h3 className="font-medium text-lg">Layout Configuration (Position 0-100%)</h3>
+
+                                    <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                                        {/* Title Position */}
+                                        <div className="space-y-2">
+                                            <FormLabel className="font-medium">Title Position</FormLabel>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <FormField control={form.control} name="titlePosX" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs text-muted-foreground">Horizontal (X)</FormLabel>
+                                                        <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="titlePosY" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs text-muted-foreground">Vertical (Y)</FormLabel>
+                                                        <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                    </FormItem>
+                                                )} />
+                                            </div>
+                                        </div>
+
+                                        {/* Subtitle Position */}
+                                        <div className="space-y-2">
+                                            <FormLabel className="font-medium">Subtitle Position</FormLabel>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <FormField control={form.control} name="subtitlePosX" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs text-muted-foreground">Horizontal (X)</FormLabel>
+                                                        <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="subtitlePosY" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs text-muted-foreground">Vertical (Y)</FormLabel>
+                                                        <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                    </FormItem>
+                                                )} />
+                                            </div>
+                                        </div>
+
+                                        {/* CTA Position */}
+                                        <div className="space-y-2">
+                                            <FormLabel className="font-medium">CTA Button Position</FormLabel>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <FormField control={form.control} name="ctaPosX" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs text-muted-foreground">Horizontal (X)</FormLabel>
+                                                        <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="ctaPosY" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs text-muted-foreground">Vertical (Y)</FormLabel>
+                                                        <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                    </FormItem>
+                                                )} />
+                                            </div>
+                                        </div>
+
+                                        {/* Countdown Position */}
+                                        <div className="space-y-2">
+                                            <FormLabel className="font-medium">Countdown Position</FormLabel>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <FormField control={form.control} name="countdownPosX" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs text-muted-foreground">Horizontal (X)</FormLabel>
+                                                        <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="countdownPosY" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs text-muted-foreground">Vertical (Y)</FormLabel>
+                                                        <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                    </FormItem>
+                                                )} />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2 border p-4 rounded-md">
@@ -449,7 +617,11 @@ export default function AdminCampaigns() {
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <Calendar className="h-4 w-4" />
-                                            <span>{campaign.endTime ? format(new Date(campaign.endTime), "MMM d, yyyy") : "No End Date"}</span>
+                                            <span>
+                                                {campaign.endTime && !isNaN(new Date(campaign.endTime).getTime())
+                                                    ? format(new Date(campaign.endTime), "MMM d, yyyy")
+                                                    : "No End Date"}
+                                            </span>
                                         </div>
                                     </div>
                                     <div className="pt-2">

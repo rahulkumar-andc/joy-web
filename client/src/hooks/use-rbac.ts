@@ -141,17 +141,17 @@ export function useCheckPermission() {
         if (!myPerms?.permissions) return false;
 
         // Check for exact match
-        if (myPerms.permissions.includes(`${domain}:${action}`)) {
+        if (myPerms.permissions.includes(`${domain}.${action}`)) {
             return true;
         }
 
         // Check for 'manage' permission on the domain (grants all actions)
-        if (myPerms.permissions.includes(`${domain}:manage`)) {
+        if (myPerms.permissions.includes(`${domain}.manage`)) {
             return true;
         }
 
         // Check for system:manage (superadmin - has all permissions)
-        if (myPerms.permissions.includes('system:manage')) {
+        if (myPerms.permissions.includes('system.manage')) {
             return true;
         }
 

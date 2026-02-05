@@ -6,6 +6,7 @@ import { z } from "zod";
 import { logger } from "@server/logger";
 import { db } from "@server/db";
 import { upload } from "@server/upload";
+import { requireAdmin } from "../../middleware/requireRole";
 
 // ============================================================================
 // Types and Interfaces
@@ -637,16 +638,14 @@ adminHeroRouter.get("/schedules/pending", async (req: Request, res: Response, ne
  */
 heroRouter.use(
     "/api/admin/hero",
-    (req: Request, res: Response, next: NextFunction) => {
-        const isAuthenticated = req.isAuthenticated?.() ?? false;
-        const userRole = (req.user as { role?: string } | undefined)?.role;
-
-        if (isAuthenticated && (userRole === 'admin' || userRole === 'manager')) {
-            return next();
-        }
-
-        res.status(403).json({ message: "Forbidden: Admin access required" });
+    (req, res, next) => {
+        console.log("[DEBUG] Hero Admin Route Hit");
+        console.log("[DEBUG] User:", req.user);
+        console.log("[DEBUG] IsAuthenticated:", req.isAuthenticated?.());
+        console.log("[DEBUG] Session:", req.session);
+        next();
     },
+    requireAdmin(),
     adminHeroRouter
 );
 

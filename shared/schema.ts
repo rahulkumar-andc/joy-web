@@ -580,6 +580,16 @@ export const heroCampaigns = pgTable("hero_campaigns", {
   // Targeting
   targetAudience: text("target_audience", { enum: ["all", "guest", "user"] }).default("all").notNull(),
 
+  // Positioning Configuration (Percentages 0-100)
+  titlePosX: integer("title_pos_x").default(50),
+  titlePosY: integer("title_pos_y").default(20),
+  subtitlePosX: integer("subtitle_pos_x").default(50),
+  subtitlePosY: integer("subtitle_pos_y").default(40),
+  ctaPosX: integer("cta_pos_x").default(50),
+  ctaPosY: integer("cta_pos_y").default(60),
+  countdownPosX: integer("countdown_pos_x").default(50),
+  countdownPosY: integer("countdown_pos_y").default(10),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -595,6 +605,14 @@ export const insertHeroCampaignSchema = createInsertSchema(heroCampaigns).omit({
   endTime: z.coerce.date().nullable().optional(),
   mediaSource: z.enum(["upload", "url"]).default("url"),
   mediaFilePath: z.string().optional().nullable(),
+  titlePosX: z.coerce.number().min(0).max(100).default(50),
+  titlePosY: z.coerce.number().min(0).max(100).default(20),
+  subtitlePosX: z.coerce.number().min(0).max(100).default(50),
+  subtitlePosY: z.coerce.number().min(0).max(100).default(40),
+  ctaPosX: z.coerce.number().min(0).max(100).default(50),
+  ctaPosY: z.coerce.number().min(0).max(100).default(60),
+  countdownPosX: z.coerce.number().min(0).max(100).default(50),
+  countdownPosY: z.coerce.number().min(0).max(100).default(10),
 });
 
 export type HeroCampaign = typeof heroCampaigns.$inferSelect;

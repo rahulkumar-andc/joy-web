@@ -40,6 +40,7 @@ interface PremiumHeaderProps {
 
 export function PremiumHeader({ isLandingPage = false }: PremiumHeaderProps) {
     const { user, logoutMutation } = useAuth();
+    if (user) console.log("HEADER USER DEBUG:", user, "Roles:", (user as any).rbacRoles);
     const { data: cartItems } = useCart();
     const { resolvedTheme, setTheme } = useTheme();
     const [isOpen, setIsOpen] = useState(false);
@@ -97,8 +98,8 @@ export function PremiumHeader({ isLandingPage = false }: PremiumHeaderProps) {
                                             key={link.href}
                                             href={link.href}
                                             className={`text-sm font-medium tracking-wide uppercase transition-colors hover:text-accent ${location === link.href
-                                                    ? "text-accent"
-                                                    : "text-muted-foreground"
+                                                ? "text-accent"
+                                                : "text-muted-foreground"
                                                 }`}
                                         >
                                             {link.label}
@@ -219,7 +220,7 @@ export function PremiumHeader({ isLandingPage = false }: PremiumHeaderProps) {
                                                         <span>Wishlist</span>
                                                     </Link>
                                                 </DropdownMenuItem>
-                                                {user.role === "seller" && (
+                                                {(user.role === "seller" || (user as any).rbacRoles?.some((r: string) => ["SELLER_ADMIN", "SELLER_MANAGER"].includes(r))) && (
                                                     <DropdownMenuItem asChild>
                                                         <Link href="/seller/dashboard" className="flex items-center cursor-pointer">
                                                             <Store className="mr-2 h-4 w-4" />
@@ -227,7 +228,44 @@ export function PremiumHeader({ isLandingPage = false }: PremiumHeaderProps) {
                                                         </Link>
                                                     </DropdownMenuItem>
                                                 )}
-                                                {user.role === "admin" && (
+                                                {/* Courier Dashboard for DELIVERY_PARTNER role */}
+                                                {(user as any).rbacRoles?.includes("DELIVERY_PARTNER") && (
+                                                    <DropdownMenuItem asChild>
+                                                        <Link href="/courier/dashboard" className="flex items-center cursor-pointer">
+                                                            <Package className="mr-2 h-4 w-4" />
+                                                            <span>Courier Dashboard</span>
+                                                        </Link>
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {/* OPS Dashboard for OPS roles */}
+                                                {(user as any).rbacRoles?.some((r: string) => ["OPS_ADMIN", "OPS_MANAGER"].includes(r)) && (
+                                                    <DropdownMenuItem asChild>
+                                                        <Link href="/ops/dashboard" className="flex items-center cursor-pointer">
+                                                            <LayoutDashboard className="mr-2 h-4 w-4" />
+                                                            <span>OPS Dashboard</span>
+                                                        </Link>
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {/* Support Dashboard for Support roles */}
+                                                {(user as any).rbacRoles?.some((r: string) => ["SUPPORT_ADMIN", "SUPPORT_AGENT"].includes(r)) && (
+                                                    <DropdownMenuItem asChild>
+                                                        <Link href="/support/dashboard" className="flex items-center cursor-pointer">
+                                                            <LayoutDashboard className="mr-2 h-4 w-4" />
+                                                            <span>Support Dashboard</span>
+                                                        </Link>
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {/* Business Dashboard for Business roles */}
+                                                {(user as any).rbacRoles?.some((r: string) => ["BUSINESS_ADMIN", "CATEGORY_MANAGER"].includes(r)) && (
+                                                    <DropdownMenuItem asChild>
+                                                        <Link href="/business/dashboard" className="flex items-center cursor-pointer">
+                                                            <LayoutDashboard className="mr-2 h-4 w-4" />
+                                                            <span>Business Dashboard</span>
+                                                        </Link>
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {/* Admin Dashboard for Super Admin */}
+                                                {(user.role === "admin" || (user as any).rbacRoles?.includes("SUPER_ADMIN")) && (
                                                     <>
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem asChild>

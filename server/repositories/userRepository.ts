@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { users, verificationTokens, type User, type InsertUser, type VerificationToken } from "@shared/schema";
+import { users, verificationTokens, userRoles, roles, type User, type InsertUser, type VerificationToken } from "@shared/schema";
 import { eq, and, gt, sql } from "drizzle-orm";
 import { randomBytes, createHash } from "crypto";
 
@@ -7,6 +7,18 @@ export class UserRepository {
     async findById(id: number): Promise<User | undefined> {
         const [user] = await db.select().from(users).where(eq(users.id, id));
         return user;
+    }
+
+    /**
+     * Get RBAC role names for a user from the userRoles table
+     */
+    async getRbacRoles(userId: number): Promise<string[]> {
+        const result = await db
+            .select({ roleName: roles.name })
+            .from(userRoles)
+            .innerJoin(roles, eq(userRoles.roleId, roles.id))
+            .where(and(eq(userRoles.userId, userId), eq(userRoles.isActive, true)));
+        return result.map(r => r.roleName);
     }
 
     async findByUsername(username: string): Promise<User | undefined> {

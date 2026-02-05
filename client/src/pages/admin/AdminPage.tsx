@@ -16,7 +16,10 @@ export default function AdminPage() {
     }
 
     // Access denied for non-admin users
-    if (!user || user.role !== 'admin') {
+    // Access denied for non-admin users
+    const hasAdminAccess = user?.role === 'admin' || (user as any).rbacRoles?.includes("SUPER_ADMIN");
+
+    if (!user || !hasAdminAccess) {
         return (
             <div className="min-h-screen flex items-center justify-center flex-col gap-4">
                 <h1 className="text-2xl font-bold">Access Denied</h1>

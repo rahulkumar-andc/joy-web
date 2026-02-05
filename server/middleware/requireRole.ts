@@ -47,7 +47,7 @@ export const SELLER_ROLES = [
  * router.get('/admin/orders', requireAuth, requireRole(...ADMIN_ROLES), handler);
  */
 export function requireRole(...allowedRoles: string[]) {
-    return (req: Request, res: Response, next: NextFunction) => {
+    return async (req: Request, res: Response, next: NextFunction) => {
         // Check authentication first
         if (!req.isAuthenticated?.() || !req.user) {
             return res.status(401).json({
@@ -56,19 +56,41 @@ export function requireRole(...allowedRoles: string[]) {
             });
         }
 
-        const user = req.user as { role?: string };
-        const userRole = user.role;
+        const user = req.user as { id?: number; role?: string; rbacRoles?: string[] };
+        const legacyRole = user.role;
 
-        // Check if user has an allowed role
-        if (!userRole || !allowedRoles.includes(userRole)) {
-            return res.status(403).json({
-                success: false,
-                error: 'Insufficient permissions',
-                message: `Access denied. Required roles: ${allowedRoles.join(', ')}`,
-            });
+        // Check legacy role first
+        if (legacyRole && allowedRoles.includes(legacyRole)) {
+            return next();
         }
 
-        next();
+        // Check RBAC roles (might already be attached from getMe)
+        if (user.rbacRoles && user.rbacRoles.some(r => allowedRoles.includes(r))) {
+            return next();
+        }
+
+        // Fetch RBAC roles from database if not already attached
+        if (user.id && !user.rbacRoles) {
+            try {
+                const { userRepository } = await import('../repositories/userRepository');
+                const rbacRoles = await userRepository.getRbacRoles(user.id);
+
+                // Attach roles to user object for future middleware checks
+                (user as any).rbacRoles = rbacRoles;
+
+                if (rbacRoles.some(r => allowedRoles.includes(r))) {
+                    return next();
+                }
+            } catch (error) {
+                console.error('Error fetching RBAC roles:', error);
+            }
+        }
+
+        return res.status(403).json({
+            success: false,
+            error: 'Insufficient permissions',
+            message: `Access denied. Required roles: ${allowedRoles.join(', ')}`,
+        });
     };
 }
 

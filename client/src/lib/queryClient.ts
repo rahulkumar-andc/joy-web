@@ -23,10 +23,10 @@ export async function apiRequest(
   const res = await fetch(url, {
     method,
     headers: {
-      ...(data ? { "Content-Type": "application/json" } : {}),
+      ...(data && !(data instanceof FormData) ? { "Content-Type": "application/json" } : {}),
       "X-CSRF-Token": getCookie("CSRF-TOKEN") || "",
     },
-    body: data ? JSON.stringify(data) : undefined,
+    body: data ? (data instanceof FormData ? data : JSON.stringify(data)) : undefined,
     credentials: "include",
   });
 

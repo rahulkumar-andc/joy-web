@@ -70,6 +70,11 @@ const SellerProfilePage = lazy(() => import("@/pages/seller/SellerProfilePage"))
 // Courier Pages
 const CourierDashboard = lazy(() => import("@/pages/courier/CourierDashboard"));
 
+// Role-Specific Dashboards
+const OpsDashboard = lazy(() => import("@/pages/ops/OpsDashboard"));
+const SupportDashboard = lazy(() => import("@/pages/support/SupportDashboard"));
+const BusinessDashboard = lazy(() => import("@/pages/business/BusinessDashboard"));
+
 // Reseller Pages
 const BecomeResellerPage = lazy(() => import("@/pages/reseller").then(m => ({ default: m.BecomeResellerPage })));
 const ResellerDashboard = lazy(() => import("@/pages/reseller").then(m => ({ default: m.ResellerDashboard })));
@@ -183,7 +188,20 @@ function Router() {
         <Route path="/reseller/bank" component={ResellerBankSettingsPage} />
 
         {/* Courier Routes */}
-        <ProtectedRoute path="/courier" component={CourierDashboard} />
+        <ProtectedRoute path="/courier/dashboard" component={CourierDashboard} />
+
+        {/* Role-Specific Dashboard Routes */}
+        <ProtectedRoute path="/ops/dashboard" component={OpsDashboard} />
+        <ProtectedRoute path="/ops/orders" component={OpsDashboard} />
+        <ProtectedRoute path="/ops/couriers" component={OpsDashboard} />
+        <ProtectedRoute path="/ops/deliveries" component={OpsDashboard} />
+        <ProtectedRoute path="/ops/cod" component={OpsDashboard} />
+        <ProtectedRoute path="/support/dashboard" component={SupportDashboard} />
+        <ProtectedRoute path="/support/tickets" component={SupportDashboard} />
+        <ProtectedRoute path="/support/refunds" component={SupportDashboard} />
+        <ProtectedRoute path="/support/customers" component={SupportDashboard} />
+        <ProtectedRoute path="/business/dashboard" component={BusinessDashboard} />
+        <ProtectedRoute path="/business/categories" component={BusinessDashboard} />
 
         {/* Admin Routes */}
         <Route path="/admin" component={AdminPage} />

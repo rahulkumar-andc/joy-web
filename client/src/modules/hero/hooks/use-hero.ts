@@ -29,6 +29,15 @@ export interface CampaignUI {
     overlay_opacity: number;
     text_color: string;
     id: number;
+    // Positioning
+    titlePosX?: number;
+    titlePosY?: number;
+    subtitlePosX?: number;
+    subtitlePosY?: number;
+    ctaPosX?: number;
+    ctaPosY?: number;
+    countdownPosX?: number;
+    countdownPosY?: number;
 }
 
 /**
@@ -61,6 +70,14 @@ export const DEFAULT_HERO_CONFIG: HeroConfig = {
         overlay_opacity: 0.4,
         text_color: "#ffffff",
         id: 0,
+        titlePosX: 50,
+        titlePosY: 20,
+        subtitlePosX: 50,
+        subtitlePosY: 40,
+        ctaPosX: 50,
+        ctaPosY: 60,
+        countdownPosX: 50,
+        countdownPosY: 10,
     },
 };
 

@@ -104,6 +104,10 @@ export async function registerRoutes(
   passport.deserializeUser(async (id: number, done) => {
     try {
       const user = await userRepository.findById(id);
+      if (!user) {
+        // User was deleted or doesn't exist - clear the session gracefully
+        return done(null, false);
+      }
       done(null, user);
     } catch (err) {
       done(err);

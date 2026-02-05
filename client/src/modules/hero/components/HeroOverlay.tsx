@@ -14,19 +14,26 @@ interface HeroOverlayProps {
         label: string | null;
         href: string | null;
     };
-    // Smart CTAs - secondary CTA support
     secondaryCta?: {
         label: string | null;
         href: string | null;
     };
+    // Positioning (Percentages 0-100)
+    titlePosX?: number;
+    titlePosY?: number;
+    subtitlePosX?: number;
+    subtitlePosY?: number;
+    ctaPosX?: number;
+    ctaPosY?: number;
+    countdownPosX?: number;
+    countdownPosY?: number;
+
     alignment: "left" | "center" | "right";
     opacity: number;
     textColor: string;
     endTime?: string | null;
     campaignId: number;
-    // Animation type
     animationType?: "fade" | "slide" | "zoom" | "none";
-    // Social features
     showSocialProof?: boolean;
     showShareButtons?: boolean;
 }
@@ -104,8 +111,18 @@ export function HeroOverlay({
     subtitle,
     cta,
     secondaryCta,
-    alignment,
-    opacity,
+    // Destructure new position props with defaults or fallbacks
+    titlePosX = 50,
+    titlePosY = 20,
+    subtitlePosX = 50,
+    subtitlePosY = 40,
+    ctaPosX = 50,
+    ctaPosY = 60,
+    countdownPosX = 50,
+    countdownPosY = 10,
+
+    alignment, // Kept for backward compatibility or text-align
+    opacity, // Not used primarily in this new layout but good to keep
     textColor,
     endTime,
     campaignId,
@@ -116,13 +133,6 @@ export function HeroOverlay({
     // Accessibility: Respect reduced motion preference
     const prefersReducedMotion = useReducedMotion() ?? false;
     const variants = getAnimationVariants(animationType, prefersReducedMotion);
-
-    const alignClass =
-        alignment === "center"
-            ? "text-center items-center"
-            : alignment === "right"
-                ? "text-right items-end"
-                : "text-left items-start";
 
     const handleCtaClick = () => {
         if (campaignId) {
@@ -147,33 +157,37 @@ export function HeroOverlay({
         }
     };
 
+    // Helper for absolute positioning
+    const getPosStyle = (x?: number, y?: number) => ({
+        left: `${x ?? 50}%`,
+        top: `${y ?? 50}%`,
+        transform: "translate(-50%, -50%)",
+        position: "absolute" as const,
+        zIndex: 20,
+        width: 'max-content',
+        maxWidth: '90%'
+    });
+
     return (
         <div
-            className="absolute inset-0 z-10 flex flex-col justify-center h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pointer-events-none"
+            className="absolute inset-0 z-10 overflow-hidden pointer-events-none"
             role="region"
             aria-label="Hero campaign"
         >
-            {/* Overlay Background */}
-            <div
-                className="absolute inset-0 bg-black pointer-events-none"
-                style={{ opacity: opacity }}
-                aria-hidden="true"
-            />
-
-            {/* Content Container */}
+            {/* Content Container - using motion for global fade/stagger, but positioning is individual */}
             <motion.div
                 variants={variants.container}
                 initial="hidden"
                 animate="visible"
-                className={cn(
-                    "relative z-20 flex flex-col max-w-3xl w-full p-6 sm:p-8 rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 shadow-2xl",
-                    alignClass
-                )}
+                className="w-full h-full relative"
                 style={{ color: textColor }}
             >
                 {/* Countdown Timer */}
                 {endTime && (
-                    <motion.div variants={variants.item} className="mb-4">
+                    <motion.div
+                        variants={variants.item}
+                        style={getPosStyle(countdownPosX, countdownPosY)}
+                    >
                         <CountdownTimer targetDate={endTime} />
                     </motion.div>
                 )}
@@ -181,8 +195,9 @@ export function HeroOverlay({
                 {/* Title */}
                 <motion.h1
                     variants={variants.item}
-                    className="text-3xl md:text-5xl lg:text-7xl font-bold tracking-tight mb-4 drop-shadow-sm"
+                    className="text-3xl md:text-5xl lg:text-7xl font-bold tracking-tight drop-shadow-sm text-center"
                     tabIndex={0}
+                    style={getPosStyle(titlePosX, titlePosY)}
                 >
                     {title}
                 </motion.h1>
@@ -191,25 +206,20 @@ export function HeroOverlay({
                 {subtitle && (
                     <motion.p
                         variants={variants.item}
-                        className="text-lg md:text-xl lg:text-2xl opacity-90 max-w-xl mb-8 leading-relaxed drop-shadow-sm"
+                        className="text-lg md:text-xl lg:text-2xl opacity-90 leading-relaxed drop-shadow-sm text-center max-w-2xl"
+                        style={getPosStyle(subtitlePosX, subtitlePosY)}
                     >
                         {subtitle}
                     </motion.p>
                 )}
 
-                {/* Social Proof */}
-                {showSocialProof && campaignId > 0 && (
-                    <motion.div variants={variants.item} className="mb-6 pointer-events-auto">
-                        <SocialProof campaignId={campaignId} />
-                    </motion.div>
-                )}
-
                 {/* CTA Buttons */}
                 <motion.div
                     variants={variants.item}
-                    className="flex flex-wrap gap-4 pointer-events-auto"
+                    className="flex flex-wrap gap-4 justify-center pointer-events-auto"
                     role="group"
                     aria-label="Call to action buttons"
+                    style={getPosStyle(ctaPosX, ctaPosY)}
                 >
                     {/* Primary CTA */}
                     {cta?.label && cta.href && (
@@ -222,7 +232,6 @@ export function HeroOverlay({
                                     color: "black",
                                 }}
                                 onClick={handleCtaClick}
-                                aria-label={`${cta.label} - Primary action`}
                             >
                                 {cta.label}
                             </Button>
@@ -240,14 +249,13 @@ export function HeroOverlay({
                                     borderColor: textColor,
                                     color: textColor,
                                 }}
-                                aria-label={`${secondaryCta.label} - Secondary action`}
                             >
                                 {secondaryCta.label}
                             </Button>
                         </Link>
                     )}
 
-                    {/* Share Buttons */}
+                    {/* Social Proof & Share - bundled with CTA area for now, or could be separate */}
                     {showShareButtons && (
                         <div className="flex gap-2">
                             <Button
@@ -256,18 +264,8 @@ export function HeroOverlay({
                                 className="rounded-full w-12 h-12 bg-white/10 hover:bg-white/20 transition-all"
                                 style={{ color: textColor }}
                                 onClick={handleShare}
-                                aria-label="Share this campaign"
                             >
                                 <Share2 className="h-5 w-5" />
-                            </Button>
-                            <Button
-                                size="icon"
-                                variant="ghost"
-                                className="rounded-full w-12 h-12 bg-white/10 hover:bg-white/20 transition-all"
-                                style={{ color: textColor }}
-                                aria-label="Save to wishlist"
-                            >
-                                <Heart className="h-5 w-5" />
                             </Button>
                         </div>
                     )}

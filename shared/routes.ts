@@ -58,7 +58,7 @@ export const api = {
       method: 'GET' as const,
       path: '/api/auth/me',
       responses: {
-        200: z.custom<typeof users.$inferSelect | null>(),
+        200: z.any(),
       },
     },
     forgotPassword: {

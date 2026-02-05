@@ -7,16 +7,21 @@ import { Loader2 } from "lucide-react";
  * Centralizes the logic for routing authenticated users to their role-specific dashboard.
  */
 const ROLE_DASHBOARD_MAP: Record<string, string> = {
-    // Admin roles
+    // Super Admin - Full access to admin panel
     SUPER_ADMIN: "/admin",
-    BUSINESS_ADMIN: "/admin",
-    OPS_ADMIN: "/admin",
-    SUPPORT_ADMIN: "/admin",
-    CATEGORY_MANAGER: "/admin",
-    OPS_MANAGER: "/admin",
-    SUPPORT_AGENT: "/admin",
-    // Legacy admin role
     admin: "/admin",
+
+    // OPS roles - Operations Dashboard
+    OPS_ADMIN: "/ops/dashboard",
+    OPS_MANAGER: "/ops/dashboard",
+
+    // Support roles - Support Dashboard
+    SUPPORT_ADMIN: "/support/dashboard",
+    SUPPORT_AGENT: "/support/dashboard",
+
+    // Business roles - Business Dashboard
+    BUSINESS_ADMIN: "/business/dashboard",
+    CATEGORY_MANAGER: "/business/dashboard",
 
     // Seller roles
     SELLER_ADMIN: "/seller/dashboard",
@@ -57,9 +62,18 @@ export function RoleDashboardRedirect() {
         return <Redirect to="/auth" />;
     }
 
-    // Get dashboard path based on role
-    // Note: Reseller status is checked within the ResellerDashboard page itself
-    // since it's stored in a separate 'resellers' table, not on the user object
+    // Check RBAC roles first (from userRoles table)
+    const rbacRoles = (user as any).rbacRoles as string[] | undefined;
+    if (rbacRoles && rbacRoles.length > 0) {
+        // Find dashboard for the first matching RBAC role (priority order)
+        for (const role of rbacRoles) {
+            if (ROLE_DASHBOARD_MAP[role]) {
+                return <Redirect to={ROLE_DASHBOARD_MAP[role]} />;
+            }
+        }
+    }
+
+    // Fallback to legacy role field
     const dashboardPath = ROLE_DASHBOARD_MAP[user.role] || "/profile";
 
     return <Redirect to={dashboardPath} />;

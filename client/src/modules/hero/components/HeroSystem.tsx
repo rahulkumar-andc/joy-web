@@ -37,6 +37,14 @@ export function HeroSystem() {
             overlay_opacity: 0.4,
             text_color: "#ffffff",
             id: 0,
+            titlePosX: 50,
+            titlePosY: 20,
+            subtitlePosX: 50,
+            subtitlePosY: 40,
+            ctaPosX: 50,
+            ctaPosY: 60,
+            countdownPosX: 50,
+            countdownPosY: 10,
         },
     };
 
@@ -99,6 +107,14 @@ export function HeroSystem() {
                         textColor={currentHero.ui.text_color}
                         endTime={currentHero.content.endTime}
                         campaignId={currentHero.ui.id}
+                        titlePosX={currentHero.ui.titlePosX ?? defaultConfig.ui.titlePosX}
+                        titlePosY={currentHero.ui.titlePosY ?? defaultConfig.ui.titlePosY}
+                        subtitlePosX={currentHero.ui.subtitlePosX ?? defaultConfig.ui.subtitlePosX}
+                        subtitlePosY={currentHero.ui.subtitlePosY ?? defaultConfig.ui.subtitlePosY}
+                        ctaPosX={currentHero.ui.ctaPosX ?? defaultConfig.ui.ctaPosX}
+                        ctaPosY={currentHero.ui.ctaPosY ?? defaultConfig.ui.ctaPosY}
+                        countdownPosX={currentHero.ui.countdownPosX ?? defaultConfig.ui.countdownPosX}
+                        countdownPosY={currentHero.ui.countdownPosY ?? defaultConfig.ui.countdownPosY}
                     />
                 </motion.div>
             </AnimatePresence>

@@ -49,17 +49,11 @@ export class HeroCampaignRepository {
                 and(
                     eq(heroCampaigns.isActive, true),
                     inArray(heroCampaigns.targetAudience, audienceFilter),
-                    or(
-                        // Time window campaigns - current time is within window
-                        and(
-                            lte(heroCampaigns.startTime, now),
-                            gte(heroCampaigns.endTime, now)
-                        ),
-                        // Default/Indefinite campaigns - no time constraints
-                        and(
-                            isNull(heroCampaigns.startTime),
-                            isNull(heroCampaigns.endTime)
-                        )
+                    and(
+                        // Start time: passed OR null (implies starts immediately)
+                        or(lte(heroCampaigns.startTime, now), isNull(heroCampaigns.startTime)),
+                        // End time: future OR null (implies no end date)
+                        or(gte(heroCampaigns.endTime, now), isNull(heroCampaigns.endTime))
                     )
                 )
             )
@@ -93,15 +87,9 @@ export class HeroCampaignRepository {
                 and(
                     eq(heroCampaigns.isActive, true),
                     inArray(heroCampaigns.targetAudience, audienceFilter),
-                    or(
-                        and(
-                            lte(heroCampaigns.startTime, now),
-                            gte(heroCampaigns.endTime, now)
-                        ),
-                        and(
-                            isNull(heroCampaigns.startTime),
-                            isNull(heroCampaigns.endTime)
-                        )
+                    and(
+                        or(lte(heroCampaigns.startTime, now), isNull(heroCampaigns.startTime)),
+                        or(gte(heroCampaigns.endTime, now), isNull(heroCampaigns.endTime))
                     )
                 )
             )

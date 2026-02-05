@@ -239,6 +239,14 @@ export class AuthController {
 
     static getMe = catchAsync(async (req: Request, res: Response) => {
         if (!req.isAuthenticated()) return res.json(null);
-        res.json(req.user);
+
+        const user = req.user as any;
+        // Fetch RBAC roles from userRoles table
+        const rbacRoles = await userRepository.getRbacRoles(user.id);
+
+        res.json({
+            ...user,
+            rbacRoles, // Array of role names like ["DELIVERY_PARTNER"]
+        });
     });
 }

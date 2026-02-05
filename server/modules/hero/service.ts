@@ -28,6 +28,15 @@ export interface CampaignDTO {
         alignment: 'left' | 'center' | 'right';
         overlayOpacity: number;
         textColor: string;
+        // Positioning
+        titlePosX: number;
+        titlePosY: number;
+        subtitlePosX: number;
+        subtitlePosY: number;
+        ctaPosX: number;
+        ctaPosY: number;
+        countdownPosX: number;
+        countdownPosY: number;
     };
 }
 
@@ -56,6 +65,14 @@ function toCampaignDTO(campaign: HeroCampaign): CampaignDTO {
             alignment: campaign.contentAlignment as 'left' | 'center' | 'right',
             overlayOpacity: Number(campaign.overlayOpacity),
             textColor: campaign.textColor,
+            titlePosX: campaign.titlePosX ?? 50,
+            titlePosY: campaign.titlePosY ?? 20,
+            subtitlePosX: campaign.subtitlePosX ?? 50,
+            subtitlePosY: campaign.subtitlePosY ?? 40,
+            ctaPosX: campaign.ctaPosX ?? 50,
+            ctaPosY: campaign.ctaPosY ?? 60,
+            countdownPosX: campaign.countdownPosX ?? 50,
+            countdownPosY: campaign.countdownPosY ?? 10,
         },
     };
 }
@@ -273,6 +290,14 @@ export const DEFAULT_CAMPAIGN_CONFIG: InsertHeroCampaign = {
     textColor: "#ffffff",
     overlayOpacity: "0.4",
     targetAudience: "all",
+    titlePosX: 50,
+    titlePosY: 20,
+    subtitlePosX: 50,
+    subtitlePosY: 40,
+    ctaPosX: 50,
+    ctaPosY: 60,
+    countdownPosX: 50,
+    countdownPosY: 10,
 };
 
 /**

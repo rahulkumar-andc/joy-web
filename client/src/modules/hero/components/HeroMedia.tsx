@@ -128,7 +128,7 @@ export function HeroMedia({ type, url, alt, images, lazy = true }: HeroMediaProp
                         muted // Always muted per user request
                         loop
                         playsInline
-                        className="w-full h-[120%] -mt-[10%] object-cover"
+                        className="absolute inset-0 w-full h-full object-cover"
                         poster={url}
                         onError={handleError}
                     >
@@ -137,7 +137,7 @@ export function HeroMedia({ type, url, alt, images, lazy = true }: HeroMediaProp
                         Your browser does not support the video tag.
                     </video>
                 </motion.div>
-                <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+                <div className="absolute inset-0 bg-black/40 pointer-events-none" />
             </div>
         );
     }
@@ -150,16 +150,17 @@ export function HeroMedia({ type, url, alt, images, lazy = true }: HeroMediaProp
             <motion.img
                 key={currentImageIndex}
                 style={{ y }}
-                initial={{ scale: 1.1, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
+                initial={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
+                animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.8 }}
+                transition={{ duration: 0.3 }}
                 src={currentUrl}
                 alt={alt || "Hero Background"}
-                className="w-full h-[120%] -mt-[10%] object-cover"
-                loading={lazy ? "lazy" : "eager"}
+                className="absolute inset-0 w-full h-full object-cover"
+                loading="eager"
                 onError={handleError}
             />
+            <div className="absolute inset-0 bg-black/40 pointer-events-none" />
 
             {/* Internal image carousel indicators */}
             {imageUrls.length > 1 && (
