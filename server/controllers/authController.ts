@@ -5,7 +5,7 @@ import { api } from "@shared/routes";
 import { userRepository } from "../repositories/userRepository";
 import { db } from "../db";
 import { eq } from "drizzle-orm";
-import { scrypt, randomBytes } from "crypto";
+import { scrypt, randomBytes, randomInt } from "crypto";
 import { promisify } from "util";
 import { catchAsync } from "../utils/catchAsync";
 import { AppError } from "../utils/AppError";
@@ -59,8 +59,8 @@ export class AuthController {
             isVerified: false,
         });
 
-        // Generate OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        // Generate OTP (Cryptographically Secure)
+        const otp = randomInt(100000, 1000000).toString();
         const hashedOtp = await hashPassword(otp);
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 

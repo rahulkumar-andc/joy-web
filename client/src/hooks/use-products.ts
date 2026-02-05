@@ -100,7 +100,7 @@ export function useHomepage() {
 export function useCreateProduct() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: InsertProduct) => {
+    mutationFn: async (data: z.infer<typeof api.products.create.input>) => {
       const validated = api.products.create.input.parse(data);
       const res = await fetch(api.products.create.path, {
         method: api.products.create.method,

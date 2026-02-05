@@ -28,7 +28,8 @@ paymentRouter.post("/api/payments/webhook", webhookLimiter, express.raw({ type: 
 
     // Use new WebhookHandler
     const { WebhookHandler } = await import("../services/payment/WebhookHandler");
-    await WebhookHandler.handleRazorpayWebhook(signature, JSON.parse(req.body.toString()));
+    // Pass the Raw Buffer directly for signature verification
+    await WebhookHandler.handleRazorpayWebhook(signature, req.body);
 
     res.json({ received: true });
 }));

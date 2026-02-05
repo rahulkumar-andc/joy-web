@@ -1,42 +1,10 @@
 import { Tag } from "lucide-react";
 import { useState } from "react";
 
-export function AvailableOffers() {
+export function AvailableOffers({ offers }: { offers?: any[] }) {
     const [showAll, setShowAll] = useState(false);
 
-    // Bank and partner offers
-    const offers = [
-        {
-            id: 1,
-            title: "Bank Offer",
-            description: "5% Unlimited Cashback on Axis Bank Credit Card",
-            linkText: "T&C"
-        },
-        {
-            id: 2,
-            title: "Bank Offer",
-            description: "10% off up to ₹1,500 on HDFC Bank Credit Card Transactions",
-            linkText: "T&C"
-        },
-        {
-            id: 3,
-            title: "Bank Offer",
-            description: "10% off up to ₹1,750 on HDFC Bank Credit Card EMI Transactions",
-            linkText: "T&C"
-        },
-        {
-            id: 4,
-            title: "Special Price",
-            description: "Get extra 20% off (price inclusive of cashback/coupon)",
-            linkText: "T&C"
-        },
-        {
-            id: 5,
-            title: "Partner Offer",
-            description: "Sign up for Pay Later and get Gift Card worth up to ₹500*",
-            linkText: "Know More"
-        }
-    ];
+    if (!offers || offers.length === 0) return null;
 
     const visibleOffers = showAll ? offers : offers.slice(0, 4);
 

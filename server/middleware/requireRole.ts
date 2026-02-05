@@ -6,6 +6,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { userRepository } from '../repositories/userRepository';
 
 // Define role hierarchies for convenience
 export const ADMIN_ROLES = [
@@ -59,10 +60,8 @@ export function requireRole(...allowedRoles: string[]) {
         const user = req.user as { id?: number; role?: string; rbacRoles?: string[] };
         const legacyRole = user.role;
 
-        // Check legacy role first
-        if (legacyRole && allowedRoles.includes(legacyRole)) {
-            return next();
-        }
+        // \u26a0\ufe0f SECURITY: Force RBAC as Single Source of Truth
+        // Legacy 'role' column is deprecated for access control.
 
         // Check RBAC roles (might already be attached from getMe)
         if (user.rbacRoles && user.rbacRoles.some(r => allowedRoles.includes(r))) {
@@ -72,7 +71,6 @@ export function requireRole(...allowedRoles: string[]) {
         // Fetch RBAC roles from database if not already attached
         if (user.id && !user.rbacRoles) {
             try {
-                const { userRepository } = await import('../repositories/userRepository');
                 const rbacRoles = await userRepository.getRbacRoles(user.id);
 
                 // Attach roles to user object for future middleware checks

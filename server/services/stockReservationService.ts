@@ -29,38 +29,60 @@ export class StockReservationService {
         // Use database time for expiration to avoid clock skew
         const expiresAt = sql`NOW() + INTERVAL '${sql.raw(StockReservationService.RESERVATION_TIMEOUT_MINUTES.toString())} minutes'`;
 
-        // Check if enough stock is available for all items
-        for (const item of cartItems) {
-            const availableStock = await this.getAvailableStock(item.productId);
-            if (availableStock < item.quantity) {
-                throw new Error(`Insufficient stock for product ${item.productId}. Available: ${availableStock}, Requested: ${item.quantity}`);
+        return await db.transaction(async (tx) => {
+            // Sort items by ID to prevent deadlocks when locking multiple rows
+            const sortedItems = [...cartItems].sort((a, b) => a.productId - b.productId);
+            const reservations = [];
+
+            for (const item of sortedItems) {
+                // 1. LOCK the product row to serialize access
+                // This prevents other transactions from reserving this product until we commit/rollback
+                const [product] = await tx
+                    .select({ stockQuantity: products.stockQuantity })
+                    .from(products)
+                    .where(eq(products.id, item.productId))
+                    .for('update');
+
+                if (!product) {
+                    throw new Error(`Product ${item.productId} not found`);
+                }
+
+                // 2. Calculate currently active reservations (inside the same transaction)
+                const [result] = await tx
+                    .select({ reserved: sql<number>`COALESCE(SUM(${stockReservations.quantity}), 0)` })
+                    .from(stockReservations)
+                    .where(
+                        and(
+                            eq(stockReservations.productId, item.productId),
+                            eq(stockReservations.status, "active"),
+                            gt(stockReservations.expiresAt, sql`NOW()`)
+                        )
+                    );
+
+                const reservedQuantity = Number(result?.reserved || 0);
+                const availableStock = product.stockQuantity - reservedQuantity;
+
+                if (availableStock < item.quantity) {
+                    throw new Error(`Insufficient stock for product ${item.productId}. Available: ${availableStock}, Requested: ${item.quantity}`);
+                }
+
+                // 3. Insert reservation
+                const [reservation] = await tx.insert(stockReservations).values({
+                    productId: item.productId,
+                    userId,
+                    sessionId,
+                    quantity: item.quantity,
+                    expiresAt,
+                    status: "active"
+                }).returning();
+
+                reservations.push(reservation);
             }
-        }
 
-        // Create reservations for all items
-        const reservations = [];
-        for (const item of cartItems) {
-            const [reservation] = await db.insert(stockReservations).values({
-                productId: item.productId,
-                userId,
-                sessionId,
-                quantity: item.quantity,
-                expiresAt,
-                status: "active"
-            }).returning();
-
-            reservations.push(reservation);
-
-            logger.info(`Stock reserved`, {
-                reservationId: reservation.id,
-                productId: item.productId,
-                quantity: item.quantity,
-                expiresAt
-            });
-        }
-
-        // Return ID of first reservation (we can use this to link all)
-        return reservations[0].id;
+            // Validated and inserted for all items.
+            logger.info(`Stock reserved atomically for ${reservations.length} items`, { userId, sessionId });
+            return reservations[0].id;
+        });
     }
 
     /**

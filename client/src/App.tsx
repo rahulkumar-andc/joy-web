@@ -38,6 +38,8 @@ const OrderFailurePage = lazy(() => import("@/pages/OrderFailurePage"));
 const AdminPage = lazy(() => import("@/pages/admin/AdminPage"));
 const AdminProducts = lazy(() => import("@/pages/admin/AdminProducts"));
 const AdminOrders = lazy(() => import("@/pages/admin/AdminOrders"));
+const AdminDeliveries = lazy(() => import("@/pages/admin/AdminDeliveries"));
+const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 const AdminCampaigns = lazy(() => import("@/pages/admin/AdminCampaigns"));
 const AdminSellersPage = lazy(() => import("@/pages/admin/AdminSellersPage"));
@@ -207,6 +209,8 @@ function Router() {
         <Route path="/admin" component={AdminPage} />
         <Route path="/admin/products" component={AdminProducts} />
         <Route path="/admin/orders" component={AdminOrders} />
+        <Route path="/admin/deliveries" component={AdminDeliveries} />
+        <Route path="/admin/settings" component={AdminSettings} />
 
         {/* Seller Routes - Protected (require login) */}
         <ProtectedRoute path="/seller/dashboard" component={SellerDashboard} />

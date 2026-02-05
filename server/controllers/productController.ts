@@ -107,7 +107,9 @@ export class ProductController {
 
             const product = await productRepository.create({
                 ...sanitizedInput,
-                sellerId // Add sellerId to repository call
+                sellerId, // Add sellerId to repository call
+                sellerName: (req.user as any).name, // Denormalize seller name
+                moderationStatus: "approved" // Auto-approve so it shows on homepage
             });
             await cacheService.invalidateProducts();
 

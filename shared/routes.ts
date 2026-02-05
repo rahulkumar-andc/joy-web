@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   insertUserSchema, insertProductSchema, insertCategorySchema, insertReviewSchema, insertCouponSchema,
+  insertProductSizeSchema, insertProductColorSchema, insertProductImageSchema,
   cartAddSchema, cartUpdateSchema, orderCreateSchema, wishlistAddSchema, profileUpdateSchema, changePasswordSchema, reviewCreateSchema,
   users, products, categories, cartItems, wishlistItems, orders, homepageSections, reviews, coupons
 } from './schema';
@@ -133,7 +134,11 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/products',
-      input: insertProductSchema,
+      input: insertProductSchema.extend({
+        variantSizes: z.array(insertProductSizeSchema.omit({ productId: true })).optional(),
+        variantColors: z.array(insertProductColorSchema.omit({ productId: true })).optional(),
+        galleryImages: z.array(insertProductImageSchema.omit({ productId: true })).optional()
+      }),
       responses: {
         201: z.custom<typeof products.$inferSelect>(),
         400: errorSchemas.validation,

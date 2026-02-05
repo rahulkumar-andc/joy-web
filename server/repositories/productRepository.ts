@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { products, categories, type Product, type InsertProduct, type Category, type InsertCategory } from "@shared/schema";
+import { products, categories, productSizes, productColors, productImages, type Product, type InsertProduct, type Category, type InsertCategory, type InsertProductSize, type InsertProductColor, type InsertProductImage } from "@shared/schema";
 import { eq, ilike, desc, sql, and, inArray } from "drizzle-orm";
 import { logger } from "../logger";
 
@@ -191,9 +191,52 @@ export class ProductRepository {
         return { products: productsWithCategory, total };
     }
 
-    async create(product: InsertProduct): Promise<Product> {
-        const [newProduct] = await db.insert(products).values(product).returning();
-        return newProduct;
+    async create(productData: InsertProduct & {
+        variantSizes?: Omit<InsertProductSize, "productId">[],
+        variantColors?: Omit<InsertProductColor, "productId">[],
+        galleryImages?: Omit<InsertProductImage, "productId">[]
+    }): Promise<Product> {
+        return await db.transaction(async (tx) => {
+            const { variantSizes, variantColors, galleryImages, ...productFields } = productData;
+
+            // Backward compatibility: Populate legacy arrays if new variants are provided
+            if (variantSizes && variantSizes.length > 0 && !productFields.sizes) {
+                productFields.sizes = variantSizes.map(s => s.size);
+            }
+            if (variantColors && variantColors.length > 0 && !productFields.colors) {
+                productFields.colors = variantColors.map(c => c.colorName);
+            }
+            // Populate main image from gallery if not provided
+            if (galleryImages && galleryImages.length > 0 && (!productFields.images || productFields.images.length === 0)) {
+                productFields.images = galleryImages.map(g => g.imageUrl);
+            }
+
+            // 1. Insert Product
+            const [newProduct] = await tx.insert(products).values(productFields).returning();
+
+            // 2. Insert Sizes
+            if (variantSizes && variantSizes.length > 0) {
+                await tx.insert(productSizes).values(
+                    variantSizes.map(s => ({ ...s, productId: newProduct.id }))
+                );
+            }
+
+            // 3. Insert Colors
+            if (variantColors && variantColors.length > 0) {
+                await tx.insert(productColors).values(
+                    variantColors.map(c => ({ ...c, productId: newProduct.id }))
+                );
+            }
+
+            // 4. Insert Images (Gallery)
+            if (galleryImages && galleryImages.length > 0) {
+                await tx.insert(productImages).values(
+                    galleryImages.map(img => ({ ...img, productId: newProduct.id }))
+                );
+            }
+
+            return newProduct;
+        });
     }
 
     async bulkCreate(productsData: InsertProduct[]): Promise<Product[]> {

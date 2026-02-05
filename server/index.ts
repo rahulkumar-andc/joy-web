@@ -112,7 +112,17 @@ import { apiLimiter, authLimiter } from "./middleware/rate-limit";
   if (process.env.NODE_ENV === "production") {
     const razorpayKey = process.env.RAZORPAY_KEY_ID || "";
     if (razorpayKey.startsWith("rzp_test_")) {
-      logger.warn("CRITICAL SECURITY WARNING: Using Razorpay TEST keys in PRODUCTION environment!");
+      logger.error("FATAL: Using Razorpay TEST keys in PRODUCTION environment! Server refusing to start.");
+      process.exit(1);
+    }
+
+    // Check for other critical secrets
+    const requiredSecrets = ["SESSION_SECRET", "RAZORPAY_WEBHOOK_SECRET"];
+    for (const secret of requiredSecrets) {
+      if (!process.env[secret]) {
+        logger.error(`FATAL: Missing critical secret ${secret} in PRODUCTION!`);
+        process.exit(1);
+      }
     }
   }
 

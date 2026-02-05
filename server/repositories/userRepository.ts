@@ -101,8 +101,13 @@ export class UserRepository {
     // === ACCOUNT LOCKOUT METHODS ===
 
     async incrementFailedAttempts(userId: number): Promise<void> {
-        const [user] = await db.select({ attempts: users.failedLoginAttempts }).from(users).where(eq(users.id, userId));
-        await db.update(users).set({ failedLoginAttempts: (user?.attempts || 0) + 1 }).where(eq(users.id, userId));
+        // Atomic increment prevents race conditions
+        await db
+            .update(users)
+            .set({
+                failedLoginAttempts: sql`${users.failedLoginAttempts} + 1`
+            })
+            .where(eq(users.id, userId));
     }
 
     async lockAccount(userId: number, durationMinutes: number = 30): Promise<void> {

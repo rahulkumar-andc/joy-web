@@ -23,21 +23,29 @@ export class WebhookHandler {
     /**
      * Handle Razorpay Webhooks
      */
-    static async handleRazorpayWebhook(signature: string, rawBody: any) {
+    static async handleRazorpayWebhook(signature: string, rawBodyBuffer: Buffer) {
         const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
         if (!secret) {
             // For development/mocking, we might skip this if not set
             logger.warn("RAZORPAY_WEBHOOK_SECRET not configured, skipping signature verification");
         } else {
-            // 1. Verify Signature
+            // 1. Verify Signature using RAW BUFFER
             const expectedSignature = crypto
                 .createHmac("sha256", secret)
-                .update(JSON.stringify(rawBody))
+                .update(rawBodyBuffer)
                 .digest("hex");
 
             if (expectedSignature !== signature) {
                 throw new AppError("Invalid Razorpay webhook signature", 400);
             }
+        }
+
+        // Parse JSON only AFTER verification
+        let rawBody;
+        try {
+            rawBody = JSON.parse(rawBodyBuffer.toString());
+        } catch (e) {
+            throw new AppError("Invalid JSON payload", 400);
         }
 
         const { event, payload } = rawBody;

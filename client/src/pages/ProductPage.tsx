@@ -189,19 +189,27 @@ export default function ProductPage() {
             </div>
 
             {/* Offers */}
-            <AvailableOffers />
+            <AvailableOffers offers={product.offers as any[]} />
 
-            {/* Warranty / Highlights (Mock) */}
+            {/* Warranty / Seller / Description */}
             <div className="grid grid-cols-[110px_1fr] gap-y-4 text-[14px] mt-4 mb-6">
-              <div className="text-[#878787] font-medium">Warranty</div>
-              <div>1 Year Manufacturer Warranty</div>
+              {product.warranty && (
+                <>
+                  <div className="text-[#878787] font-medium">Warranty</div>
+                  <div>{product.warranty}</div>
+                </>
+              )}
 
               <div className="text-[#878787] font-medium">Seller</div>
               <div className="flex flex-col">
-                <div className="text-flipkart-blue font-medium cursor-pointer">RetailNet</div>
+                <div className="text-flipkart-blue font-medium cursor-pointer">{product.sellerName || "RetailNet"}</div>
                 <div className="flex items-center gap-1 mt-1 text-[12px]">
-                  <span className="bg-flipkart-blue text-white px-1.5 rounded-[2px] leading-tight flex items-center gap-0.5">4.9 <Star className="w-2 h-2 fill-white" /></span>
-                  <span className="text-gray-500">7 Days Replacement Policy</span>
+                  {product.sellerRating && (
+                    <span className="bg-flipkart-blue text-white px-1.5 rounded-[2px] leading-tight flex items-center gap-0.5">
+                      {String(product.sellerRating)} <Star className="w-2 h-2 fill-white" />
+                    </span>
+                  )}
+                  <span className="text-gray-500">{product.returnPolicyDays ? `${product.returnPolicyDays} Days Return Policy` : "No Returns"}</span>
                 </div>
               </div>
 
@@ -237,15 +245,55 @@ export default function ProductPage() {
               </div>
             )}
 
-            {/* Full Specifications Section Placeholder */}
+            {/* Full Specifications Section */}
             <div className="border rounded-[2px] p-4 mt-4">
               <h3 className="text-[20px] font-medium text-gray-900 mb-4">Product Details</h3>
-              <div className="text-[#878787] text-sm">
-                Material: N/A <br />
-                Pattern: Solid <br />
-                Brand: {product.brand || "Steal the Deal"}
+              <div className="text-[#878787] text-sm grid grid-cols-1 gap-y-2">
+                {product.brand && (
+                  <div className="grid grid-cols-[110px_1fr]">
+                    <span className="font-medium">Brand</span>
+                    <span className="text-black">{product.brand}</span>
+                  </div>
+                )}
+                {product.material && (
+                  <div className="grid grid-cols-[110px_1fr]">
+                    <span className="font-medium">Material</span>
+                    <span className="text-black">{product.material}</span>
+                  </div>
+                )}
+                {product.pattern && (
+                  <div className="grid grid-cols-[110px_1fr]">
+                    <span className="font-medium">Pattern</span>
+                    <span className="text-black">{product.pattern}</span>
+                  </div>
+                )}
+                {product.countryOfOrigin && (
+                  <div className="grid grid-cols-[110px_1fr]">
+                    <span className="font-medium">Country</span>
+                    <span className="text-black">{product.countryOfOrigin}</span>
+                  </div>
+                )}
+
+                {product.specifications && Object.entries(product.specifications as Record<string, any>).map(([key, value]) => (
+                  <div key={key} className="grid grid-cols-[110px_1fr]">
+                    <span className="font-medium capitalize">{key}</span>
+                    <span className="text-black">{String(value)}</span>
+                  </div>
+                ))}
               </div>
             </div>
+
+            {/* Highlights Section */}
+            {product.highlights && (
+              <div className="border rounded-[2px] p-4 mt-4">
+                <h3 className="text-[20px] font-medium text-gray-900 mb-4">Highlights</h3>
+                <ul className="list-disc pl-5 text-[14px] space-y-2 text-gray-900">
+                  {Array.isArray(product.highlights) && product.highlights.map((h: string, i: number) => (
+                    <li key={i}>{h}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Ratings & Reviews Section */}
             <div className="border rounded-[2px] p-4 mt-6">

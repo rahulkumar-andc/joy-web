@@ -64,6 +64,21 @@ export const products = pgTable("products", {
   createdAt: timestamp("created_at").defaultNow(),
   sellerId: integer("seller_id").references(() => users.id),
 
+  // Extended Details
+  warranty: text("warranty"),
+  material: text("material"),
+  pattern: text("pattern"),
+  returnPolicyDays: integer("return_policy_days").default(7),
+  countryOfOrigin: text("country_of_origin"),
+  sellerName: text("seller_name"), // Display name for the seller
+  sellerRating: decimal("seller_rating", { precision: 2, scale: 1 }), // Synced from seller profile or reviews
+
+  // Rich Data
+  specifications: jsonb("specifications"), // Key-value pairs { "RAM": "8GB" }
+  highlights: text("highlights").array(), // ["Feature 1", "Feature 2"]
+  offers: jsonb("offers"), // [{ title: "Bank Offer", description: "..." }]
+  extraImages: text("extra_images").array(), // Gallery images separate from main images if needed
+
   // Product Moderation (for multi-vendor marketplace)
   moderationStatus: text("moderation_status", {
     enum: ["pending", "approved", "rejected", "disabled"]
@@ -71,6 +86,27 @@ export const products = pgTable("products", {
   rejectionReason: text("rejection_reason"),
   moderatedBy: integer("moderated_by").references(() => users.id),
   moderatedAt: timestamp("moderated_at"),
+
+  // === NEW CLOTHING FIELDS ===
+  gender: text("gender", { enum: ["Men", "Women", "Unisex", "Kids"] }),
+  clothingCategory: text("clothing_category"), // T-shirt, Shirt, Jeans etc.
+  fitType: text("fit_type"), // Regular, Slim, Oversized
+
+  fabricType: text("fabric_type"),
+  careInstructions: text("care_instructions"),
+
+  seasonTags: text("season_tags").array(),
+  styleTags: text("style_tags").array(),
+
+  modelHeight: text("model_height"),
+  modelSizeWorn: text("model_size_worn"),
+
+  dispatchTime: text("dispatch_time"),
+
+  // SEO
+  seoTitle: text("seo_title"),
+  seoKeywords: text("seo_keywords"),
+  slug: text("slug").unique(),
 }, (table) => ({
   categoryIdIdx: index("product_category_idx").on(table.categoryId),
   sellerIdIdx: index("product_seller_idx").on(table.sellerId),
@@ -79,6 +115,45 @@ export const products = pgTable("products", {
 }));
 
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
+
+// === PRODUCT VARIANTS ===
+
+export const productSizes = pgTable("product_sizes", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").references(() => products.id, { onDelete: "cascade" }).notNull(),
+  size: text("size").notNull(), // XS, S, M, L...
+  stock: integer("stock").default(0).notNull(),
+  priceOverride: decimal("price_override"), // Optional override
+});
+
+export const insertProductSizeSchema = createInsertSchema(productSizes).omit({ id: true });
+export type ProductSize = typeof productSizes.$inferSelect;
+export type InsertProductSize = z.infer<typeof insertProductSizeSchema>;
+
+export const productColors = pgTable("product_colors", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").references(() => products.id, { onDelete: "cascade" }).notNull(),
+  colorName: text("color_name").notNull(),
+  colorHex: text("color_hex"),
+  imageUrl: text("image_url"),
+  stock: integer("stock").default(0).notNull(),
+});
+
+export const insertProductColorSchema = createInsertSchema(productColors).omit({ id: true });
+export type ProductColor = typeof productColors.$inferSelect;
+export type InsertProductColor = z.infer<typeof insertProductColorSchema>;
+
+export const productImages = pgTable("product_images", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").references(() => products.id, { onDelete: "cascade" }).notNull(),
+  imageUrl: text("image_url").notNull(),
+  type: text("type", { enum: ["front", "back", "side", "zoom", "model", "gallery"] }).default("gallery"),
+});
+
+export const insertProductImageSchema = createInsertSchema(productImages).omit({ id: true });
+export type ProductImage = typeof productImages.$inferSelect;
+export type InsertProductImage = z.infer<typeof insertProductImageSchema>;
+
 
 // === HOMEPAGE SECTIONS ===
 export const homepageSections = pgTable("homepage_sections", {
@@ -309,6 +384,19 @@ export const couponUsage = pgTable("coupon_usage", {
 }));
 
 // === RELATIONS ===
+export const invoices = pgTable("invoices", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").references(() => orders.id).notNull().unique(),
+  invoiceNumber: text("invoice_number").notNull().unique(),
+  snapshotData: jsonb("snapshot_data").notNull(),
+  pdfUrl: text("pdf_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true, createdAt: true });
+export type Invoice = typeof invoices.$inferSelect;
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+
 export const productsRelations = relations(products, ({ one, many }) => ({
   category: one(categories, {
     fields: [products.categoryId],
@@ -416,6 +504,7 @@ export type InsertCoupon = z.infer<typeof insertCouponSchema>;
 export type Address = typeof addresses.$inferSelect;
 export type InsertAddress = z.infer<typeof insertAddressSchema>;
 export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = typeof payments.$inferInsert; // Added missing export
 export type Refund = typeof refunds.$inferSelect;
 export type InsertRefund = z.infer<typeof insertRefundSchema>;
 

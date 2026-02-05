@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import { orderRepository } from "../repositories/orderRepository";
 import { AppError } from "../utils/AppError";
+import { logger } from "../logger";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock_key', {
     apiVersion: '2026-01-28.clover' as any, // Cast to any if needed, or matches strict type
@@ -35,8 +36,10 @@ export class PaymentService {
 
                 if (i === maxRetries - 1) break;
 
+                if (i === maxRetries - 1) break;
+
                 const delay = Math.pow(2, i) * 1000; // 1s, 2s, 4s
-                console.warn(`Payment operation failed, retrying in ${delay}ms... (Attempt ${i + 1}/${maxRetries})`);
+                logger.warn(`Payment operation failed, retrying in ${delay}ms... (Attempt ${i + 1}/${maxRetries})`);
                 await new Promise(resolve => setTimeout(resolve, delay));
             }
         }
@@ -78,7 +81,7 @@ export class PaymentService {
 
     async handleWebhook(signature: string, payload: Buffer) {
         if (!process.env.STRIPE_WEBHOOK_SECRET) {
-            console.warn("STRIPE_WEBHOOK_SECRET not set, skipping signature verification");
+            logger.warn("STRIPE_WEBHOOK_SECRET not set, skipping signature verification");
             // In dev, you might proceed, but in prod this is critical.
             // For now, Mock environment might trigger this manually.
         }
@@ -99,7 +102,7 @@ export class PaymentService {
             const orderId = session.metadata?.orderId;
             if (orderId) {
                 await orderRepository.updateOrderStatus(parseInt(orderId), 'paid');
-                console.log(`Payment successful for Order #${orderId}`);
+                logger.info(`Payment successful for Order #${orderId}`, { sessionId: session.id });
             }
         }
 
@@ -118,7 +121,7 @@ export class PaymentService {
             });
         }
         // Placeholder for Razorpay
-        console.warn("Razorpay refund not implemented yet");
+        logger.warn("Razorpay refund not implemented yet");
         return { status: "mock_refunded", id: "mock_refund_id" };
     }
 }

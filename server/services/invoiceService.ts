@@ -1,6 +1,6 @@
 import PDFDocument from 'pdfkit';
 import { db } from '../db';
-import { orders, orderItems, products, users } from '@shared/schema';
+import { orders, orderItems, products, users, invoices } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { logger } from '../logger';
 
@@ -41,17 +41,24 @@ export class InvoiceService {
      * Fetch all data needed for invoice
      */
     private async fetchInvoiceData(orderId: number): Promise<InvoiceData> {
-        // Get order
+        // 1. Check for existing snapshot in invoices table
+        const [existingInvoice] = await db
+            .select()
+            .from(invoices)
+            .where(eq(invoices.orderId, orderId));
+
+        if (existingInvoice) {
+            return existingInvoice.snapshotData as InvoiceData;
+        }
+
+        // 2. If no snapshot, fetch live data (First time generation)
         const [order] = await db
             .select()
             .from(orders)
             .where(eq(orders.id, orderId));
 
-        if (!order) {
-            throw new Error('Order not found');
-        }
+        if (!order) throw new Error('Order not found');
 
-        // Get order items with product details
         const items = await db
             .select({
                 item: orderItems,
@@ -61,32 +68,43 @@ export class InvoiceService {
             .innerJoin(products, eq(orderItems.productId, products.id))
             .where(eq(orderItems.orderId, orderId));
 
-        if (!items || items.length === 0) {
-            throw new Error('Order items not found');
-        }
+        if (!items || items.length === 0) throw new Error('Order items not found');
 
-        // Get customer details
         const [customer] = await db
             .select()
             .from(users)
             .where(eq(users.id, order.userId));
 
-        if (!customer) {
-            throw new Error('Customer not found');
-        }
+        if (!customer) throw new Error('Customer not found');
 
-        return {
+        // Construct Data Object
+        const invoiceData: InvoiceData = {
             order,
             items,
             customer,
             company: {
                 name: 'Steal the Deal',
                 address: '123 Fashion Street, Andheri West, Mumbai, Maharashtra - 400058, India',
-                gstin: '27AABCU9603R1ZM', // Replace with actual GSTIN
+                gstin: '27AABCU9603R1ZM',
                 email: 'support@stealthedeal.com',
                 phone: '+91 22 1234 5678'
             }
         };
+
+        // 3. Save Snapshot for future immutability
+        try {
+            await db.insert(invoices).values({
+                orderId: orderId,
+                invoiceNumber: `INV-${orderId.toString().padStart(6, '0')}`,
+                snapshotData: invoiceData
+            });
+            logger.info(`Invoice snapshot created for order ${orderId}`);
+        } catch (error) {
+            // Ignore duplicate key errors if race condition
+            logger.warn(`Failed to save invoice snapshot (might already exist): ${error}`);
+        }
+
+        return invoiceData;
     }
 
     /**
