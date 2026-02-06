@@ -177,15 +177,24 @@ export function HeroOverlay({
     };
 
     // Helper for absolute positioning from CENTER
-    // x/y are pixel offsets from the center of the container
-    const getPosStyle = (xOffset?: number, yOffset?: number) => ({
-        left: '50%',
-        top: '50%',
-        transform: `translate(calc(-50% + ${xOffset ?? 0}px), calc(-50% + ${yOffset ?? 0}px))`,
+    // Uses margin-based positioning that won't be overwritten by Framer Motion transforms
+    const getPosStyle = (xOffset?: number, yOffset?: number): React.CSSProperties => ({
         position: "absolute" as const,
+        left: 0,
+        right: 0,
+        top: '50%',
         zIndex: 20,
-        width: 'max-content',
-        maxWidth: '90%'
+        // Transform only for Y offset - Framer Motion will add to this, not replace
+        // Using translateY to avoid the transform conflict issue
+        marginTop: `${yOffset ?? 0}px`,
+        textAlign: 'center' as const,
+    });
+
+    // Inner wrapper style for content that needs to be centered
+    const getInnerStyle = (xOffset?: number): React.CSSProperties => ({
+        display: 'inline-block',
+        marginLeft: `${xOffset ?? 0}px`,
+        maxWidth: '90%',
     });
 
     // Helper for Overlay Background
@@ -213,112 +222,116 @@ export function HeroOverlay({
                 style={{ opacity: opacity }}
             />
 
-            {/* Content Container - using motion for global fade/stagger, but positioning is individual */}
+            {/* Content Container - using a single centered flex column */}
             <motion.div
                 variants={variants.container}
                 initial="hidden"
                 animate="visible"
-                className="w-full h-full relative"
+                className="absolute inset-0 flex flex-col items-center justify-center"
                 style={{ color: textColor }}
             >
-                {/* Countdown Timer */}
-                {endTime && (
-                    <motion.div
-                        variants={variants.item}
-                        style={getPosStyle(countdownOffsetX, countdownOffsetY)}
-                    >
-                        <CountdownTimer targetDate={endTime} />
-                    </motion.div>
-                )}
-
-                {/* Title */}
-                <motion.h1
-                    variants={variants.item}
-                    className={cn(
-                        "text-3xl md:text-5xl lg:text-7xl tracking-tight drop-shadow-sm text-center",
-                        fontWeight === "bold" ? "font-bold" : "font-normal"
-                    )}
-                    tabIndex={0}
+                {/* Single content wrapper - all elements flow naturally in a column */}
+                <div
+                    className="flex flex-col items-center justify-center gap-4 text-center px-4 max-w-4xl"
                     style={{
-                        ...getPosStyle(titleOffsetX, titleOffsetY),
-                        fontSize: titleFontSize ? `${titleFontSize}px` : undefined,
+                        // Use marginTop/marginLeft for global offset if needed
+                        marginTop: `${titleOffsetY ?? 0}px`,
+                        marginLeft: `${titleOffsetX ?? 0}px`,
                     }}
                 >
-                    {title}
-                </motion.h1>
+                    {/* Countdown Timer */}
+                    {endTime && (
+                        <motion.div variants={variants.item} className="mb-2">
+                            <CountdownTimer targetDate={endTime} />
+                        </motion.div>
+                    )}
 
-                {/* Subtitle */}
-                {subtitle && (
-                    <motion.p
+                    {/* Title */}
+                    <motion.h1
                         variants={variants.item}
-                        className="text-lg md:text-xl lg:text-2xl opacity-90 leading-relaxed drop-shadow-sm text-center max-w-2xl"
+                        className={cn(
+                            "text-3xl md:text-5xl lg:text-7xl tracking-tight drop-shadow-sm",
+                            fontWeight === "bold" ? "font-bold" : "font-normal"
+                        )}
+                        tabIndex={0}
                         style={{
-                            ...getPosStyle(subtitleOffsetX, subtitleOffsetY),
-                            fontSize: subtitleFontSize ? `${subtitleFontSize}px` : undefined,
+                            fontSize: titleFontSize ? `${titleFontSize}px` : undefined,
                         }}
                     >
-                        {stripUnderlineTags(subtitle)}
-                    </motion.p>
-                )}
+                        {stripUnderlineTags(title)}
+                    </motion.h1>
 
-                {/* CTA Buttons */}
-                <motion.div
-                    variants={variants.item}
-                    className="flex flex-wrap gap-4 justify-center pointer-events-auto"
-                    role="group"
-                    aria-label="Call to action buttons"
-                    style={getPosStyle(ctaOffsetX, ctaOffsetY)}
-                >
-                    {/* Primary CTA */}
-                    {cta?.label && cta.href && (
-                        <Link href={cta.href}>
-                            <Button
-                                size="lg"
-                                className="text-lg px-8 py-6 rounded-full transition-transform hover:scale-105 focus:ring-2 focus:ring-offset-2 focus:ring-white"
-                                style={{
-                                    backgroundColor: textColor,
-                                    color: "black",
-                                }}
-                                onClick={handleCtaClick}
-                            >
-                                {cta.label}
-                            </Button>
-                        </Link>
+                    {/* Subtitle */}
+                    {subtitle && (
+                        <motion.p
+                            variants={variants.item}
+                            className="text-lg md:text-xl lg:text-2xl opacity-90 leading-relaxed drop-shadow-sm max-w-2xl"
+                            style={{
+                                fontSize: subtitleFontSize ? `${subtitleFontSize}px` : undefined,
+                            }}
+                        >
+                            {stripUnderlineTags(subtitle)}
+                        </motion.p>
                     )}
 
-                    {/* Secondary CTA */}
-                    {secondaryCta?.label && secondaryCta.href && (
-                        <Link href={secondaryCta.href}>
-                            <Button
-                                size="lg"
-                                variant="outline"
-                                className="text-lg px-8 py-6 rounded-full border-2 transition-transform hover:scale-105 focus:ring-2 focus:ring-offset-2 focus:ring-white backdrop-blur-sm"
-                                style={{
-                                    borderColor: textColor,
-                                    color: textColor,
-                                }}
-                                onClick={handleCtaClick}
-                            >
-                                {secondaryCta.label}
-                            </Button>
-                        </Link>
-                    )}
+                    {/* CTA Buttons */}
+                    <motion.div
+                        variants={variants.item}
+                        className="flex flex-wrap gap-4 justify-center pointer-events-auto mt-4"
+                        role="group"
+                        aria-label="Call to action buttons"
+                    >
+                        {/* Primary CTA */}
+                        {cta?.label && cta.href && (
+                            <Link href={cta.href} className="no-underline hover:no-underline">
+                                <Button
+                                    size="lg"
+                                    className="text-lg px-8 py-6 rounded-full transition-transform hover:scale-105 hover:no-underline focus:ring-2 focus:ring-offset-2 focus:ring-white"
+                                    style={{
+                                        backgroundColor: textColor,
+                                        color: "black",
+                                    }}
+                                    onClick={handleCtaClick}
+                                >
+                                    {cta.label}
+                                </Button>
+                            </Link>
+                        )}
 
-                    {/* Social Proof & Share - bundled with CTA area for now, or could be separate */}
-                    {showShareButtons && (
-                        <div className="flex gap-2">
-                            <Button
-                                size="icon"
-                                variant="ghost"
-                                className="rounded-full w-12 h-12 bg-white/10 hover:bg-white/20 transition-all"
-                                style={{ color: textColor }}
-                                onClick={handleShare}
-                            >
-                                <Share2 className="h-5 w-5" />
-                            </Button>
-                        </div>
-                    )}
-                </motion.div>
+                        {/* Secondary CTA */}
+                        {secondaryCta?.label && secondaryCta.href && (
+                            <Link href={secondaryCta.href} className="no-underline hover:no-underline">
+                                <Button
+                                    size="lg"
+                                    variant="outline"
+                                    className="text-lg px-8 py-6 rounded-full border-2 transition-transform hover:scale-105 hover:no-underline focus:ring-2 focus:ring-offset-2 focus:ring-white backdrop-blur-sm"
+                                    style={{
+                                        borderColor: textColor,
+                                        color: textColor,
+                                    }}
+                                    onClick={handleCtaClick}
+                                >
+                                    {secondaryCta.label}
+                                </Button>
+                            </Link>
+                        )}
+
+                        {/* Social Proof & Share - bundled with CTA area for now, or could be separate */}
+                        {showShareButtons && (
+                            <div className="flex gap-2">
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="rounded-full w-12 h-12 bg-white/10 hover:bg-white/20 transition-all"
+                                    style={{ color: textColor }}
+                                    onClick={handleShare}
+                                >
+                                    <Share2 className="h-5 w-5" />
+                                </Button>
+                            </div>
+                        )}
+                    </motion.div>
+                </div>
             </motion.div>
         </div>
     );

@@ -71,6 +71,25 @@
     @apply bg-background text-foreground font-body antialiased;
   }
 
+  a,
+  a:link,
+  a:visited,
+  a:hover,
+  a:active,
+  a:focus {
+    text-decoration: none !important;
+    border-bottom: none !important;
+    border: none !important;
+  }
+
+  /* Override @tailwindcss/typography plugin link underlines */
+  .prose a,
+  .prose a:link,
+  .prose a:visited,
+  .prose a:hover {
+    text-decoration: none !important;
+  }
+
   h1,
   h2,
   h3,

@@ -115,7 +115,7 @@ export default function HomePage() {
                 { name: "Men's Collection", img: "https://images.unsplash.com/photo-1617137968427-85924c809a22?q=80&w=800&auto=format&fit=crop", link: "/shop?category=men" },
                 { name: "Accessories", img: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?q=80&w=800&auto=format&fit=crop", link: "/shop?category=accessories" },
               ].map((cat, idx) => (
-                <Link key={idx} href={cat.link} className="group relative h-96 rounded-2xl overflow-hidden cursor-pointer">
+                <Link key={idx} href={cat.link} className="group relative h-96 rounded-2xl overflow-hidden cursor-pointer no-underline hover:no-underline">
                   <img
                     src={cat.img}
                     alt={cat.name}
@@ -144,7 +144,7 @@ export default function HomePage() {
                 <h2 className="text-3xl md:text-4xl font-display font-bold text-primary mb-2">{section.section.title}</h2>
                 <div className="h-1 w-20 bg-accent rounded-full"></div>
               </div>
-              <Link href="/shop">
+              <Link href="/shop" className="no-underline hover:no-underline">
                 <Button variant="outline" className="hidden md:flex">View All</Button>
               </Link>
             </div>
@@ -166,7 +166,7 @@ export default function HomePage() {
               <span className="text-accent font-bold tracking-widest uppercase text-sm">Curated For You</span>
               <h2 className="font-display text-4xl font-bold mt-2 text-primary">Featured Collection</h2>
             </div>
-            <Link href="/shop">
+            <Link href="/shop" className="no-underline hover:no-underline">
               <Button variant="outline" className="group">
                 View All Products
                 <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -209,7 +209,7 @@ export default function HomePage() {
               </div>
             </div>
             <div className="mt-10">
-              <Link href="/shop">
+              <Link href="/shop" className="no-underline hover:no-underline">
                 <Button size="lg" className="bg-white text-primary hover:bg-white/90 px-10">Shop Sale</Button>
               </Link>
             </div>
