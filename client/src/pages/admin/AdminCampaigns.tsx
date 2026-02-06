@@ -27,6 +27,14 @@ export default function AdminCampaigns() {
     const [mediaSource, setMediaSource] = useState<"url" | "upload">("url");
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
+    const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
+
+    useEffect(() => {
+        broadcastChannelRef.current = new BroadcastChannel('hero_preview_channel');
+        return () => {
+            broadcastChannelRef.current?.close();
+        };
+    }, []);
 
     const { data: campaigns, isLoading } = useQuery<HeroCampaign[]>({
         queryKey: ["/api/admin/hero"],
@@ -88,10 +96,18 @@ export default function AdminCampaigns() {
             }
 
             // Send to iframe
-            iframeRef.current.contentWindow.postMessage({
-                type: "generate_preview",
-                payload: payload
-            }, "*");
+            if (iframeRef.current && iframeRef.current.contentWindow) {
+                const message = {
+                    type: "generate_preview",
+                    payload
+                };
+                iframeRef.current.contentWindow.postMessage(message, "*");
+
+                // Also broadcast for standalone tabs
+                if (broadcastChannelRef.current) {
+                    broadcastChannelRef.current.postMessage(message);
+                }
+            }
         };
 
         const timer = setTimeout(syncPreview, 300); // Debounce 300ms

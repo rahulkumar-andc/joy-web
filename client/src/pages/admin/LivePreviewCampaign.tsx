@@ -46,6 +46,16 @@ export default function LivePreviewCampaign() {
         };
 
         window.addEventListener("message", handleMessage);
+
+        // Listen for cross-tab broadcasts
+        const channel = new BroadcastChannel('hero_preview_channel');
+        channel.onmessage = (event) => {
+            if (event.data && event.data.type === "generate_preview") {
+                console.log("Broadcast Preview Received:", event.data.payload);
+                setData(event.data.payload);
+            }
+        };
+
         // Signal ready
         if (window.opener || window.parent) {
             window.parent.postMessage({ type: 'preview_ready' }, '*');
