@@ -32,6 +32,9 @@ orderRouter.get(api.orders.list.path, OrderController.listOrders);
 // User: Get single order for tracking
 orderRouter.get("/api/orders/:id", OrderController.getOrderById);
 
+// User: Update/Cancel Order
+orderRouter.put("/api/orders/:id", requireAuth, OrderController.updateOrder);
+
 // Admin: Update Order Status
 orderRouter.patch("/api/orders/:id/status", restrictTo("admin", "manager"), OrderController.updateOrderStatus);
 

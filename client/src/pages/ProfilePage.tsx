@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, Redirect } from "wouter";
-import { User, Lock, Package, Heart, Loader2, Mail, Phone, MapPin, RotateCcw, Shield, Trash2, AlertTriangle, Download, Bell } from "lucide-react";
+import { User, Lock, Package, Heart, Loader2, Mail, Phone, MapPin, RotateCcw, Shield, Trash2, AlertTriangle, Download, Bell, Megaphone } from "lucide-react";
+
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { PushNotificationSubscription } from "@/components/PushNotificationSubscription";
@@ -163,6 +164,10 @@ export default function ProfilePage() {
                                     <Link href="/wishlist" className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-muted transition-colors">
                                         <Heart className="w-4 h-4" />
                                         <span>Wishlist</span>
+                                    </Link>
+                                    <Link href="/account/tickets" className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-muted transition-colors">
+                                        <Megaphone className="w-4 h-4" /> {/* Reusing Megaphone or Ticket icon if available */}
+                                        <span>My Tickets</span>
                                     </Link>
                                 </nav>
                             </CardContent>

@@ -1,7 +1,7 @@
 
 import "dotenv/config";
 import { db } from "../server/db";
-import { products, stockReservations, categories } from "@shared/schema";
+import { products, stockReservations, categories } from "../shared/schema";
 import { stockReservationService } from "../server/services/stockReservationService";
 import { eq } from "drizzle-orm";
 import fs from "fs";
@@ -65,7 +65,7 @@ async function runAudit() {
             const sessionId = `audit-session-${Date.now()}-${i}`;
             promises.push(
                 stockReservationService.reserveStock(
-                    [{ productId: testProductId, quantity: 1 }],
+                    [{ productId: testProductId!, quantity: 1 }],
                     undefined, // userId
                     sessionId  // sessionId
                 ).then(() => ({ status: "success", id: sessionId }))

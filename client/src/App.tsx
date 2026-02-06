@@ -42,6 +42,7 @@ const AdminDeliveries = lazy(() => import("@/pages/admin/AdminDeliveries"));
 const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 const AdminCampaigns = lazy(() => import("@/pages/admin/AdminCampaigns"));
+const LivePreviewCampaign = lazy(() => import("@/pages/admin/LivePreviewCampaign"));
 const AdminSellersPage = lazy(() => import("@/pages/admin/AdminSellersPage"));
 const AdminProductModerationPage = lazy(() => import("@/pages/admin/AdminProductModerationPage"));
 const AdminPayoutApprovalPage = lazy(() => import("@/pages/admin/AdminPayoutApprovalPage"));
@@ -56,6 +57,10 @@ const AdminCoupons = lazy(() => import("@/pages/admin/AdminCoupons"));
 const AdminResellers = lazy(() => import("@/pages/admin/AdminResellers"));
 const AdminPayouts = lazy(() => import("@/pages/admin/AdminPayouts"));
 const AdminCustomerDetailPage = lazy(() => import("@/pages/admin/AdminCustomerDetailPage"));
+const AdminSupportPage = lazy(() => import("@/pages/admin/AdminSupportPage"));
+const AdminTicketDetailPage = lazy(() => import("@/pages/admin/AdminTicketDetailPage"));
+
+
 
 // Seller Pages
 const SellerDashboard = lazy(() => import("@/pages/seller/SellerDashboard"));
@@ -111,10 +116,14 @@ const AboutPage = lazy(() => import("@/pages/legal/AboutPage"));
 const ReturnPolicyPage = lazy(() => import("@/pages/legal/ReturnPolicyPage"));
 
 // Support Pages
+// Support Pages
 const HelpCenterPage = lazy(() => import("@/pages/support/HelpCenterPage"));
 const RaiseTicketPage = lazy(() => import("@/pages/support/RaiseTicketPage"));
 const TicketDetailPage = lazy(() => import("@/pages/support/TicketDetailPage"));
 const ChatSupportPage = lazy(() => import("@/pages/support/ChatSupportPage"));
+const MyTicketsPage = lazy(() => import("@/pages/account/MyTicketsPage"));
+const AccountTicketDetailPage = lazy(() => import("@/pages/account/TicketDetailPage"));
+
 
 
 function LoadingSpinner() {
@@ -153,7 +162,11 @@ function Router() {
         {/* Account Routes */}
         <Route path="/orders/:id" component={OrderDetailPage} />
         <Route path="/orders/:id/invoice" component={InvoicePage} />
+        <Route path="/orders/:id/invoice" component={InvoicePage} />
         <Route path="/account/payments" component={SavedPaymentsPage} />
+        <Route path="/account/tickets" component={MyTicketsPage} />
+        <Route path="/account/tickets/:id" component={AccountTicketDetailPage} />
+
 
         {/* Post-Order Routes */}
         <Route path="/orders/:id/cancel" component={CancelOrderPage} />
@@ -232,6 +245,7 @@ function Router() {
         <Route path="/admin/products/moderation" component={AdminProductModerationPage} />
         <Route path="/admin/payouts" component={AdminPayoutApprovalPage} />
         <Route path="/admin/campaigns" component={AdminCampaigns} />
+        <Route path="/admin/campaigns/livepreview" component={LivePreviewCampaign} />
         <Route path="/admin/analytics" component={AnalyticsDashboard} />
         <Route path="/admin/moderation" component={ContentModeration} />
         <Route path="/admin/refunds" component={AdminRefundsPage} />
@@ -240,7 +254,10 @@ function Router() {
         <Route path="/admin/shipping" component={AdminShippingSettings} />
         <Route path="/admin/coupons" component={AdminCoupons} />
         <Route path="/admin/resellers" component={AdminResellers} />
+        <Route path="/admin/support" component={AdminSupportPage} />
+        <Route path="/admin/support/:id" component={AdminTicketDetailPage} />
         <Route path="/privacy-settings" component={PrivacySettings} />
+
 
         <Route component={NotFound} />
       </Switch>

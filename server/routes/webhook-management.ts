@@ -32,7 +32,7 @@ webhookMgmtRouter.post("/api/admin/webhooks/:id/replay", restrictTo("admin"), as
         // For now, we support the standard WebhookHandler mainly.
 
         if (event.gateway === 'razorpay') {
-            await WebhookHandler.handleRazorpayWebhook(event.signature, event.payload);
+            await WebhookHandler.handleRazorpayWebhook(event.signature, event.payload as any);
             res.json({ message: "Replay triggered successfully", status: "PROCESSED" });
         } else {
             // Just reset, let cron or manual intervention handle or extend this

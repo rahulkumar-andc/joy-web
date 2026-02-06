@@ -274,10 +274,10 @@ export default function ProductPage() {
                   </div>
                 )}
 
-                {product.specifications && Object.entries(product.specifications as Record<string, any>).map(([key, value]) => (
+                {!!product.specifications && Object.entries(product.specifications as Record<string, any>).map(([key, value]) => (
                   <div key={key} className="grid grid-cols-[110px_1fr]">
                     <span className="font-medium capitalize">{key}</span>
-                    <span className="text-black">{String(value)}</span>
+                    <span className="text-black">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
                   </div>
                 ))}
               </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -26,6 +26,7 @@ export default function AdminCampaigns() {
     const [editingCampaign, setEditingCampaign] = useState<HeroCampaign | null>(null);
     const [mediaSource, setMediaSource] = useState<"url" | "upload">("url");
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const iframeRef = useRef<HTMLIFrameElement>(null);
 
     const { data: campaigns, isLoading } = useQuery<HeroCampaign[]>({
         queryKey: ["/api/admin/hero"],
@@ -57,8 +58,45 @@ export default function AdminCampaigns() {
             ctaPosY: 60,
             countdownPosX: 50,
             countdownPosY: 10,
+            // New Fields Defaults
+            startTime: null,
+            titleFontSize: null,
+            subtitleFontSize: null,
+            fontWeight: "normal",
+            overlayColor: "black",
+            deviceTarget: "all",
+            enableAnalytics: false,
+            secondaryCtaLabel: "",
+            secondaryCtaUrl: "",
         },
     });
+
+    // Watch form values for live preview
+    const formValues = form.watch();
+
+    useEffect(() => {
+        const syncPreview = async () => {
+            if (!iframeRef.current?.contentWindow) return;
+
+            const payload = { ...formValues };
+
+            // Handle local file preview
+            if (mediaSource === "upload" && selectedFile) {
+                // Create temporary blob URL for preview
+                const blobUrl = URL.createObjectURL(selectedFile);
+                (payload as any).mediaUrlPreview = blobUrl;
+            }
+
+            // Send to iframe
+            iframeRef.current.contentWindow.postMessage({
+                type: "generate_preview",
+                payload: payload
+            }, "*");
+        };
+
+        const timer = setTimeout(syncPreview, 300); // Debounce 300ms
+        return () => clearTimeout(timer);
+    }, [formValues, selectedFile, mediaSource]);
 
     const createMutation = useMutation({
         mutationFn: async (data: InsertHeroCampaign | FormData) => {
@@ -153,7 +191,11 @@ export default function AdminCampaigns() {
             const formData = new FormData();
             Object.entries(payload).forEach(([key, value]) => {
                 if (value !== null && value !== undefined) {
-                    formData.append(key, String(value));
+                    if (key === 'enableAnalytics') {
+                        formData.append(key, value === true || value === "true" ? "true" : "false");
+                    } else {
+                        formData.append(key, String(value));
+                    }
                 }
             });
             formData.append("mediaFile", selectedFile);
@@ -198,6 +240,16 @@ export default function AdminCampaigns() {
             countdownPosX: campaign.countdownPosX ?? 50,
             countdownPosY: campaign.countdownPosY ?? 10,
             endTime: campaign.endTime ? new Date(campaign.endTime) : null,
+            // New Fields Hydration
+            startTime: campaign.startTime ? new Date(campaign.startTime) : null,
+            titleFontSize: campaign.titleFontSize,
+            subtitleFontSize: campaign.subtitleFontSize,
+            fontWeight: (campaign.fontWeight as "normal" | "bold") ?? "normal",
+            overlayColor: (campaign.overlayColor as "black" | "gradient" | "brand") ?? "black",
+            deviceTarget: (campaign.deviceTarget as "all" | "desktop" | "mobile") ?? "all",
+            enableAnalytics: campaign.enableAnalytics ?? false,
+            secondaryCtaLabel: campaign.secondaryCtaLabel || "",
+            secondaryCtaUrl: campaign.secondaryCtaUrl || "",
         });
         setIsOpen(true);
     };
@@ -228,6 +280,16 @@ export default function AdminCampaigns() {
             ctaPosY: 60,
             countdownPosX: 50,
             countdownPosY: 10,
+            // New Fields Reset
+            startTime: null,
+            titleFontSize: null,
+            subtitleFontSize: null,
+            fontWeight: "normal",
+            overlayColor: "black",
+            deviceTarget: "all",
+            enableAnalytics: false,
+            secondaryCtaLabel: "",
+            secondaryCtaUrl: "",
         });
         setIsOpen(true);
     };
@@ -248,316 +310,450 @@ export default function AdminCampaigns() {
                     <DialogTrigger asChild>
                         <Button onClick={handleAddNew}><Plus className="mr-2 h-4 w-4" /> New Campaign</Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogContent className="max-w-[95vw] w-full max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>{editingCampaign ? "Edit Campaign" : "Create New Campaign"}</DialogTitle>
+                            <DialogDescription>
+                                Configure the hero banner details. Changes are previewed live on the right.
+                            </DialogDescription>
                         </DialogHeader>
+
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormField control={form.control} name="name" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Campaign Name</FormLabel>
-                                            <FormControl><Input {...field} /></FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-                                    <FormField control={form.control} name="priority" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Priority</FormLabel>
-                                            <FormControl>
-                                                <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormField control={form.control} name="type" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Type</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="default">Default</SelectItem>
-                                                    <SelectItem value="sale">Sale</SelectItem>
-                                                    <SelectItem value="flash_sale">Flash Sale</SelectItem>
-                                                    <SelectItem value="festival">Festival</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-
-                                    <FormField control={form.control} name="targetAudience" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Target Audience</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl><SelectTrigger><SelectValue placeholder="Select audience" /></SelectTrigger></FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="all">All Users</SelectItem>
-                                                    <SelectItem value="guest">Guests Only</SelectItem>
-                                                    <SelectItem value="user">Logged-in Only</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-
-                                    <FormField control={form.control} name="isActive" render={({ field }) => (
-                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm mt-8">
-                                            <div className="space-y-0.5">
-                                                <FormLabel>Active Status</FormLabel>
-                                            </div>
-                                            <FormControl>
-                                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                            </FormControl>
-                                        </FormItem>
-                                    )} />
-                                </div>
-
-
-                                <div className="space-y-2 border p-4 rounded-md">
-                                    <h3 className="font-medium">Media</h3>
-                                    <h3 className="font-medium">Media</h3>
-
-                                    <div className="flex gap-4 mb-4">
-                                        <Button
-                                            type="button"
-                                            variant={mediaSource === "url" ? "default" : "outline"}
-                                            onClick={() => setMediaSource("url")}
-                                            className="w-1/2"
-                                        >
-                                            <Link className="w-4 h-4 mr-2" /> URL
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant={mediaSource === "upload" ? "default" : "outline"}
-                                            onClick={() => setMediaSource("upload")}
-                                            className="w-1/2"
-                                        >
-                                            <Upload className="w-4 h-4 mr-2" /> Upload File
-                                        </Button>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <FormField control={form.control} name="mediaType" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Media Type</FormLabel>
-                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                                    <SelectContent>
-                                                        <SelectItem value="image">Image</SelectItem>
-                                                        <SelectItem value="video">Video</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )} />
-
-                                        {mediaSource === "url" ? (
-                                            <FormField control={form.control} name="mediaUrl" render={({ field }) => (
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                                    {/* Left Column: Form Inputs */}
+                                    <div className="lg:col-span-5 space-y-4 max-h-[75vh] overflow-y-auto pr-2">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <FormField control={form.control} name="name" render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Media URL</FormLabel>
-                                                    <FormControl><Input {...field} placeholder="https://..." /></FormControl>
+                                                    <FormLabel>Campaign Name</FormLabel>
+                                                    <FormControl><Input {...field} /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
-                                        ) : (
-                                            <FormItem>
-                                                <FormLabel>Upload File (Max 50MB)</FormLabel>
+                                            <FormField control={form.control} name="priority" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Priority</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <FormField control={form.control} name="type" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Type</FormLabel>
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                        <FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="default">Default</SelectItem>
+                                                            <SelectItem value="sale">Sale</SelectItem>
+                                                            <SelectItem value="flash_sale">Flash Sale</SelectItem>
+                                                            <SelectItem value="festival">Festival</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+
+                                            <FormField control={form.control} name="targetAudience" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Target Audience</FormLabel>
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                        <FormControl><SelectTrigger><SelectValue placeholder="Select audience" /></SelectTrigger></FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="all">All Users</SelectItem>
+                                                            <SelectItem value="guest">Guests Only</SelectItem>
+                                                            <SelectItem value="user">Logged-in Only</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+
+                                            <FormField control={form.control} name="deviceTarget" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Device Target</FormLabel>
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                        <FormControl><SelectTrigger><SelectValue placeholder="Select device" /></SelectTrigger></FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="all">All Devices</SelectItem>
+                                                            <SelectItem value="desktop">Desktop Only</SelectItem>
+                                                            <SelectItem value="mobile">Mobile Only</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                        </div>
+
+                                        <FormField control={form.control} name="isActive" render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm mt-8">
+                                                <div className="space-y-0.5">
+                                                    <FormLabel>Active Status</FormLabel>
+                                                </div>
                                                 <FormControl>
-                                                    <Input
-                                                        type="file"
-                                                        accept={form.getValues("mediaType") === "video" ? "video/*" : "image/*"}
-                                                        onChange={(e) => {
-                                                            const file = e.target.files?.[0];
-                                                            if (file) setSelectedFile(file);
-                                                        }}
-                                                    />
+                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
                                                 </FormControl>
-                                                {selectedFile && <p className="text-xs text-muted-foreground">Selected: {selectedFile.name}</p>}
-                                            </FormItem>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2 border p-4 rounded-md">
-                                    <h3 className="font-medium">Content</h3>
-                                    <FormField control={form.control} name="title" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Title</FormLabel>
-                                            <FormControl><Input {...field} /></FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-                                    <FormField control={form.control} name="subtitle" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Subtitle</FormLabel>
-                                            <FormControl><Input {...field} value={field.value || ""} /></FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <FormField control={form.control} name="ctaLabel" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>CTA Label</FormLabel>
-                                                <FormControl><Input {...field} value={field.value || ""} /></FormControl>
-                                                <FormMessage />
                                             </FormItem>
                                         )} />
-                                        <FormField control={form.control} name="ctaUrl" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>CTA Destination</FormLabel>
-                                                <FormControl><Input {...field} value={field.value || ""} /></FormControl>
-                                                <FormMessage />
+
+                                        <FormField control={form.control} name="enableAnalytics" render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm mt-8">
+                                                <div className="space-y-0.5">
+                                                    <FormLabel>Enable Analytics</FormLabel>
+                                                    <p className="text-xs text-muted-foreground">Track simple impressions & clicks</p>
+                                                </div>
+                                                <FormControl>
+                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                </FormControl>
                                             </FormItem>
                                         )} />
-                                    </div>
-                                    <FormField control={form.control} name="endTime" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Campaign End Time (for Countdown)</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    type="datetime-local"
-                                                    {...field}
-                                                    value={
-                                                        field.value && !isNaN(new Date(field.value).getTime())
-                                                            ? new Date(field.value).toISOString().slice(0, 16)
-                                                            : ""
-                                                    }
-                                                    onChange={e => {
-                                                        const date = e.target.value ? new Date(e.target.value) : null;
-                                                        field.onChange(date);
-                                                    }}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-                                </div>
 
-                                {/* Layout Configuration */}
-                                <div className="space-y-4 pt-4 border-t">
-                                    <h3 className="font-medium text-lg">Layout Configuration (Position 0-100%)</h3>
 
-                                    <div className="grid grid-cols-2 gap-x-8 gap-y-6">
-                                        {/* Title Position */}
-                                        <div className="space-y-2">
-                                            <FormLabel className="font-medium">Title Position</FormLabel>
+                                        <div className="space-y-2 border p-4 rounded-md">
+                                            <h3 className="font-medium">Media</h3>
+
+                                            <div className="flex gap-4 mb-4">
+                                                <Button
+                                                    type="button"
+                                                    variant={mediaSource === "url" ? "default" : "outline"}
+                                                    onClick={() => setMediaSource("url")}
+                                                    className="w-1/2"
+                                                >
+                                                    <Link className="w-4 h-4 mr-2" /> URL
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant={mediaSource === "upload" ? "default" : "outline"}
+                                                    onClick={() => setMediaSource("upload")}
+                                                    className="w-1/2"
+                                                >
+                                                    <Upload className="w-4 h-4 mr-2" /> Upload File
+                                                </Button>
+                                            </div>
+
                                             <div className="grid grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="titlePosX" render={({ field }) => (
+                                                <FormField control={form.control} name="mediaType" render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel className="text-xs text-muted-foreground">Horizontal (X)</FormLabel>
-                                                        <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                        <FormLabel>Media Type</FormLabel>
+                                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="image">Image</SelectItem>
+                                                                <SelectItem value="video">Video</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )} />
-                                                <FormField control={form.control} name="titlePosY" render={({ field }) => (
+
+                                                {mediaSource === "url" ? (
+                                                    <FormField control={form.control} name="mediaUrl" render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Media URL</FormLabel>
+                                                            <FormControl><Input {...field} placeholder="https://..." /></FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )} />
+                                                ) : (
                                                     <FormItem>
-                                                        <FormLabel className="text-xs text-muted-foreground">Vertical (Y)</FormLabel>
-                                                        <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                        <FormLabel>Upload File (Max 50MB)</FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                type="file"
+                                                                accept={form.getValues("mediaType") === "video" ? "video/*" : "image/*"}
+                                                                onChange={(e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) setSelectedFile(file);
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        {selectedFile && <p className="text-xs text-muted-foreground">Selected: {selectedFile.name}</p>}
+                                                    </FormItem>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2 border p-4 rounded-md">
+                                            <h3 className="font-medium">Content</h3>
+                                            <FormField control={form.control} name="title" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Title</FormLabel>
+                                                    <FormControl><Input {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={form.control} name="subtitle" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Subtitle</FormLabel>
+                                                    <FormControl><Input {...field} value={field.value || ""} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <FormField control={form.control} name="ctaLabel" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>CTA Label</FormLabel>
+                                                        <FormControl><Input {...field} value={field.value || ""} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="ctaUrl" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>CTA Destination</FormLabel>
+                                                        <FormControl><Input {...field} value={field.value || ""} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <FormField control={form.control} name="secondaryCtaLabel" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Secondary CTA Label</FormLabel>
+                                                        <FormControl><Input {...field} value={field.value || ""} placeholder="Optional" /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="secondaryCtaUrl" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Secondary CTA URL</FormLabel>
+                                                        <FormControl><Input {...field} value={field.value || ""} placeholder="/..." /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <FormField control={form.control} name="startTime" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Start Time</FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                type="datetime-local"
+                                                                {...field}
+                                                                value={
+                                                                    field.value && !isNaN(new Date(field.value).getTime())
+                                                                        ? new Date(field.value).toISOString().slice(0, 16)
+                                                                        : ""
+                                                                }
+                                                                onChange={e => {
+                                                                    const date = e.target.value ? new Date(e.target.value) : null;
+                                                                    field.onChange(date);
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="endTime" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>End Time</FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                type="datetime-local"
+                                                                {...field}
+                                                                value={
+                                                                    field.value && !isNaN(new Date(field.value).getTime())
+                                                                        ? new Date(field.value).toISOString().slice(0, 16)
+                                                                        : ""
+                                                                }
+                                                                onChange={e => {
+                                                                    const date = e.target.value ? new Date(e.target.value) : null;
+                                                                    field.onChange(date);
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )} />
                                             </div>
                                         </div>
 
-                                        {/* Subtitle Position */}
-                                        <div className="space-y-2">
-                                            <FormLabel className="font-medium">Subtitle Position</FormLabel>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="subtitlePosX" render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-xs text-muted-foreground">Horizontal (X)</FormLabel>
-                                                        <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
-                                                    </FormItem>
-                                                )} />
-                                                <FormField control={form.control} name="subtitlePosY" render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-xs text-muted-foreground">Vertical (Y)</FormLabel>
-                                                        <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
-                                                    </FormItem>
-                                                )} />
+                                        {/* Layout Configuration */}
+                                        <div className="space-y-4 pt-4 border-t">
+                                            <h3 className="font-medium text-lg">Layout Configuration (Position 0-100%)</h3>
+
+                                            <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                                                {/* Title Position */}
+                                                <div className="space-y-2">
+                                                    <FormLabel className="font-medium">Title Position</FormLabel>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <FormField control={form.control} name="titlePosX" render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-xs text-muted-foreground">Horizontal (X)</FormLabel>
+                                                                <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                            </FormItem>
+                                                        )} />
+                                                        <FormField control={form.control} name="titlePosY" render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-xs text-muted-foreground">Vertical (Y)</FormLabel>
+                                                                <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                            </FormItem>
+                                                        )} />
+                                                    </div>
+                                                </div>
+
+                                                {/* Subtitle Position */}
+                                                <div className="space-y-2">
+                                                    <FormLabel className="font-medium">Subtitle Position</FormLabel>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <FormField control={form.control} name="subtitlePosX" render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-xs text-muted-foreground">Horizontal (X)</FormLabel>
+                                                                <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                            </FormItem>
+                                                        )} />
+                                                        <FormField control={form.control} name="subtitlePosY" render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-xs text-muted-foreground">Vertical (Y)</FormLabel>
+                                                                <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                            </FormItem>
+                                                        )} />
+                                                    </div>
+                                                </div>
+
+                                                {/* CTA Position */}
+                                                <div className="space-y-2">
+                                                    <FormLabel className="font-medium">CTA Button Position</FormLabel>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <FormField control={form.control} name="ctaPosX" render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-xs text-muted-foreground">Horizontal (X)</FormLabel>
+                                                                <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                            </FormItem>
+                                                        )} />
+                                                        <FormField control={form.control} name="ctaPosY" render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-xs text-muted-foreground">Vertical (Y)</FormLabel>
+                                                                <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                            </FormItem>
+                                                        )} />
+                                                    </div>
+                                                </div>
+
+                                                {/* Countdown Position */}
+                                                <div className="space-y-2">
+                                                    <FormLabel className="font-medium">Countdown Position</FormLabel>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <FormField control={form.control} name="countdownPosX" render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-xs text-muted-foreground">Horizontal (X)</FormLabel>
+                                                                <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                            </FormItem>
+                                                        )} />
+                                                        <FormField control={form.control} name="countdownPosY" render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-xs text-muted-foreground">Vertical (Y)</FormLabel>
+                                                                <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                            </FormItem>
+                                                        )} />
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        {/* CTA Position */}
-                                        <div className="space-y-2">
-                                            <FormLabel className="font-medium">CTA Button Position</FormLabel>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="ctaPosX" render={({ field }) => (
+                                        <div className="space-y-2 border p-4 rounded-md">
+                                            <h3 className="font-medium">Appearance</h3>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <FormField control={form.control} name="contentAlignment" render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel className="text-xs text-muted-foreground">Horizontal (X)</FormLabel>
-                                                        <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                        <FormLabel>Alignment</FormLabel>
+                                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="left">Left</SelectItem>
+                                                                <SelectItem value="center">Center</SelectItem>
+                                                                <SelectItem value="right">Right</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )} />
-                                                <FormField control={form.control} name="ctaPosY" render={({ field }) => (
+                                                <FormField control={form.control} name="textColor" render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel className="text-xs text-muted-foreground">Vertical (Y)</FormLabel>
-                                                        <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                        <FormLabel>Text Color</FormLabel>
+                                                        <FormControl><Input type="color" {...field} className="h-10 px-2" /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="overlayOpacity" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Overlay Opacity (0-1)</FormLabel>
+                                                        <FormControl><Input type="number" step="0.1" min="0" max="1" {...field} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="overlayColor" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Overlay Style</FormLabel>
+                                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="black">Classic Black</SelectItem>
+                                                                <SelectItem value="gradient">Modern Gradient</SelectItem>
+                                                                <SelectItem value="brand">Brand Color</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )} />
                                             </div>
-                                        </div>
-
-                                        {/* Countdown Position */}
-                                        <div className="space-y-2">
-                                            <FormLabel className="font-medium">Countdown Position</FormLabel>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="countdownPosX" render={({ field }) => (
+                                            <div className="grid grid-cols-3 gap-4 mt-4">
+                                                <FormField control={form.control} name="fontWeight" render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel className="text-xs text-muted-foreground">Horizontal (X)</FormLabel>
-                                                        <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                        <FormLabel>Font Weight</FormLabel>
+                                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="normal">Normal</SelectItem>
+                                                                <SelectItem value="bold">Bold</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )} />
-                                                <FormField control={form.control} name="countdownPosY" render={({ field }) => (
+                                                <FormField control={form.control} name="titleFontSize" render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel className="text-xs text-muted-foreground">Vertical (Y)</FormLabel>
-                                                        <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                        <FormLabel>Title Size (px)</FormLabel>
+                                                        <FormControl><Input type="number" placeholder="Default" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? Number(e.target.value) : null)} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="subtitleFontSize" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Subtitle Size (px)</FormLabel>
+                                                        <FormControl><Input type="number" placeholder="Default" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? Number(e.target.value) : null)} /></FormControl>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )} />
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div className="space-y-2 border p-4 rounded-md">
-                                    <h3 className="font-medium">Appearance</h3>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <FormField control={form.control} name="contentAlignment" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Alignment</FormLabel>
-                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                                    <SelectContent>
-                                                        <SelectItem value="left">Left</SelectItem>
-                                                        <SelectItem value="center">Center</SelectItem>
-                                                        <SelectItem value="right">Right</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )} />
-                                        <FormField control={form.control} name="textColor" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Text Color</FormLabel>
-                                                <FormControl><Input type="color" {...field} className="h-10 px-2" /></FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )} />
-                                        <FormField control={form.control} name="overlayOpacity" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Overlay Opacity (0-1)</FormLabel>
-                                                <FormControl><Input type="number" step="0.1" min="0" max="1" {...field} /></FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )} />
+                                    {/* Right Column: Live Preview */}
+                                    <div className="hidden lg:block lg:col-span-7 bg-muted rounded-lg border overflow-hidden relative min-h-[600px]">
+                                        <div className="absolute top-2 right-2 z-10 bg-black/70 text-white text-xs px-2 py-1 rounded pointer-events-none">
+                                            Live Preview
+                                        </div>
+                                        <iframe
+                                            ref={iframeRef}
+                                            src="/admin/campaigns/livepreview"
+                                            className="w-full h-full border-0"
+                                            title="Campaign Live Preview"
+                                        />
                                     </div>
                                 </div>
 
-                                <Button type="submit" className="w-full" disabled={createMutation.isPending || updateMutation.isPending}>
-                                    {editingCampaign ? "Update Campaign" : "Create Campaign"}
-                                </Button>
+                                <DialogFooter>
+                                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                                    <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                                        {createMutation.isPending || updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                                        {editingCampaign ? "Update Campaign" : "Create Campaign"}
+                                    </Button>
+                                </DialogFooter>
                             </form>
                         </Form>
                     </DialogContent>

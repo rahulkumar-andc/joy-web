@@ -36,6 +36,12 @@ interface HeroOverlayProps {
     animationType?: "fade" | "slide" | "zoom" | "none";
     showSocialProof?: boolean;
     showShareButtons?: boolean;
+
+    // New Styling
+    titleFontSize?: number | null;
+    subtitleFontSize?: number | null;
+    fontWeight?: "normal" | "bold";
+    overlayColor?: "black" | "gradient" | "brand";
 }
 
 // Animation variants based on type
@@ -129,6 +135,12 @@ export function HeroOverlay({
     animationType = "fade",
     showSocialProof = false,
     showShareButtons = false,
+
+    // New Styling Defaults
+    titleFontSize,
+    subtitleFontSize,
+    fontWeight = "normal",
+    overlayColor = "black",
 }: HeroOverlayProps) {
     // Accessibility: Respect reduced motion preference
     const prefersReducedMotion = useReducedMotion() ?? false;
@@ -168,12 +180,31 @@ export function HeroOverlay({
         maxWidth: '90%'
     });
 
+    // Helper for Overlay Background
+    const getOverlayClass = () => {
+        switch (overlayColor) {
+            case "gradient":
+                return "bg-gradient-to-t from-black via-black/50 to-transparent";
+            case "brand":
+                return "bg-primary mix-blend-multiply"; // Use brand color
+            case "black":
+            default:
+                return "bg-black";
+        }
+    };
+
     return (
         <div
             className="absolute inset-0 z-10 overflow-hidden pointer-events-none"
             role="region"
             aria-label="Hero campaign"
         >
+            {/* Background Overlay */}
+            <div
+                className={cn("absolute inset-0 transition-opacity duration-500", getOverlayClass())}
+                style={{ opacity: opacity }}
+            />
+
             {/* Content Container - using motion for global fade/stagger, but positioning is individual */}
             <motion.div
                 variants={variants.container}
@@ -195,9 +226,15 @@ export function HeroOverlay({
                 {/* Title */}
                 <motion.h1
                     variants={variants.item}
-                    className="text-3xl md:text-5xl lg:text-7xl font-bold tracking-tight drop-shadow-sm text-center"
+                    className={cn(
+                        "text-3xl md:text-5xl lg:text-7xl tracking-tight drop-shadow-sm text-center",
+                        fontWeight === "bold" ? "font-extrabold" : "font-bold"
+                    )}
                     tabIndex={0}
-                    style={getPosStyle(titlePosX, titlePosY)}
+                    style={{
+                        ...getPosStyle(titlePosX, titlePosY),
+                        fontSize: titleFontSize ? `${titleFontSize}px` : undefined,
+                    }}
                 >
                     {title}
                 </motion.h1>
@@ -207,7 +244,10 @@ export function HeroOverlay({
                     <motion.p
                         variants={variants.item}
                         className="text-lg md:text-xl lg:text-2xl opacity-90 leading-relaxed drop-shadow-sm text-center max-w-2xl"
-                        style={getPosStyle(subtitlePosX, subtitlePosY)}
+                        style={{
+                            ...getPosStyle(subtitlePosX, subtitlePosY),
+                            fontSize: subtitleFontSize ? `${subtitleFontSize}px` : undefined,
+                        }}
                     >
                         {subtitle}
                     </motion.p>
@@ -244,11 +284,12 @@ export function HeroOverlay({
                             <Button
                                 size="lg"
                                 variant="outline"
-                                className="text-lg px-8 py-6 rounded-full border-2 transition-transform hover:scale-105 focus:ring-2 focus:ring-offset-2 focus:ring-white"
+                                className="text-lg px-8 py-6 rounded-full border-2 transition-transform hover:scale-105 focus:ring-2 focus:ring-offset-2 focus:ring-white backdrop-blur-sm"
                                 style={{
                                     borderColor: textColor,
                                     color: textColor,
                                 }}
+                                onClick={handleCtaClick}
                             >
                                 {secondaryCta.label}
                             </Button>

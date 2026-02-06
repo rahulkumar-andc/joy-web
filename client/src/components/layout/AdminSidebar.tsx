@@ -20,8 +20,10 @@ import {
     Shield,
     Ticket,
     BarChart3,
-    Truck
+    Truck,
+    HelpCircle
 } from "lucide-react";
+
 
 interface AdminSidebarProps {
     open: boolean;
@@ -120,7 +122,14 @@ const adminNavItems: NavItem[] = [
         icon: Settings,
         requiredPermission: { domain: "system", action: "manage" },
     },
+    {
+        title: "Support",
+        href: "/admin/support",
+        icon: HelpCircle,
+        // requiredPermission: { domain: "support", action: "read" }, // Permission check later
+    },
 ];
+
 
 export function AdminSidebar({ open, setOpen }: AdminSidebarProps) {
     const { checkPermission, isLoading } = useCheckPermission();

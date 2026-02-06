@@ -238,6 +238,13 @@ heroRouter.post("/api/hero/analytics", async (req: Request, res: Response, next:
             .catch((error) => {
                 logger.error({ message: "Analytics insert failed", error });
             });
+
+        // Also increment the lite counters on the campaign itself
+        // faster read access for admin panel
+        if (data.campaignId) {
+            heroCampaignRepository.incrementAnalytics(data.campaignId, data.eventType as 'impression' | 'click')
+                .catch(err => logger.warn({ message: "Failed to increment lite analytics", err }));
+        }
     } catch (error) {
         // Log but don't fail the request
         if (!res.headersSent) {
@@ -276,18 +283,20 @@ adminHeroRouter.post("/", upload.single("mediaFile"), async (req: Request, res: 
     try {
         // Prepare data from body (multipart adds fields to body)
         const rawData = { ...req.body };
+        console.log("Hero payload:", req.body);
 
         // Handle file upload
         if (req.file) {
             rawData.mediaSource = "upload";
-            // Construct public URL
-            rawData.mediaUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+            // Construct public URL (relative path to work across environments)
+            rawData.mediaUrl = `/uploads/${req.file.filename}`;
             rawData.mediaFilePath = req.file.path; // Store internal path
         }
 
         // Numeric conversion for multipart fields
         if (rawData.priority) rawData.priority = parseInt(rawData.priority, 10);
         if (rawData.isActive) rawData.isActive = rawData.isActive === 'true';
+        if (typeof rawData.enableAnalytics === 'string') rawData.enableAnalytics = rawData.enableAnalytics === 'true';
 
         const data = insertHeroCampaignSchema.parse(rawData);
         const campaign = await heroService.createCampaign(data);
@@ -316,13 +325,14 @@ adminHeroRouter.put("/:id", upload.single("mediaFile"), async (req: Request, res
         // Handle file upload
         if (req.file) {
             rawData.mediaSource = "upload";
-            rawData.mediaUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+            rawData.mediaUrl = `/uploads/${req.file.filename}`;
             rawData.mediaFilePath = req.file.path;
         }
 
         // Numeric/Boolean conversion for multipart fields if they exist
         if (rawData.priority !== undefined) rawData.priority = parseInt(rawData.priority, 10);
         if (rawData.isActive !== undefined) rawData.isActive = rawData.isActive === 'true';
+        if (typeof rawData.enableAnalytics === 'string') rawData.enableAnalytics = rawData.enableAnalytics === 'true';
 
         // Clean empty strings for optional fields which might come as "" from FormData
         if (rawData.subtitle === "") rawData.subtitle = null;

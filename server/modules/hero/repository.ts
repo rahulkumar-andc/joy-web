@@ -1,7 +1,7 @@
 
 import { db } from "@server/db";
 import { heroCampaigns, heroAnalytics, campaignReviews, type InsertHeroCampaign, type HeroCampaign, type InsertCampaignReview, type CampaignReview } from "@shared/schema";
-import { eq, desc, and, or, isNull, lte, gte, inArray } from "drizzle-orm";
+import { eq, desc, and, or, isNull, lte, gte, inArray, sql } from "drizzle-orm";
 import { logger } from "@server/logger";
 
 /**
@@ -281,6 +281,21 @@ export class HeroCampaignRepository {
             .values(data)
             .returning();
         return review;
+    }
+
+    /**
+     * Increment analytics counters for legacy/lite tracking
+     */
+    async incrementAnalytics(id: number, type: 'impression' | 'click'): Promise<void> {
+        const field = type === 'impression' ? heroCampaigns.impressionCount : heroCampaigns.clickCount;
+
+        await db
+            .update(heroCampaigns)
+            .set({
+                [type === 'impression' ? 'impressionCount' : 'clickCount']: sql`${field} + 1`,
+                updatedAt: new Date()
+            })
+            .where(eq(heroCampaigns.id, id));
     }
 }
 

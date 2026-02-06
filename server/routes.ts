@@ -199,6 +199,13 @@ export async function registerRoutes(
   const complianceRouter = (await import("./routes/compliance.routes")).default;
   app.use(complianceRouter);
 
+  // Customer Support System Routes
+  const supportRouter = (await import("./routes/support")).default;
+  app.use("/api/support", supportRouter);
+
+  const adminSupportRouter = (await import("./routes/adminSupport")).default;
+  app.use("/api/admin/support", adminSupportRouter);
+
   // Health Check Routes
   const healthRouter = (await import("./routes/health.routes")).default;
   app.use(healthRouter);

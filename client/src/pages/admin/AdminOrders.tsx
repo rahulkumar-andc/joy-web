@@ -57,6 +57,7 @@ import { format } from "date-fns";
 
 interface Order {
     id: number;
+    displayId?: string;
     userId: number;
     totalAmount: string; // Decimal string
     status: string;
@@ -242,7 +243,7 @@ export default function AdminOrders() {
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Search by Order ID, Customer Name or Email..."
+                                placeholder="Search by Order ID (ORD-XXX), Name or Email..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 className="pl-9"
@@ -298,7 +299,7 @@ export default function AdminOrders() {
                                         <TableRow key={order.id} className={order.isSuspiciousDelivery ? "bg-red-50 dark:bg-red-900/10" : ""}>
                                             <TableCell className="font-medium">
                                                 <div className="flex items-center gap-2">
-                                                    #{order.id}
+                                                    {order.displayId || `#${order.id}`}
                                                     {order.isSuspiciousDelivery && (
                                                         <span title={order.suspiciousReason || "Suspicious delivery"}>
                                                             <AlertTriangle className="h-4 w-4 text-red-500" />
@@ -358,7 +359,7 @@ export default function AdminOrders() {
                                                     </DialogTrigger>
                                                     <DialogContent>
                                                         <DialogHeader>
-                                                            <DialogTitle>Update Order Status #{order.id}</DialogTitle>
+                                                            <DialogTitle>Update Order Status {order.displayId || '#' + order.id}</DialogTitle>
                                                             <DialogDescription>
                                                                 Change the status of this order.
                                                             </DialogDescription>
@@ -446,7 +447,7 @@ export default function AdminOrders() {
                     <DialogHeader>
                         <DialogTitle>Collect COD Payment</DialogTitle>
                         <DialogDescription>
-                            Confirm cash collection for Order #{codDialogOrder?.id}
+                            Confirm cash collection for Order {codDialogOrder?.displayId || '#' + codDialogOrder?.id}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">

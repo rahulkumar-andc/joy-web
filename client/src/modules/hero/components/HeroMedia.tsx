@@ -137,7 +137,6 @@ export function HeroMedia({ type, url, alt, images, lazy = true }: HeroMediaProp
                         Your browser does not support the video tag.
                     </video>
                 </motion.div>
-                <div className="absolute inset-0 bg-black/40 pointer-events-none" />
             </div>
         );
     }
@@ -160,7 +159,7 @@ export function HeroMedia({ type, url, alt, images, lazy = true }: HeroMediaProp
                 loading="eager"
                 onError={handleError}
             />
-            <div className="absolute inset-0 bg-black/40 pointer-events-none" />
+
 
             {/* Internal image carousel indicators */}
             {imageUrls.length > 1 && (

@@ -13,6 +13,7 @@ import {
     LayoutDashboard, ChevronRight, Clock,
     AlertTriangle, CheckCircle, Search
 } from "lucide-react";
+import { useAdminTickets } from "@/hooks/use-support";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -113,8 +114,8 @@ function SupportSidebar() {
                     return (
                         <Link key={item.href} href={item.href}>
                             <a className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'hover:bg-muted text-muted-foreground hover:text-foreground'
                                 }`}>
                                 <item.icon className="h-5 w-5" />
                                 <span className="font-medium">{item.label}</span>
@@ -159,12 +160,26 @@ export default function SupportDashboard() {
         },
     });
 
-    // Mock tickets data (would come from real API)
-    const recentTickets = [
-        { id: 1, subject: "Order not received", customer: "John Doe", priority: "high", status: "open", created: "2 hours ago" },
-        { id: 2, subject: "Wrong item delivered", customer: "Jane Smith", priority: "medium", status: "open", created: "4 hours ago" },
-        { id: 3, subject: "Refund not processed", customer: "Bob Wilson", priority: "high", status: "in_progress", created: "1 day ago" },
-    ];
+    // Fetch real tickets
+    // Import hook at top first: import { useAdminTickets } from "@/hooks/use-support";
+    // But I can't add import here. I need to add import in a separate block or verify if I can edit imports and body in one go? 
+    // Usually I should do imports first.
+    // I will use replace_file_content for imports first.
+    // This step targets the body.
+
+    // Actually, let's just use the hook here assuming I add the import.
+    // I'll add the import in the next step or do it properly now.
+    // I'll update the body now and add import as separate step.
+
+    const { data: ticketsData, isLoading: ticketsLoading } = useAdminTickets({ limit: 5 });
+    const recentTickets = ticketsData?.tickets?.map((t: any) => ({
+        id: t.id,
+        subject: t.subject,
+        customer: t.user?.name || t.user?.email || "Unknown",
+        priority: t.priority.toLowerCase(),
+        status: t.status.toLowerCase(),
+        created: new Date(t.createdAt).toLocaleDateString() + " " + new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    })) || [];
 
     // Fetch pending refunds
     const { data: pendingRefunds, isLoading: refundsLoading } = useQuery({
@@ -258,7 +273,7 @@ export default function SupportDashboard() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {recentTickets.map((ticket) => (
+                                    {recentTickets.map((ticket: any) => (
                                         <TableRow key={ticket.id} className="cursor-pointer hover:bg-muted/50">
                                             <TableCell>
                                                 <div>

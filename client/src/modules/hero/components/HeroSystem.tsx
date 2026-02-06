@@ -6,19 +6,31 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useHeroCarousel } from "../hooks/use-hero";
 import { apiRequest } from "@/lib/queryClient";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export function HeroSystem() {
     // Legacy single hook (fallback)
     const { data: singleHero } = useHero();
     // New carousel hook
     const { data: carouselHeroes, isLoading } = useHeroCarousel();
+    const isMobile = useIsMobile();
 
     // State to track current slide index
     const [currentIndex, setCurrentIndex] = useState(0);
     const hasLoggedImpression = useRef<Set<number>>(new Set());
 
     // Determine which config to use (Carousel > Single > Default)
-    const heroes = carouselHeroes && carouselHeroes.length > 0 ? carouselHeroes : (singleHero ? [singleHero] : []);
+    // Filter by device target logic
+    const allHeroes = carouselHeroes && carouselHeroes.length > 0 ? carouselHeroes : (singleHero ? [singleHero] : []);
+
+    const heroes = allHeroes.filter(hero => {
+        // Safe check for new fields if they don't exist yet (backward compatibility)
+        const target = hero.ui.deviceTarget || 'all';
+        if (target === 'all') return true;
+        if (target === 'mobile' && isMobile) return true;
+        if (target === 'desktop' && !isMobile) return true;
+        return false;
+    });
 
     // Default fallback if absolutely nothing exists
     const defaultConfig = {
@@ -34,8 +46,8 @@ export function HeroSystem() {
         },
         ui: {
             alignment: "left" as const,
-            overlay_opacity: 0.4,
-            text_color: "#ffffff",
+            overlayOpacity: 0.4,
+            textColor: "#ffffff",
             id: 0,
             titlePosX: 50,
             titlePosY: 20,
@@ -45,10 +57,22 @@ export function HeroSystem() {
             ctaPosY: 60,
             countdownPosX: 50,
             countdownPosY: 10,
+            // Defaults for new fields
+            titleFontSize: null,
+            subtitleFontSize: null,
+            fontWeight: "normal",
+            overlayColor: "black",
         },
     };
 
     const currentHero = heroes.length > 0 ? heroes[currentIndex] : defaultConfig;
+
+    // Reset index if filtered heroes change and index is out of bounds
+    useEffect(() => {
+        if (currentIndex >= heroes.length && heroes.length > 0) {
+            setCurrentIndex(0);
+        }
+    }, [heroes.length, currentIndex]);
 
     // Auto-advance carousel
     useEffect(() => {
@@ -63,10 +87,15 @@ export function HeroSystem() {
 
     // Analytics tracking
     useEffect(() => {
-        if (currentHero?.ui?.id && !hasLoggedImpression.current.has(currentHero.ui.id)) {
-            hasLoggedImpression.current.add(currentHero.ui.id);
+        // Only track if analytics enabled (checked on backend too, but save reqs here)
+        // Check both old 'id' location and potentially new fields if we expand DTO
+        const heroId = currentHero?.ui?.id;
+        const enableAnalytics = (currentHero?.ui as any).enableAnalytics; // Cast because DTO might not be fully updated in typescript defs yet
+
+        if (heroId && enableAnalytics && !hasLoggedImpression.current.has(heroId)) {
+            hasLoggedImpression.current.add(heroId);
             apiRequest("POST", "/api/hero/analytics", {
-                campaignId: currentHero.ui.id,
+                campaignId: heroId,
                 eventType: "impression"
             }).catch(console.error);
         }
@@ -102,19 +131,30 @@ export function HeroSystem() {
                         title={currentHero.content.title}
                         subtitle={currentHero.content.subtitle}
                         cta={currentHero.content.cta}
+                        // New Secondary CTA
+                        secondaryCta={(currentHero.ui as any).secondaryCta}
+
                         alignment={currentHero.ui.alignment}
-                        opacity={currentHero.ui.overlay_opacity}
-                        textColor={currentHero.ui.text_color}
+                        opacity={currentHero.ui.overlayOpacity ?? (currentHero.ui as any).overlay_opacity ?? 0.4}
+                        textColor={currentHero.ui.textColor ?? (currentHero.ui as any).text_color ?? "#ffffff"}
                         endTime={currentHero.content.endTime}
                         campaignId={currentHero.ui.id}
-                        titlePosX={currentHero.ui.titlePosX ?? defaultConfig.ui.titlePosX}
-                        titlePosY={currentHero.ui.titlePosY ?? defaultConfig.ui.titlePosY}
-                        subtitlePosX={currentHero.ui.subtitlePosX ?? defaultConfig.ui.subtitlePosX}
-                        subtitlePosY={currentHero.ui.subtitlePosY ?? defaultConfig.ui.subtitlePosY}
-                        ctaPosX={currentHero.ui.ctaPosX ?? defaultConfig.ui.ctaPosX}
-                        ctaPosY={currentHero.ui.ctaPosY ?? defaultConfig.ui.ctaPosY}
-                        countdownPosX={currentHero.ui.countdownPosX ?? defaultConfig.ui.countdownPosX}
-                        countdownPosY={currentHero.ui.countdownPosY ?? defaultConfig.ui.countdownPosY}
+
+                        // Positioning
+                        titlePosX={currentHero.ui.titlePosX ?? 50}
+                        titlePosY={currentHero.ui.titlePosY ?? 20}
+                        subtitlePosX={currentHero.ui.subtitlePosX ?? 50}
+                        subtitlePosY={currentHero.ui.subtitlePosY ?? 40}
+                        ctaPosX={currentHero.ui.ctaPosX ?? 50}
+                        ctaPosY={currentHero.ui.ctaPosY ?? 60}
+                        countdownPosX={currentHero.ui.countdownPosX ?? 50}
+                        countdownPosY={currentHero.ui.countdownPosY ?? 10}
+
+                        // New Styling Props
+                        titleFontSize={(currentHero.ui as any).titleFontSize}
+                        subtitleFontSize={(currentHero.ui as any).subtitleFontSize}
+                        fontWeight={(currentHero.ui as any).fontWeight || 'normal'}
+                        overlayColor={(currentHero.ui as any).overlayColor || 'black'}
                     />
                 </motion.div>
             </AnimatePresence>

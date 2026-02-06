@@ -231,6 +231,9 @@ export class OrderController {
                     stateVersion: 1,
                     stateHistory: [],
                     orderIdempotencyKey: crypto.randomUUID(),
+                    invoiceId: null,
+                    refundStatus: "none",
+                    deliveredAt: null,
                     resellerLinkId: resellerLinkId || null,
                     referredByReseller: referredByReseller || null,
                     courierName: null,
@@ -407,6 +410,87 @@ export class OrderController {
         const items = await orderRepository.getOrderItems(orderId);
 
         res.json({ ...order, items });
+    });
+
+    // User: Update/Cancel Order
+    static updateOrder = catchAsync(async (req: Request, res: Response) => {
+        const id = parseInt(req.params.id as string);
+        const { status } = req.body;
+        const userId = (req.user as any).id;
+
+        // Currently only cancellation is supported for users
+        if (status !== 'cancelled') {
+            throw new AppError("Users can only cancel orders", 400);
+        }
+
+        const order = await orderRepository.getById(id);
+        if (!order) throw new AppError("Order not found", 404);
+        if (order.userId !== userId) throw new AppError("Unauthorized", 403);
+
+        if (!["pending", "created", "confirmed", "payment_pending"].includes(order.status)) {
+            throw new AppError("Order cannot be cancelled in current status", 400);
+        }
+
+        // Perform cancellation
+        const updated = await orderRepository.updateOrderStatus(id, "cancelled");
+
+        // ⚠️ STOCK RELEASE: Add back stock for cancelled items
+        try {
+            const items = await orderRepository.getOrderItems(id);
+            const { db } = await import("../db");
+            const { products } = await import("@shared/schema");
+            const { eq, sql } = await import("drizzle-orm");
+
+            await withTransaction(async (tx) => {
+                for (const item of items) {
+                    await tx
+                        .update(products)
+                        .set({
+                            stockQuantity: sql`${products.stockQuantity} + ${item.quantity}`
+                        })
+                        .where(eq(products.id, item.productId));
+                }
+            });
+            logger.info(`Stock released for cancelled order ${id}`);
+        } catch (stockError) {
+            logger.error("Failed to release stock for cancelled order", { orderId: id, error: stockError });
+        }
+
+        // ⚠️ REFUND IMPACT: Cancel commission when order is cancelled
+        if (updated && updated.resellerLinkId) {
+            try {
+                const { resellerService } = await import("../modules/reseller/reseller.service");
+                const { db } = await import("../db");
+                const { resellerCommissions } = await import("@shared/schema");
+                const { eq } = await import("drizzle-orm");
+
+                const commission = await db.query.resellerCommissions.findFirst({
+                    where: eq(resellerCommissions.orderId, updated.id)
+                });
+
+                if (commission) {
+                    await resellerService.cancelCommission(
+                        commission.id,
+                        `Order cancelled by user`
+                    );
+                    logger.info(`Commission cancelled for order ${updated.id}`, { commissionId: commission.id });
+                }
+            } catch (refundError) {
+                logger.error("Failed to cancel commission", { orderId: updated.id, error: refundError });
+            }
+        }
+
+        // Notify User
+        const user = await userRepository.findById(userId);
+        if (user) {
+            await NotificationService.notifyOrderStatusChange(user.email, id, "cancelled", user.name);
+            await emailService.sendOrderCancelled(
+                { email: user.email, name: user.name },
+                id
+            );
+        }
+
+        res.json(updated);
     });
 
     static updateOrderStatus = catchAsync(async (req: Request, res: Response) => {

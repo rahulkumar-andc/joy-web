@@ -29,6 +29,7 @@ export interface CampaignDTO {
         overlayOpacity: number;
         textColor: string;
         // Positioning
+        // Positioning
         titlePosX: number;
         titlePosY: number;
         subtitlePosX: number;
@@ -37,7 +38,18 @@ export interface CampaignDTO {
         ctaPosY: number;
         countdownPosX: number;
         countdownPosY: number;
-    };
+        // New Styling Fields
+        titleFontSize?: number | null;
+        subtitleFontSize?: number | null;
+        fontWeight: 'normal' | 'bold';
+        overlayColor: 'black' | 'gradient' | 'brand';
+        deviceTarget: 'all' | 'desktop' | 'mobile';
+        enableAnalytics: boolean;
+        secondaryCta: {
+            label: string | null;
+            href: string | null;
+        };
+    }
 }
 
 /**
@@ -73,7 +85,18 @@ function toCampaignDTO(campaign: HeroCampaign): CampaignDTO {
             ctaPosY: campaign.ctaPosY ?? 60,
             countdownPosX: campaign.countdownPosX ?? 50,
             countdownPosY: campaign.countdownPosY ?? 10,
-        },
+            // New Styling Mapping
+            titleFontSize: campaign.titleFontSize,
+            subtitleFontSize: campaign.subtitleFontSize,
+            fontWeight: (campaign.fontWeight as 'normal' | 'bold') ?? 'normal',
+            overlayColor: (campaign.overlayColor as 'black' | 'gradient' | 'brand') ?? 'black',
+            deviceTarget: (campaign.deviceTarget as 'all' | 'desktop' | 'mobile') ?? 'all',
+            enableAnalytics: campaign.enableAnalytics ?? false,
+            secondaryCta: {
+                label: campaign.secondaryCtaLabel,
+                href: campaign.secondaryCtaUrl
+            }
+        }
     };
 }
 
@@ -298,6 +321,13 @@ export const DEFAULT_CAMPAIGN_CONFIG: InsertHeroCampaign = {
     ctaPosY: 60,
     countdownPosX: 50,
     countdownPosY: 10,
+    // New Defaults
+    fontWeight: "normal",
+    overlayColor: "black",
+    deviceTarget: "all",
+    enableAnalytics: false,
+    impressionCount: 0,
+    clickCount: 0,
 };
 
 /**

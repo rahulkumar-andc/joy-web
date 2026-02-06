@@ -212,9 +212,19 @@ export const orders = pgTable("orders", {
   paymentStatus: text("payment_status", { enum: ["pending", "paid", "failed"] }).default("pending").notNull(),
 
   // Tracking Info
+  // Tracking Info
+  displayId: text("display_id"), // Deprecated, use publicOrderId
+  internalOrderId: text("internal_order_id").unique(),
+  publicOrderId: text("public_order_id").unique(),
+  sequenceNumber: integer("sequence_number").unique(),
+
+  invoiceId: text("invoice_id"),
+  refundStatus: text("refund_status", { enum: ["none", "pending", "processed", "failed"] }).default("none"),
+
   courierName: text("courier_name"),
   trackingNumber: text("tracking_number"),
   estimatedDeliveryDate: timestamp("estimated_delivery_date"),
+  deliveredAt: timestamp("delivered_at"),
 
   // Order state machine
   orderState: text("order_state", {
@@ -261,6 +271,16 @@ export const orders = pgTable("orders", {
   assignedCourierIdx: index("order_assigned_courier_idx").on(table.assignedCourier),
   deliveryStatusIdx: index("order_delivery_status_idx").on(table.deliveryStatus),
 }));
+
+// Orders relations for Drizzle ORM joins
+export const ordersRelations = relations(orders, ({ one, many }) => ({
+  user: one(users, {
+    fields: [orders.userId],
+    references: [users.id],
+  }),
+  orderItems: many(orderItems),
+}));
+
 
 export const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
@@ -679,6 +699,22 @@ export const heroCampaigns = pgTable("hero_campaigns", {
   countdownPosX: integer("countdown_pos_x").default(50),
   countdownPosY: integer("countdown_pos_y").default(10),
 
+  // New Enhancements (2025 Upgrade) - Optional & Backward Compatible
+  titleFontSize: integer("title_font_size"), // px
+  subtitleFontSize: integer("subtitle_font_size"), // px
+  fontWeight: text("font_weight", { enum: ["normal", "bold"] }).default("normal"),
+  overlayColor: text("overlay_color", { enum: ["black", "gradient", "brand"] }).default("black"),
+  deviceTarget: text("device_target", { enum: ["all", "desktop", "mobile"] }).default("all"),
+
+  // Analytics Lite
+  enableAnalytics: boolean("enable_analytics").default(false),
+  impressionCount: integer("impression_count").default(0),
+  clickCount: integer("click_count").default(0),
+
+  // Secondary CTA
+  secondaryCtaLabel: text("secondary_cta_label"),
+  secondaryCtaUrl: text("secondary_cta_url"),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -688,7 +724,7 @@ export const insertHeroCampaignSchema = createInsertSchema(heroCampaigns).omit({
   createdAt: true,
   updatedAt: true
 }).extend({
-  priority: z.number().int().default(0),
+  priority: z.coerce.number().int().default(0),
   overlayOpacity: z.string().default("0.4"),
   targetAudience: z.enum(["all", "guest", "user"]).default("all"),
   endTime: z.coerce.date().nullable().optional(),
@@ -702,6 +738,23 @@ export const insertHeroCampaignSchema = createInsertSchema(heroCampaigns).omit({
   ctaPosY: z.coerce.number().min(0).max(100).default(60),
   countdownPosX: z.coerce.number().min(0).max(100).default(50),
   countdownPosY: z.coerce.number().min(0).max(100).default(10),
+
+  // New Fields Validation
+  startTime: z.coerce.date().nullable().optional(), // Ensure accessible in insert
+  titleFontSize: z.coerce.number().optional().nullable(),
+  subtitleFontSize: z.coerce.number().optional().nullable(),
+  fontWeight: z.enum(["normal", "bold"]).default("normal"),
+  overlayColor: z.enum(["black", "gradient", "brand"]).default("black"),
+  deviceTarget: z.enum(["all", "desktop", "mobile"]).default("all"),
+  // Handle 'true'/'false' strings from FormData
+  enableAnalytics: z.preprocess((val) => {
+    if (typeof val === 'string') return val === 'true';
+    return Boolean(val);
+  }, z.boolean()).default(false),
+  impressionCount: z.coerce.number().default(0),
+  clickCount: z.coerce.number().default(0),
+  secondaryCtaLabel: z.string().optional().nullable(),
+  secondaryCtaUrl: z.string().optional().nullable(),
 });
 
 export type HeroCampaign = typeof heroCampaigns.$inferSelect;
@@ -869,3 +922,6 @@ export * from "./shipping-schema";
 
 // === RE-EXPORT SELLER MARKETPLACE SCHEMA ===
 export * from "./seller-schema";
+
+// === RE-EXPORT SUPPORT SCHEMA ===
+export * from "./support-schema";

@@ -111,7 +111,7 @@ export class FailureRecoveryService {
                 // OR we call the public handler passing the stored signature.
 
                 if (event.gateway === "razorpay") {
-                    await WebhookHandler.handleRazorpayWebhook(event.signature, event.payload);
+                    await WebhookHandler.handleRazorpayWebhook(event.signature, event.payload as any);
                 }
                 // Add Stripe if implemented
 

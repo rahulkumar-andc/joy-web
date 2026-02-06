@@ -23,32 +23,38 @@ export class WebhookHandler {
     /**
      * Handle Razorpay Webhooks
      */
-    static async handleRazorpayWebhook(signature: string, rawBodyBuffer: Buffer) {
+    static async handleRazorpayWebhook(signature: string, rawBody: Buffer | any) {
         const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-        if (!secret) {
-            // For development/mocking, we might skip this if not set
-            logger.warn("RAZORPAY_WEBHOOK_SECRET not configured, skipping signature verification");
-        } else {
-            // 1. Verify Signature using RAW BUFFER
-            const expectedSignature = crypto
-                .createHmac("sha256", secret)
-                .update(rawBodyBuffer)
-                .digest("hex");
 
-            if (expectedSignature !== signature) {
-                throw new AppError("Invalid Razorpay webhook signature", 400);
+        // Parse body first if it's already an object (Trusted Source / Replay)
+        let parsedBody: any;
+
+        if (Buffer.isBuffer(rawBody)) {
+            if (!secret) {
+                logger.warn("RAZORPAY_WEBHOOK_SECRET not configured, skipping signature verification");
+            } else {
+                // 1. Verify Signature using RAW BUFFER
+                const expectedSignature = crypto
+                    .createHmac("sha256", secret)
+                    .update(rawBody)
+                    .digest("hex");
+
+                if (expectedSignature !== signature) {
+                    throw new AppError("Invalid Razorpay webhook signature", 400);
+                }
             }
+            try {
+                parsedBody = JSON.parse(rawBody.toString());
+            } catch (e) {
+                throw new AppError("Invalid JSON payload", 400);
+            }
+        } else {
+            // TRUSTED SOURCE (Replay/Retry from DB)
+            logger.info("Processing trusted Razorpay payload (skipping signature verification)");
+            parsedBody = rawBody;
         }
 
-        // Parse JSON only AFTER verification
-        let rawBody;
-        try {
-            rawBody = JSON.parse(rawBodyBuffer.toString());
-        } catch (e) {
-            throw new AppError("Invalid JSON payload", 400);
-        }
-
-        const { event, payload } = rawBody;
+        const { event, payload } = parsedBody;
         // Razorpay paylod structure: { event: "...", payload: { payment: { entity: { id: "pay_...", order_id: "order_..." } } } }
 
         const paymentEntity = payload.payment?.entity;

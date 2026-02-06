@@ -171,6 +171,10 @@ import { apiLimiter, authLimiter } from "./middleware/rate-limit";
             const { userCleanupService } = await import("./services/cleanupService");
             userCleanupService.start();
 
+            // Ensure critical database sequences exist
+            const { ensureDatabaseSequences } = await import("./services/sequenceService");
+            await ensureDatabaseSequences();
+
             const { JobService } = await import("./services/jobService");
             JobService.init();
 

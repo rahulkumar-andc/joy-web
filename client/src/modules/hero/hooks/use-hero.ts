@@ -10,6 +10,10 @@ export interface CampaignContent {
         label: string | null;
         href: string | null;
     };
+    secondaryCta?: {
+        label: string | null;
+        href: string | null;
+    };
     endTime?: string | null;
 }
 
@@ -26,8 +30,11 @@ export interface CampaignMedia {
  */
 export interface CampaignUI {
     alignment: "left" | "center" | "right";
-    overlay_opacity: number;
-    text_color: string;
+    // Support both casings for backward compatibility during migration
+    overlay_opacity?: number;
+    overlayOpacity?: number;
+    text_color?: string;
+    textColor?: string;
     id: number;
     // Positioning
     titlePosX?: number;
@@ -38,6 +45,13 @@ export interface CampaignUI {
     ctaPosY?: number;
     countdownPosX?: number;
     countdownPosY?: number;
+    // New Styling
+    titleFontSize?: number | null;
+    subtitleFontSize?: number | null;
+    fontWeight?: "normal" | "bold";
+    overlayColor?: "black" | "gradient" | "brand";
+    deviceTarget?: "all" | "desktop" | "mobile";
+    enableAnalytics?: boolean;
 }
 
 /**

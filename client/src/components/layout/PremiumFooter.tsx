@@ -74,20 +74,26 @@ export function PremiumFooter() {
                     <div>
                         <h4 className="text-[#878787] text-[12px] font-medium mb-4 uppercase">Social</h4>
                         <div className="flex items-center gap-4 mb-6">
-                            <a href="#" className="hover:text-flipkart-blue"><Facebook className="w-5 h-5" /></a>
-                            <a href="#" className="hover:text-flipkart-blue"><Twitter className="w-5 h-5" /></a>
-                            <a href="#" className="hover:text-flipkart-blue"><Youtube className="w-5 h-5" /></a>
+                            <a href="https://www.facebook.com/its.sophieeee010" target="_blank" rel="noopener noreferrer" className="hover:text-flipkart-blue"><Facebook className="w-5 h-5" /></a>
+                            <a href="https://x.com/joyhenba795" target="_blank" rel="noopener noreferrer" className="hover:text-flipkart-blue"><Twitter className="w-5 h-5" /></a>
+                            <a href="https://www.instagram.com/its.sophieeee010" target="_blank" rel="noopener noreferrer" className="hover:text-flipkart-blue"><Instagram className="w-5 h-5" /></a>
+                            <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="hover:text-flipkart-blue"><Youtube className="w-5 h-5" /></a>
                         </div>
 
                         <h4 className="text-[#878787] text-[12px] font-medium mb-4 uppercase">Mail Us:</h4>
-                        <p className="text-[12px] leading-relaxed">
-                            Steal the Deal Private Limited,<br />
-                            Buildings Alyssa, Begonia &<br />
-                            Clove Embassy Tech Village,<br />
-                            Outer Ring Road, Devarabeesanahalli Village,<br />
-                            Bengaluru, 560103,<br />
-                            Karnataka, India
+                        <p className="text-[12px] leading-relaxed mb-2">
+                            Steal the Deal,<br />
+                            Thoubal Khangabok,<br />
+                            Manipur,<br />
+                            Thoubal, 795138,<br />
+                            India
                         </p>
+                        <a href="mailto:sophiyamsdm@gmail.com" className="flex items-center gap-2 text-sm font-bold text-white hover:text-yellow-500 transition-colors mt-2">
+                            <Mail className="w-4 h-4" /> sophiyamsdm@gmail.com
+                        </a>
+                        <a href="tel:+918798990352" className="flex items-center gap-2 text-sm font-bold text-white hover:text-yellow-500 transition-colors mt-2">
+                            <Phone className="w-4 h-4" /> +91 8798990352
+                        </a>
                     </div>
                 </div>
             </div>
