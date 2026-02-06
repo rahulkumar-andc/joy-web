@@ -115,8 +115,21 @@ export function HeroSystem() {
         );
     }
 
+    // Debug: Log dimensions for verification
+    useEffect(() => {
+        const checkDimensions = () => {
+            const el = document.getElementById('hero-main-container');
+            if (el) {
+                console.log(`[HeroSystem] ${el.offsetWidth}x${el.offsetHeight}`);
+            }
+        };
+        window.addEventListener('resize', checkDimensions);
+        checkDimensions();
+        return () => window.removeEventListener('resize', checkDimensions);
+    }, []);
+
     return (
-        <section className="relative h-screen min-h-[700px] w-full overflow-hidden bg-black text-white">
+        <section id="hero-main-container" className="relative h-[100vh] max-h-[720px] w-full overflow-hidden bg-black text-white">
             <AnimatePresence mode="wait">
                 <motion.div
                     key={currentHero.ui.id || 'default'}

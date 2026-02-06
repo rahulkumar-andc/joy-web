@@ -77,8 +77,27 @@ export default function LivePreviewCampaign() {
 
     // We need to map `data` (which is InsertHeroCampaign flat structure) to HeroOverlay props.
 
+    // Debug: Log dimensions for verification
+    useEffect(() => {
+        const checkDimensions = () => {
+            const el = document.getElementById('preview-main-container');
+            if (el) {
+                console.log(`[LivePreview] ${el.offsetWidth}x${el.offsetHeight}`);
+            }
+        };
+        window.addEventListener('resize', checkDimensions);
+        checkDimensions(); // Initial check
+
+        // Poll briefly to catch iframe resize
+        const interval = setInterval(checkDimensions, 1000);
+        return () => {
+            window.removeEventListener('resize', checkDimensions);
+            clearInterval(interval);
+        };
+    }, []);
+
     return (
-        <section className="relative h-screen min-h-[700px] w-full overflow-hidden bg-black text-white">
+        <section id="preview-main-container" className="relative h-[100vh] max-h-[720px] w-full overflow-hidden bg-black text-white">
             <HeroMedia type={mediaType} url={mediaUrl} />
             <HeroOverlay
                 title={data.title || "Campaign Title"}
