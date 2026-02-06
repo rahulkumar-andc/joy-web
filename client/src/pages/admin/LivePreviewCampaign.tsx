@@ -9,8 +9,30 @@ type PreviewData = Partial<InsertHeroCampaign> & {
     mediaUrlPreview?: string; // Special field for blob URLs from file uploads
 };
 
+// Default mock data for direct access
+const DEFAULT_PREVIEW: PreviewData = {
+    title: "Live Preview Mode",
+    subtitle: "This is a sample preview. Edit the campaign settings to see your changes in real-time.",
+    mediaType: "image",
+    mediaUrl: "https://images.unsplash.com/photo-1441986300917-64674bd600d8", // Standard placeholder
+    ctaLabel: "Sample Button",
+    ctaUrl: "#",
+    contentAlignment: "left",
+    textColor: "#ffffff",
+    overlayOpacity: "0.4",
+    titleFontSize: 50,
+    subtitleFontSize: 24,
+    fontWeight: "bold",
+    titlePosX: 50,
+    titlePosY: 30,
+    subtitlePosX: 50,
+    subtitlePosY: 50,
+    ctaPosX: 50,
+    ctaPosY: 70,
+};
+
 export default function LivePreviewCampaign() {
-    const [data, setData] = useState<PreviewData | null>(null);
+    const [data, setData] = useState<PreviewData>(DEFAULT_PREVIEW);
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
@@ -32,20 +54,7 @@ export default function LivePreviewCampaign() {
         return () => window.removeEventListener("message", handleMessage);
     }, []);
 
-    if (!data) {
-        return (
-            <div className="flex items-center justify-center h-screen bg-black text-white/50">
-                <div className="text-center max-w-md px-6">
-                    <p className="text-xl font-medium mb-2">Live Preview Mode</p>
-                    <p>Waiting for campaign data from the Admin Panel.</p>
-                    <p className="text-sm mt-4 text-white/30">
-                        This page is designed to be embedded in the Campaign Editor.
-                        If you are viewing this directly, no data is being sent.
-                    </p>
-                </div>
-            </div>
-        );
-    }
+
 
     // Determine Logic
     const mediaUrl = data.mediaUrlPreview || data.mediaUrl || "";
