@@ -129,7 +129,8 @@ export function HeroSystem() {
     }, []);
 
     return (
-        <section id="hero-main-container" className="relative h-[100vh] max-h-[720px] w-full overflow-hidden bg-black text-white">
+    return (
+        <section id="hero-main-container" className="relative w-full h-[100vh] min-h-[720px] overflow-hidden bg-black text-white">
             <AnimatePresence mode="wait">
                 <motion.div
                     key={currentHero.ui.id || 'default'}

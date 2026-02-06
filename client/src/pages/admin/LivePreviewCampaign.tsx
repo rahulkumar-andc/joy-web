@@ -97,7 +97,8 @@ export default function LivePreviewCampaign() {
     }, []);
 
     return (
-        <section id="preview-main-container" className="relative h-[100vh] max-h-[720px] w-full overflow-hidden bg-black text-white">
+    return (
+        <section id="preview-main-container" className="relative w-full h-[100vh] min-h-[720px] overflow-hidden bg-black text-white">
             <HeroMedia type={mediaType} url={mediaUrl} />
             <HeroOverlay
                 title={data.title || "Campaign Title"}

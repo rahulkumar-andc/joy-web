@@ -750,7 +750,7 @@ export default function AdminCampaigns() {
                                     </div>
 
                                     {/* Right Column: Live Preview */}
-                                    <div className="hidden lg:block lg:col-span-7 bg-muted rounded-lg border overflow-hidden relative h-[720px]">
+                                    <div className="hidden lg:block lg:col-span-7 bg-muted rounded-lg border overflow-hidden relative w-full h-[100vh] min-h-[720px]">
                                         <div className="absolute top-2 right-2 z-10 bg-black/70 text-white text-xs px-2 py-1 rounded pointer-events-none">
                                             Live Preview
                                         </div>
