@@ -228,7 +228,7 @@ export function HeroOverlay({
                     variants={variants.item}
                     className={cn(
                         "text-3xl md:text-5xl lg:text-7xl tracking-tight drop-shadow-sm text-center",
-                        fontWeight === "bold" ? "font-extrabold" : "font-bold"
+                        fontWeight === "bold" ? "font-bold" : "font-normal"
                     )}
                     tabIndex={0}
                     style={{
