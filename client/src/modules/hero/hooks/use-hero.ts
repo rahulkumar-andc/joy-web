@@ -36,15 +36,15 @@ export interface CampaignUI {
     text_color?: string;
     textColor?: string;
     id: number;
-    // Positioning
-    titlePosX?: number;
-    titlePosY?: number;
-    subtitlePosX?: number;
-    subtitlePosY?: number;
-    ctaPosX?: number;
-    ctaPosY?: number;
-    countdownPosX?: number;
-    countdownPosY?: number;
+    // Positioning (Offsets)
+    titleOffsetX?: number;
+    titleOffsetY?: number;
+    subtitleOffsetX?: number;
+    subtitleOffsetY?: number;
+    ctaOffsetX?: number;
+    ctaOffsetY?: number;
+    countdownOffsetX?: number;
+    countdownOffsetY?: number;
     // New Styling
     titleFontSize?: number | null;
     subtitleFontSize?: number | null;
@@ -84,14 +84,14 @@ export const DEFAULT_HERO_CONFIG: HeroConfig = {
         overlay_opacity: 0.4,
         text_color: "#ffffff",
         id: 0,
-        titlePosX: 50,
-        titlePosY: 20,
-        subtitlePosX: 50,
-        subtitlePosY: 40,
-        ctaPosX: 50,
-        ctaPosY: 60,
-        countdownPosX: 50,
-        countdownPosY: 10,
+        titleOffsetX: 0,
+        titleOffsetY: 0,
+        subtitleOffsetX: 0,
+        subtitleOffsetY: 50,
+        ctaOffsetX: 0,
+        ctaOffsetY: 100,
+        countdownOffsetX: 0,
+        countdownOffsetY: -100,
     },
 };
 

@@ -79,7 +79,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { icon: Truck, title: "Free Shipping", desc: "On all orders over ₹2000" },
-              { icon: RefreshCcw, title: "Easy Returns", desc: "30-day money back guarantee" },
+              { icon: RefreshCcw, title: "Easy Returns", desc: "7-day replacement guarantee" },
               { icon: ShieldCheck, title: "Secure Payment", desc: "100% protected payments" },
             ].map((feature, idx) => (
               <motion.div

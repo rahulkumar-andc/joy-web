@@ -7,6 +7,13 @@ import { SocialProof } from "./SocialProof";
 import { apiRequest } from "@/lib/queryClient";
 import { Share2, Heart } from "lucide-react";
 
+// Helper to strip HTML underline tags from text
+const stripUnderlineTags = (text: string | null | undefined): string | null => {
+    if (!text) return null;
+    // Remove <u> and </u> tags while preserving the text content
+    return text.replace(/<\/?u>/gi, '');
+};
+
 interface HeroOverlayProps {
     title: string;
     subtitle?: string | null;
@@ -18,15 +25,15 @@ interface HeroOverlayProps {
         label: string | null;
         href: string | null;
     };
-    // Positioning (Percentages 0-100)
-    titlePosX?: number;
-    titlePosY?: number;
-    subtitlePosX?: number;
-    subtitlePosY?: number;
-    ctaPosX?: number;
-    ctaPosY?: number;
-    countdownPosX?: number;
-    countdownPosY?: number;
+    // Positioning (Offsets in pixels)
+    titleOffsetX?: number;
+    titleOffsetY?: number;
+    subtitleOffsetX?: number;
+    subtitleOffsetY?: number;
+    ctaOffsetX?: number;
+    ctaOffsetY?: number;
+    countdownOffsetX?: number;
+    countdownOffsetY?: number;
 
     alignment: "left" | "center" | "right";
     opacity: number;
@@ -118,14 +125,14 @@ export function HeroOverlay({
     cta,
     secondaryCta,
     // Destructure new position props with defaults or fallbacks
-    titlePosX = 50,
-    titlePosY = 20,
-    subtitlePosX = 50,
-    subtitlePosY = 40,
-    ctaPosX = 50,
-    ctaPosY = 60,
-    countdownPosX = 50,
-    countdownPosY = 10,
+    titleOffsetX = 0,
+    titleOffsetY = 0,
+    subtitleOffsetX = 0,
+    subtitleOffsetY = 50,
+    ctaOffsetX = 0,
+    ctaOffsetY = 100,
+    countdownOffsetX = 0,
+    countdownOffsetY = -100,
 
     alignment, // Kept for backward compatibility or text-align
     opacity, // Not used primarily in this new layout but good to keep
@@ -169,11 +176,12 @@ export function HeroOverlay({
         }
     };
 
-    // Helper for absolute positioning
-    const getPosStyle = (x?: number, y?: number) => ({
-        left: `${x ?? 50}%`,
-        top: `${y ?? 50}%`,
-        transform: "translate(-50%, -50%)",
+    // Helper for absolute positioning from CENTER
+    // x/y are pixel offsets from the center of the container
+    const getPosStyle = (xOffset?: number, yOffset?: number) => ({
+        left: '50%',
+        top: '50%',
+        transform: `translate(calc(-50% + ${xOffset ?? 0}px), calc(-50% + ${yOffset ?? 0}px))`,
         position: "absolute" as const,
         zIndex: 20,
         width: 'max-content',
@@ -217,7 +225,7 @@ export function HeroOverlay({
                 {endTime && (
                     <motion.div
                         variants={variants.item}
-                        style={getPosStyle(countdownPosX, countdownPosY)}
+                        style={getPosStyle(countdownOffsetX, countdownOffsetY)}
                     >
                         <CountdownTimer targetDate={endTime} />
                     </motion.div>
@@ -232,7 +240,7 @@ export function HeroOverlay({
                     )}
                     tabIndex={0}
                     style={{
-                        ...getPosStyle(titlePosX, titlePosY),
+                        ...getPosStyle(titleOffsetX, titleOffsetY),
                         fontSize: titleFontSize ? `${titleFontSize}px` : undefined,
                     }}
                 >
@@ -245,11 +253,11 @@ export function HeroOverlay({
                         variants={variants.item}
                         className="text-lg md:text-xl lg:text-2xl opacity-90 leading-relaxed drop-shadow-sm text-center max-w-2xl"
                         style={{
-                            ...getPosStyle(subtitlePosX, subtitlePosY),
+                            ...getPosStyle(subtitleOffsetX, subtitleOffsetY),
                             fontSize: subtitleFontSize ? `${subtitleFontSize}px` : undefined,
                         }}
                     >
-                        {subtitle}
+                        {stripUnderlineTags(subtitle)}
                     </motion.p>
                 )}
 
@@ -259,7 +267,7 @@ export function HeroOverlay({
                     className="flex flex-wrap gap-4 justify-center pointer-events-auto"
                     role="group"
                     aria-label="Call to action buttons"
-                    style={getPosStyle(ctaPosX, ctaPosY)}
+                    style={getPosStyle(ctaOffsetX, ctaOffsetY)}
                 >
                     {/* Primary CTA */}
                     {cta?.label && cta.href && (

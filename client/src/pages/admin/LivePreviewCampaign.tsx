@@ -23,12 +23,14 @@ const DEFAULT_PREVIEW: PreviewData = {
     titleFontSize: 50,
     subtitleFontSize: 24,
     fontWeight: "bold",
-    titlePosX: 50,
-    titlePosY: 30,
-    subtitlePosX: 50,
-    subtitlePosY: 50,
-    ctaPosX: 50,
-    ctaPosY: 70,
+    titleOffsetX: 0,
+    titleOffsetY: -50,
+    subtitleOffsetX: 0,
+    subtitleOffsetY: 20,
+    ctaOffsetX: 0,
+    ctaOffsetY: 100,
+    countdownOffsetX: 0,
+    countdownOffsetY: -100,
 };
 
 export default function LivePreviewCampaign() {
@@ -97,7 +99,6 @@ export default function LivePreviewCampaign() {
     }, []);
 
     return (
-    return (
         <section id="preview-main-container" className="relative w-full h-[100vh] min-h-[720px] overflow-hidden bg-black text-white">
             <HeroMedia type={mediaType} url={mediaUrl} />
             <HeroOverlay
@@ -124,14 +125,14 @@ export default function LivePreviewCampaign() {
                 endTime={data.endTime?.toString()} // Ensure string format if needed
 
                 // Positioning
-                titlePosX={data.titlePosX ?? 50}
-                titlePosY={data.titlePosY ?? 20}
-                subtitlePosX={data.subtitlePosX ?? 50}
-                subtitlePosY={data.subtitlePosY ?? 40}
-                ctaPosX={data.ctaPosX ?? 50}
-                ctaPosY={data.ctaPosY ?? 60}
-                countdownPosX={data.countdownPosX ?? 50}
-                countdownPosY={data.countdownPosY ?? 10}
+                titleOffsetX={data.titleOffsetX ?? 0}
+                titleOffsetY={data.titleOffsetY ?? 0}
+                subtitleOffsetX={data.subtitleOffsetX ?? 0}
+                subtitleOffsetY={data.subtitleOffsetY ?? 50}
+                ctaOffsetX={data.ctaOffsetX ?? 0}
+                ctaOffsetY={data.ctaOffsetY ?? 100}
+                countdownOffsetX={data.countdownOffsetX ?? 0}
+                countdownOffsetY={data.countdownOffsetY ?? -100}
 
                 // New Styling
                 titleFontSize={data.titleFontSize}

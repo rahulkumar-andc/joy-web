@@ -58,14 +58,14 @@ export default function AdminCampaigns() {
             overlayOpacity: "0.4",
             targetAudience: "all",
             endTime: null,
-            titlePosX: 50,
-            titlePosY: 20,
-            subtitlePosX: 50,
-            subtitlePosY: 40,
-            ctaPosX: 50,
-            ctaPosY: 60,
-            countdownPosX: 50,
-            countdownPosY: 10,
+            titleOffsetX: 0,
+            titleOffsetY: 0,
+            subtitleOffsetX: 0,
+            subtitleOffsetY: 50,
+            ctaOffsetX: 0,
+            ctaOffsetY: 100,
+            countdownOffsetX: 0,
+            countdownOffsetY: -100,
             // New Fields Defaults
             startTime: null,
             titleFontSize: null,
@@ -247,14 +247,14 @@ export default function AdminCampaigns() {
             textColor: campaign.textColor,
             overlayOpacity: String(campaign.overlayOpacity),
             targetAudience: campaign.targetAudience as any,
-            titlePosX: campaign.titlePosX ?? 50,
-            titlePosY: campaign.titlePosY ?? 20,
-            subtitlePosX: campaign.subtitlePosX ?? 50,
-            subtitlePosY: campaign.subtitlePosY ?? 40,
-            ctaPosX: campaign.ctaPosX ?? 50,
-            ctaPosY: campaign.ctaPosY ?? 60,
-            countdownPosX: campaign.countdownPosX ?? 50,
-            countdownPosY: campaign.countdownPosY ?? 10,
+            titleOffsetX: campaign.titleOffsetX ?? 0,
+            titleOffsetY: campaign.titleOffsetY ?? 0,
+            subtitleOffsetX: campaign.subtitleOffsetX ?? 0,
+            subtitleOffsetY: campaign.subtitleOffsetY ?? 50,
+            ctaOffsetX: campaign.ctaOffsetX ?? 0,
+            ctaOffsetY: campaign.ctaOffsetY ?? 100,
+            countdownOffsetX: campaign.countdownOffsetX ?? 0,
+            countdownOffsetY: campaign.countdownOffsetY ?? -100,
             endTime: campaign.endTime ? new Date(campaign.endTime) : null,
             // New Fields Hydration
             startTime: campaign.startTime ? new Date(campaign.startTime) : null,
@@ -288,14 +288,14 @@ export default function AdminCampaigns() {
             overlayOpacity: "0.4",
             targetAudience: "all",
             endTime: null,
-            titlePosX: 50,
-            titlePosY: 20,
-            subtitlePosX: 50,
-            subtitlePosY: 40,
-            ctaPosX: 50,
-            ctaPosY: 60,
-            countdownPosX: 50,
-            countdownPosY: 10,
+            titleOffsetX: 0,
+            titleOffsetY: 0,
+            subtitleOffsetX: 0,
+            subtitleOffsetY: 50,
+            ctaOffsetX: 0,
+            ctaOffsetY: 100,
+            countdownOffsetX: 0,
+            countdownOffsetY: -100,
             // New Fields Reset
             startTime: null,
             titleFontSize: null,
@@ -595,18 +595,18 @@ export default function AdminCampaigns() {
                                             <div className="grid grid-cols-2 gap-x-8 gap-y-6">
                                                 {/* Title Position */}
                                                 <div className="space-y-2">
-                                                    <FormLabel className="font-medium">Title Position</FormLabel>
+                                                    <FormLabel className="font-medium">Title Offset (px from center)</FormLabel>
                                                     <div className="grid grid-cols-2 gap-4">
-                                                        <FormField control={form.control} name="titlePosX" render={({ field }) => (
+                                                        <FormField control={form.control} name="titleOffsetX" render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel className="text-xs text-muted-foreground">Horizontal (X)</FormLabel>
-                                                                <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                                <FormLabel className="text-xs text-muted-foreground">Offset X</FormLabel>
+                                                                <FormControl><Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
                                                             </FormItem>
                                                         )} />
-                                                        <FormField control={form.control} name="titlePosY" render={({ field }) => (
+                                                        <FormField control={form.control} name="titleOffsetY" render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel className="text-xs text-muted-foreground">Vertical (Y)</FormLabel>
-                                                                <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                                <FormLabel className="text-xs text-muted-foreground">Offset Y</FormLabel>
+                                                                <FormControl><Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
                                                             </FormItem>
                                                         )} />
                                                     </div>
@@ -614,18 +614,18 @@ export default function AdminCampaigns() {
 
                                                 {/* Subtitle Position */}
                                                 <div className="space-y-2">
-                                                    <FormLabel className="font-medium">Subtitle Position</FormLabel>
+                                                    <FormLabel className="font-medium">Subtitle Offset</FormLabel>
                                                     <div className="grid grid-cols-2 gap-4">
-                                                        <FormField control={form.control} name="subtitlePosX" render={({ field }) => (
+                                                        <FormField control={form.control} name="subtitleOffsetX" render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel className="text-xs text-muted-foreground">Horizontal (X)</FormLabel>
-                                                                <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                                <FormLabel className="text-xs text-muted-foreground">Offset X</FormLabel>
+                                                                <FormControl><Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
                                                             </FormItem>
                                                         )} />
-                                                        <FormField control={form.control} name="subtitlePosY" render={({ field }) => (
+                                                        <FormField control={form.control} name="subtitleOffsetY" render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel className="text-xs text-muted-foreground">Vertical (Y)</FormLabel>
-                                                                <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                                <FormLabel className="text-xs text-muted-foreground">Offset Y</FormLabel>
+                                                                <FormControl><Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
                                                             </FormItem>
                                                         )} />
                                                     </div>
@@ -633,18 +633,18 @@ export default function AdminCampaigns() {
 
                                                 {/* CTA Position */}
                                                 <div className="space-y-2">
-                                                    <FormLabel className="font-medium">CTA Button Position</FormLabel>
+                                                    <FormLabel className="font-medium">CTA Button Offset</FormLabel>
                                                     <div className="grid grid-cols-2 gap-4">
-                                                        <FormField control={form.control} name="ctaPosX" render={({ field }) => (
+                                                        <FormField control={form.control} name="ctaOffsetX" render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel className="text-xs text-muted-foreground">Horizontal (X)</FormLabel>
-                                                                <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                                <FormLabel className="text-xs text-muted-foreground">Offset X</FormLabel>
+                                                                <FormControl><Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
                                                             </FormItem>
                                                         )} />
-                                                        <FormField control={form.control} name="ctaPosY" render={({ field }) => (
+                                                        <FormField control={form.control} name="ctaOffsetY" render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel className="text-xs text-muted-foreground">Vertical (Y)</FormLabel>
-                                                                <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                                <FormLabel className="text-xs text-muted-foreground">Offset Y</FormLabel>
+                                                                <FormControl><Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
                                                             </FormItem>
                                                         )} />
                                                     </div>
@@ -652,18 +652,18 @@ export default function AdminCampaigns() {
 
                                                 {/* Countdown Position */}
                                                 <div className="space-y-2">
-                                                    <FormLabel className="font-medium">Countdown Position</FormLabel>
+                                                    <FormLabel className="font-medium">Countdown Offset</FormLabel>
                                                     <div className="grid grid-cols-2 gap-4">
-                                                        <FormField control={form.control} name="countdownPosX" render={({ field }) => (
+                                                        <FormField control={form.control} name="countdownOffsetX" render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel className="text-xs text-muted-foreground">Horizontal (X)</FormLabel>
-                                                                <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                                <FormLabel className="text-xs text-muted-foreground">Offset X</FormLabel>
+                                                                <FormControl><Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
                                                             </FormItem>
                                                         )} />
-                                                        <FormField control={form.control} name="countdownPosY" render={({ field }) => (
+                                                        <FormField control={form.control} name="countdownOffsetY" render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel className="text-xs text-muted-foreground">Vertical (Y)</FormLabel>
-                                                                <FormControl><Input type="number" min={0} max={100} {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
+                                                                <FormLabel className="text-xs text-muted-foreground">Offset Y</FormLabel>
+                                                                <FormControl><Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl>
                                                             </FormItem>
                                                         )} />
                                                     </div>

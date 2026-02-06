@@ -49,14 +49,14 @@ export function HeroSystem() {
             overlayOpacity: 0.4,
             textColor: "#ffffff",
             id: 0,
-            titlePosX: 50,
-            titlePosY: 20,
-            subtitlePosX: 50,
-            subtitlePosY: 40,
-            ctaPosX: 50,
-            ctaPosY: 60,
-            countdownPosX: 50,
-            countdownPosY: 10,
+            titleOffsetX: 0,
+            titleOffsetY: 0,
+            subtitleOffsetX: 0,
+            subtitleOffsetY: 50,
+            ctaOffsetX: 0,
+            ctaOffsetY: 100,
+            countdownOffsetX: 0,
+            countdownOffsetY: -100,
             // Defaults for new fields
             titleFontSize: null,
             subtitleFontSize: null,
@@ -101,10 +101,29 @@ export function HeroSystem() {
         }
     }, [currentHero?.ui?.id]);
 
+    // Debug: Log dimensions for verification
+    useEffect(() => {
+        const checkDimensions = () => {
+            const el = document.getElementById('hero-main-container');
+            if (el) {
+                console.log(`[HeroSystem] ${el.offsetWidth}x${el.offsetHeight}`);
+            }
+        };
+        window.addEventListener('resize', checkDimensions);
+        checkDimensions(); // Initial check - might be null if loading but safe
+
+        // Poll once after loading cleared
+        if (!isLoading) {
+            setTimeout(checkDimensions, 500);
+        }
+
+        return () => window.removeEventListener('resize', checkDimensions);
+    }, [isLoading]);
+
     // Skeleton loading
     if (isLoading && heroes.length === 0) {
         return (
-            <div className="relative h-[80vh] w-full bg-muted overflow-hidden">
+            <div className="relative h-[100vh] min-h-[720px] w-full bg-muted overflow-hidden">
                 <Skeleton className="absolute inset-0 w-full h-full" />
                 <div className="absolute inset-0 flex flex-col justify-center items-start z-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
                     <Skeleton className="h-16 w-3/4 mb-4" />
@@ -115,20 +134,8 @@ export function HeroSystem() {
         );
     }
 
-    // Debug: Log dimensions for verification
-    useEffect(() => {
-        const checkDimensions = () => {
-            const el = document.getElementById('hero-main-container');
-            if (el) {
-                console.log(`[HeroSystem] ${el.offsetWidth}x${el.offsetHeight}`);
-            }
-        };
-        window.addEventListener('resize', checkDimensions);
-        checkDimensions();
-        return () => window.removeEventListener('resize', checkDimensions);
-    }, []);
 
-    return (
+
     return (
         <section id="hero-main-container" className="relative w-full h-[100vh] min-h-[720px] overflow-hidden bg-black text-white">
             <AnimatePresence mode="wait">
@@ -155,14 +162,14 @@ export function HeroSystem() {
                         campaignId={currentHero.ui.id}
 
                         // Positioning
-                        titlePosX={currentHero.ui.titlePosX ?? 50}
-                        titlePosY={currentHero.ui.titlePosY ?? 20}
-                        subtitlePosX={currentHero.ui.subtitlePosX ?? 50}
-                        subtitlePosY={currentHero.ui.subtitlePosY ?? 40}
-                        ctaPosX={currentHero.ui.ctaPosX ?? 50}
-                        ctaPosY={currentHero.ui.ctaPosY ?? 60}
-                        countdownPosX={currentHero.ui.countdownPosX ?? 50}
-                        countdownPosY={currentHero.ui.countdownPosY ?? 10}
+                        titleOffsetX={currentHero.ui.titleOffsetX ?? 0}
+                        titleOffsetY={currentHero.ui.titleOffsetY ?? 0}
+                        subtitleOffsetX={currentHero.ui.subtitleOffsetX ?? 0}
+                        subtitleOffsetY={currentHero.ui.subtitleOffsetY ?? 50}
+                        ctaOffsetX={currentHero.ui.ctaOffsetX ?? 0}
+                        ctaOffsetY={currentHero.ui.ctaOffsetY ?? 100}
+                        countdownOffsetX={currentHero.ui.countdownOffsetX ?? 0}
+                        countdownOffsetY={currentHero.ui.countdownOffsetY ?? -100}
 
                         // New Styling Props
                         titleFontSize={(currentHero.ui as any).titleFontSize}

@@ -28,16 +28,15 @@ export interface CampaignDTO {
         alignment: 'left' | 'center' | 'right';
         overlayOpacity: number;
         textColor: string;
-        // Positioning
-        // Positioning
-        titlePosX: number;
-        titlePosY: number;
-        subtitlePosX: number;
-        subtitlePosY: number;
-        ctaPosX: number;
-        ctaPosY: number;
-        countdownPosX: number;
-        countdownPosY: number;
+        // Positioning (Offsets in px)
+        titleOffsetX: number;
+        titleOffsetY: number;
+        subtitleOffsetX: number;
+        subtitleOffsetY: number;
+        ctaOffsetX: number;
+        ctaOffsetY: number;
+        countdownOffsetX: number;
+        countdownOffsetY: number;
         // New Styling Fields
         titleFontSize?: number | null;
         subtitleFontSize?: number | null;
@@ -77,14 +76,14 @@ function toCampaignDTO(campaign: HeroCampaign): CampaignDTO {
             alignment: campaign.contentAlignment as 'left' | 'center' | 'right',
             overlayOpacity: Number(campaign.overlayOpacity),
             textColor: campaign.textColor,
-            titlePosX: campaign.titlePosX ?? 50,
-            titlePosY: campaign.titlePosY ?? 20,
-            subtitlePosX: campaign.subtitlePosX ?? 50,
-            subtitlePosY: campaign.subtitlePosY ?? 40,
-            ctaPosX: campaign.ctaPosX ?? 50,
-            ctaPosY: campaign.ctaPosY ?? 60,
-            countdownPosX: campaign.countdownPosX ?? 50,
-            countdownPosY: campaign.countdownPosY ?? 10,
+            titleOffsetX: campaign.titleOffsetX ?? 0,
+            titleOffsetY: campaign.titleOffsetY ?? 0,
+            subtitleOffsetX: campaign.subtitleOffsetX ?? 0,
+            subtitleOffsetY: campaign.subtitleOffsetY ?? 0,
+            ctaOffsetX: campaign.ctaOffsetX ?? 0,
+            ctaOffsetY: campaign.ctaOffsetY ?? 0,
+            countdownOffsetX: campaign.countdownOffsetX ?? 0,
+            countdownOffsetY: campaign.countdownOffsetY ?? 0,
             // New Styling Mapping
             titleFontSize: campaign.titleFontSize,
             subtitleFontSize: campaign.subtitleFontSize,
@@ -313,14 +312,14 @@ export const DEFAULT_CAMPAIGN_CONFIG: InsertHeroCampaign = {
     textColor: "#ffffff",
     overlayOpacity: "0.4",
     targetAudience: "all",
-    titlePosX: 50,
-    titlePosY: 20,
-    subtitlePosX: 50,
-    subtitlePosY: 40,
-    ctaPosX: 50,
-    ctaPosY: 60,
-    countdownPosX: 50,
-    countdownPosY: 10,
+    titleOffsetX: 0,
+    titleOffsetY: 0,
+    subtitleOffsetX: 0,
+    subtitleOffsetY: 50,
+    ctaOffsetX: 0,
+    ctaOffsetY: 100,
+    countdownOffsetX: 0,
+    countdownOffsetY: -100,
     // New Defaults
     fontWeight: "normal",
     overlayColor: "black",
