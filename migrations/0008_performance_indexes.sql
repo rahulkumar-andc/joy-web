@@ -26,6 +26,7 @@ ON products(created_at DESC);
 -- Full-text search index (requires pg_trgm extension)
 -- Note: Run this first: CREATE EXTENSION IF NOT EXISTS pg_trgm;
 -- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_name_trgm 
+-- CREATE INDEX IF NOT EXISTS idx_products_name_trgm 
 -- ON products USING gin(name gin_trgm_ops);
 
 -- ============================================================================
@@ -33,15 +34,15 @@ ON products(created_at DESC);
 -- ============================================================================
 
 -- Index for user's orders (very common: "my orders" page)
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_orders_user_id 
+CREATE INDEX IF NOT EXISTS idx_orders_user_id 
 ON orders(user_id);
 
 -- Index for order status filtering (admin panel)
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_orders_status 
+CREATE INDEX IF NOT EXISTS idx_orders_status 
 ON orders(status);
 
 -- Index for order state (state machine queries)
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_orders_order_state 
+CREATE INDEX IF NOT EXISTS idx_orders_order_state 
 ON orders(order_state);
 
 -- Index for created_at (order listing sorted by date)

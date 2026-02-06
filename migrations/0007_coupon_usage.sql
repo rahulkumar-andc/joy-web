@@ -12,6 +12,14 @@ CREATE TABLE IF NOT EXISTS "coupon_usage" (
     CONSTRAINT "unique_user_coupon" UNIQUE("coupon_id", "user_id")
 );
 
+-- Ensure constraint exists in case table was created without it
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unique_user_coupon') THEN
+        ALTER TABLE "coupon_usage" ADD CONSTRAINT "unique_user_coupon" UNIQUE("coupon_id", "user_id");
+    END IF;
+END $$;
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS "idx_coupon_usage_coupon_id" ON "coupon_usage"("coupon_id");
 CREATE INDEX IF NOT EXISTS "idx_coupon_usage_user_id" ON "coupon_usage"("user_id");
