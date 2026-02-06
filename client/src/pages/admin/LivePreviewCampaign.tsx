@@ -78,7 +78,7 @@ export default function LivePreviewCampaign() {
     // We need to map `data` (which is InsertHeroCampaign flat structure) to HeroOverlay props.
 
     return (
-        <section className="relative h-screen w-full overflow-hidden bg-black text-white">
+        <section className="relative h-screen min-h-[700px] w-full overflow-hidden bg-black text-white">
             <HeroMedia type={mediaType} url={mediaUrl} />
             <HeroOverlay
                 title={data.title || "Campaign Title"}
