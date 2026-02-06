@@ -35,9 +35,13 @@ export default function LivePreviewCampaign() {
     if (!data) {
         return (
             <div className="flex items-center justify-center h-screen bg-black text-white/50">
-                <div className="text-center">
-                    <p>Waiting for campaign data...</p>
-                    <p className="text-sm mt-2">Edit the form to see changes.</p>
+                <div className="text-center max-w-md px-6">
+                    <p className="text-xl font-medium mb-2">Live Preview Mode</p>
+                    <p>Waiting for campaign data from the Admin Panel.</p>
+                    <p className="text-sm mt-4 text-white/30">
+                        This page is designed to be embedded in the Campaign Editor.
+                        If you are viewing this directly, no data is being sent.
+                    </p>
                 </div>
             </div>
         );
