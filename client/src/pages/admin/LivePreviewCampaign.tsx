@@ -140,6 +140,12 @@ export default function LivePreviewCampaign() {
                 fontWeight={data.fontWeight || "normal"}
                 overlayColor={data.overlayColor || "black"}
 
+                // Dynamic Colors & Fonts (2025)
+                titleColor={data.titleColor || "#ffffff"}
+                subtitleColor={data.subtitleColor || "#ffffff"}
+                buttonColor={data.buttonColor || "#ffffff"}
+                fontFamily={data.fontFamily || "Inter"}
+
                 // Preview specific
                 animationType="none" // Disable entrance animations for smoother preview updates
             />

@@ -48,6 +48,11 @@ export interface CampaignDTO {
             label: string | null;
             href: string | null;
         };
+        // Dynamic Styling (2025)
+        titleColor: string;
+        subtitleColor: string;
+        buttonColor: string;
+        fontFamily: string;
     }
 }
 
@@ -94,7 +99,12 @@ function toCampaignDTO(campaign: HeroCampaign): CampaignDTO {
             secondaryCta: {
                 label: campaign.secondaryCtaLabel,
                 href: campaign.secondaryCtaUrl
-            }
+            },
+            // Dynamic Styling (2025)
+            titleColor: campaign.titleColor ?? '#ffffff',
+            subtitleColor: campaign.subtitleColor ?? '#ffffff',
+            buttonColor: campaign.buttonColor ?? '#ffffff',
+            fontFamily: campaign.fontFamily ?? 'Inter',
         }
     };
 }
@@ -327,6 +337,11 @@ export const DEFAULT_CAMPAIGN_CONFIG: InsertHeroCampaign = {
     enableAnalytics: false,
     impressionCount: 0,
     clickCount: 0,
+    // Dynamic Styling (2025)
+    titleColor: "#ffffff",
+    subtitleColor: "#ffffff",
+    buttonColor: "#ffffff",
+    fontFamily: "Inter",
 };
 
 /**

@@ -62,6 +62,11 @@ export function HeroSystem() {
             subtitleFontSize: null,
             fontWeight: "normal",
             overlayColor: "black",
+            // Dynamic Styling (2025)
+            titleColor: "#ffffff",
+            subtitleColor: "#ffffff",
+            buttonColor: "#ffffff",
+            fontFamily: "Inter",
         },
     };
 
@@ -176,6 +181,12 @@ export function HeroSystem() {
                         subtitleFontSize={(currentHero.ui as any).subtitleFontSize}
                         fontWeight={(currentHero.ui as any).fontWeight || 'normal'}
                         overlayColor={(currentHero.ui as any).overlayColor || 'black'}
+
+                        // Dynamic Colors & Fonts (2025)
+                        titleColor={(currentHero.ui as any).titleColor || '#ffffff'}
+                        subtitleColor={(currentHero.ui as any).subtitleColor || '#ffffff'}
+                        buttonColor={(currentHero.ui as any).buttonColor || '#ffffff'}
+                        fontFamily={(currentHero.ui as any).fontFamily || 'Inter'}
                     />
                 </motion.div>
             </AnimatePresence>

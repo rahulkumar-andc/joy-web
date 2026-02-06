@@ -76,6 +76,11 @@ export default function AdminCampaigns() {
             enableAnalytics: false,
             secondaryCtaLabel: "",
             secondaryCtaUrl: "",
+            // Dynamic Styling (2025)
+            titleColor: "#ffffff",
+            subtitleColor: "#ffffff",
+            buttonColor: "#ffffff",
+            fontFamily: "Inter",
         },
     });
 
@@ -266,6 +271,11 @@ export default function AdminCampaigns() {
             enableAnalytics: campaign.enableAnalytics ?? false,
             secondaryCtaLabel: campaign.secondaryCtaLabel || "",
             secondaryCtaUrl: campaign.secondaryCtaUrl || "",
+            // Dynamic Styling (2025)
+            titleColor: campaign.titleColor || "#ffffff",
+            subtitleColor: campaign.subtitleColor || "#ffffff",
+            buttonColor: campaign.buttonColor || "#ffffff",
+            fontFamily: campaign.fontFamily || "Inter",
         });
         setIsOpen(true);
     };
@@ -306,6 +316,11 @@ export default function AdminCampaigns() {
             enableAnalytics: false,
             secondaryCtaLabel: "",
             secondaryCtaUrl: "",
+            // Dynamic Styling (2025)
+            titleColor: "#ffffff",
+            subtitleColor: "#ffffff",
+            buttonColor: "#ffffff",
+            fontFamily: "Inter",
         });
         setIsOpen(true);
     };
@@ -742,6 +757,53 @@ export default function AdminCampaigns() {
                                                     <FormItem>
                                                         <FormLabel>Subtitle Size (px)</FormLabel>
                                                         <FormControl><Input type="number" placeholder="Default" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? Number(e.target.value) : null)} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                            </div>
+
+                                            {/* Dynamic Styling Section (2025) */}
+                                            <div className="mt-6 space-y-4 border-t pt-4">
+                                                <h4 className="font-medium text-sm">Dynamic Text Colors</h4>
+                                                <div className="grid grid-cols-3 gap-4">
+                                                    <FormField control={form.control} name="titleColor" render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Title Color</FormLabel>
+                                                            <FormControl><Input type="color" {...field} className="h-10 px-2" /></FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )} />
+                                                    <FormField control={form.control} name="subtitleColor" render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Subtitle Color</FormLabel>
+                                                            <FormControl><Input type="color" {...field} className="h-10 px-2" /></FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )} />
+                                                    <FormField control={form.control} name="buttonColor" render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Button Color</FormLabel>
+                                                            <FormControl><Input type="color" {...field} className="h-10 px-2" /></FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )} />
+                                                </div>
+                                                <FormField control={form.control} name="fontFamily" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Font Family</FormLabel>
+                                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="Inter">Inter (Default)</SelectItem>
+                                                                <SelectItem value="Roboto">Roboto</SelectItem>
+                                                                <SelectItem value="Playfair Display">Playfair Display</SelectItem>
+                                                                <SelectItem value="Montserrat">Montserrat</SelectItem>
+                                                                <SelectItem value="Poppins">Poppins</SelectItem>
+                                                                <SelectItem value="Open Sans">Open Sans</SelectItem>
+                                                                <SelectItem value="Lato">Lato</SelectItem>
+                                                                <SelectItem value="Oswald">Oswald</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )} />

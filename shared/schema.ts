@@ -705,6 +705,11 @@ export const heroCampaigns = pgTable("hero_campaigns", {
   fontWeight: text("font_weight", { enum: ["normal", "bold"] }).default("normal"),
   overlayColor: text("overlay_color", { enum: ["black", "gradient", "brand"] }).default("black"),
   deviceTarget: text("device_target", { enum: ["all", "desktop", "mobile"] }).default("all"),
+  // New Dynamic Styling (2025)
+  titleColor: text("title_color").default("#ffffff"),
+  subtitleColor: text("subtitle_color").default("#ffffff"),
+  buttonColor: text("button_color").default("#ffffff"),
+  fontFamily: text("font_family").default("Inter"),
 
   // Analytics Lite
   enableAnalytics: boolean("enable_analytics").default(false),
@@ -746,6 +751,10 @@ export const insertHeroCampaignSchema = createInsertSchema(heroCampaigns).omit({
   fontWeight: z.enum(["normal", "bold"]).default("normal"),
   overlayColor: z.enum(["black", "gradient", "brand"]).default("black"),
   deviceTarget: z.enum(["all", "desktop", "mobile"]).default("all"),
+  titleColor: z.string().default("#ffffff"),
+  subtitleColor: z.string().default("#ffffff"),
+  buttonColor: z.string().default("#ffffff"),
+  fontFamily: z.string().default("Inter"),
   // Handle 'true'/'false' strings from FormData
   enableAnalytics: z.preprocess((val) => {
     if (typeof val === 'string') return val === 'true';

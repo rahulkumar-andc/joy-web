@@ -49,6 +49,12 @@ interface HeroOverlayProps {
     subtitleFontSize?: number | null;
     fontWeight?: "normal" | "bold";
     overlayColor?: "black" | "gradient" | "brand";
+
+    // Dynamic Styling (2025)
+    titleColor?: string;
+    subtitleColor?: string;
+    buttonColor?: string;
+    fontFamily?: string;
 }
 
 // Animation variants based on type
@@ -134,8 +140,8 @@ export function HeroOverlay({
     countdownOffsetX = 0,
     countdownOffsetY = -100,
 
-    alignment, // Kept for backward compatibility or text-align
-    opacity, // Not used primarily in this new layout but good to keep
+    alignment,
+    opacity,
     textColor,
     endTime,
     campaignId,
@@ -148,6 +154,12 @@ export function HeroOverlay({
     subtitleFontSize,
     fontWeight = "normal",
     overlayColor = "black",
+
+    // Dynamic Colors & Fonts
+    titleColor = "#ffffff",
+    subtitleColor = "#ffffff",
+    buttonColor = "#ffffff",
+    fontFamily = "Inter",
 }: HeroOverlayProps) {
     // Accessibility: Respect reduced motion preference
     const prefersReducedMotion = useReducedMotion() ?? false;
@@ -215,6 +227,7 @@ export function HeroOverlay({
             className="absolute inset-0 z-10 overflow-hidden pointer-events-none"
             role="region"
             aria-label="Hero campaign"
+            style={{ fontFamily: fontFamily }}
         >
             {/* Background Overlay */}
             <div
@@ -222,62 +235,90 @@ export function HeroOverlay({
                 style={{ opacity: opacity }}
             />
 
-            {/* Content Container - using a single centered flex column */}
+            {/* Content Container - acts as the animation wrapper */}
             <motion.div
                 variants={variants.container}
                 initial="hidden"
                 animate="visible"
-                className="absolute inset-0 flex flex-col items-center justify-center"
+                className="absolute inset-0"
                 style={{ color: textColor }}
             >
-                {/* Single content wrapper - all elements flow naturally in a column */}
-                <div
-                    className="flex flex-col items-center justify-center gap-4 text-center px-4 max-w-4xl"
-                    style={{
-                        // Use marginTop/marginLeft for global offset if needed
-                        marginTop: `${titleOffsetY ?? 0}px`,
-                        marginLeft: `${titleOffsetX ?? 0}px`,
-                    }}
-                >
-                    {/* Countdown Timer */}
-                    {endTime && (
-                        <motion.div variants={variants.item} className="mb-2">
+                {/* Countdown Timer - wrapper handles positioning */}
+                {endTime && (
+                    <div
+                        className="absolute z-20"
+                        style={{
+                            top: `calc(50% + ${countdownOffsetY ?? -100}px)`,
+                            left: `calc(50% + ${countdownOffsetX ?? 0}px)`,
+                            transform: 'translate(-50%, -50%)',
+                        }}
+                    >
+                        <motion.div variants={variants.item}>
                             <CountdownTimer targetDate={endTime} />
                         </motion.div>
-                    )}
+                    </div>
+                )}
 
-                    {/* Title */}
+                {/* Title - wrapper handles positioning, motion handles animation */}
+                <div
+                    className="absolute z-20"
+                    style={{
+                        top: `calc(50% + ${titleOffsetY ?? 0}px)`,
+                        left: `calc(50% + ${titleOffsetX ?? 0}px)`,
+                        transform: 'translate(-50%, -50%)',
+                    }}
+                >
                     <motion.h1
                         variants={variants.item}
                         className={cn(
-                            "text-3xl md:text-5xl lg:text-7xl tracking-tight drop-shadow-sm",
+                            "text-3xl md:text-5xl lg:text-7xl tracking-tight drop-shadow-lg text-center max-w-[90vw]",
                             fontWeight === "bold" ? "font-bold" : "font-normal"
                         )}
                         tabIndex={0}
                         style={{
                             fontSize: titleFontSize ? `${titleFontSize}px` : undefined,
+                            color: titleColor,
                         }}
                     >
                         {stripUnderlineTags(title)}
                     </motion.h1>
+                </div>
 
-                    {/* Subtitle */}
-                    {subtitle && (
+                {/* Subtitle - wrapper handles positioning, motion handles animation */}
+                {subtitle && (
+                    <div
+                        className="absolute z-20"
+                        style={{
+                            top: `calc(50% + ${subtitleOffsetY ?? 50}px)`,
+                            left: `calc(50% + ${subtitleOffsetX ?? 0}px)`,
+                            transform: 'translate(-50%, -50%)',
+                        }}
+                    >
                         <motion.p
                             variants={variants.item}
-                            className="text-lg md:text-xl lg:text-2xl opacity-90 leading-relaxed drop-shadow-sm max-w-2xl"
+                            className="text-lg md:text-xl lg:text-2xl opacity-90 leading-relaxed drop-shadow-lg max-w-2xl text-center"
                             style={{
                                 fontSize: subtitleFontSize ? `${subtitleFontSize}px` : undefined,
+                                color: subtitleColor,
                             }}
                         >
                             {stripUnderlineTags(subtitle)}
                         </motion.p>
-                    )}
+                    </div>
+                )}
 
-                    {/* CTA Buttons */}
+                {/* CTA Buttons - wrapper handles positioning, motion handles animation */}
+                <div
+                    className="absolute z-20"
+                    style={{
+                        top: `calc(50% + ${ctaOffsetY ?? 100}px)`,
+                        left: `calc(50% + ${ctaOffsetX ?? 0}px)`,
+                        transform: 'translate(-50%, -50%)',
+                    }}
+                >
                     <motion.div
                         variants={variants.item}
-                        className="flex flex-wrap gap-4 justify-center pointer-events-auto mt-4"
+                        className="flex flex-wrap gap-4 justify-center pointer-events-auto"
                         role="group"
                         aria-label="Call to action buttons"
                     >
@@ -288,8 +329,8 @@ export function HeroOverlay({
                                     size="lg"
                                     className="text-lg px-8 py-6 rounded-full transition-transform hover:scale-105 hover:no-underline focus:ring-2 focus:ring-offset-2 focus:ring-white"
                                     style={{
-                                        backgroundColor: textColor,
-                                        color: "black",
+                                        backgroundColor: buttonColor,
+                                        color: "white",
                                     }}
                                     onClick={handleCtaClick}
                                 >
@@ -316,7 +357,7 @@ export function HeroOverlay({
                             </Link>
                         )}
 
-                        {/* Social Proof & Share - bundled with CTA area for now, or could be separate */}
+                        {/* Social Proof & Share */}
                         {showShareButtons && (
                             <div className="flex gap-2">
                                 <Button
