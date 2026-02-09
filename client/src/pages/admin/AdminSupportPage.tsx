@@ -1,4 +1,4 @@
-import { useAdminTickets, useUpdateTicketStatus, useAssignTicket, useEscalateTicket, useAdminTicketAudit } from "@/hooks/use-support";
+import { useAdminTickets, useUpdateTicketStatus, useAssignTicket, useEscalateTicket, useAdminTicketAudit, useAdminTicketStats } from "@/hooks/use-support";
 import { TicketStatusBadge, TicketPriorityBadge } from "@/components/support/TicketBadges";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,8 @@ export default function AdminSupportPage() {
         page: 1,
     });
 
+    const { data: stats } = useAdminTicketStats();
+
     const { data, isLoading } = useAdminTickets(filters);
     const tickets = data?.tickets || [];
 
@@ -35,10 +37,10 @@ export default function AdminSupportPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <StatsCard title="Open Tickets" value="12" icon={MessageSquare} className="text-blue-600 bg-blue-50/50" />
-                <StatsCard title="SLA Breaches" value="3" icon={AlertTriangle} className="text-red-600 bg-red-50/50" />
-                <StatsCard title="Resolved Today" value="8" icon={CheckCircle} className="text-green-600 bg-green-50/50" />
-                <StatsCard title="Pending Assignment" value="5" icon={User} className="text-orange-600 bg-orange-50/50" />
+                <StatsCard title="Open Tickets" value={stats?.openTickets || 0} icon={MessageSquare} className="text-blue-600 bg-blue-50/50" />
+                <StatsCard title="SLA Breaches" value={stats?.slaBreaches || 0} icon={AlertTriangle} className="text-red-600 bg-red-50/50" />
+                <StatsCard title="Resolved Today" value={stats?.resolvedToday || 0} icon={CheckCircle} className="text-green-600 bg-green-50/50" />
+                <StatsCard title="Pending Assignment" value={stats?.pendingAssignment || 0} icon={User} className="text-orange-600 bg-orange-50/50" />
             </div>
 
             <Card>

@@ -10,10 +10,7 @@ import { RefundStateMachine, RefundState } from "./RefundStateMachine";
 import { paymentRepository } from "../../repositories/paymentRepository"; // We need this to get payment ID
 import { logger } from "../../logger";
 
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID || "",
-    key_secret: process.env.RAZORPAY_KEY_SECRET || "",
-});
+import { razorpay } from "../../lib/razorpay";
 
 export class RefundGatewayService {
 

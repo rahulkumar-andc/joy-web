@@ -2,8 +2,8 @@
 node_modules
 npm-debug.log*
 
-# Build output
-dist
+# Build output (commented out - we copy pre-built dist)
+# dist
 
 # Development files
 .git
@@ -32,9 +32,8 @@ logs
 .env.*
 !.env.example
 
-# Development scripts
+# Development scripts (keep script for build if needed)
 scripts
-script
 
 # Misc
 .llm-chat-history

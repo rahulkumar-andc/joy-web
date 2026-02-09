@@ -112,8 +112,8 @@ function BusinessSidebar() {
                     return (
                         <Link key={item.href} href={item.href}>
                             <a className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'hover:bg-muted text-muted-foreground hover:text-foreground'
                                 }`}>
                                 <item.icon className="h-5 w-5" />
                                 <span className="font-medium">{item.label}</span>
@@ -141,22 +141,19 @@ function SellerStatusBadge({ status }: { status: string }) {
 
 export default function BusinessDashboard() {
     // Fetch business stats
+    // Fetch business stats
     const { data: stats, isLoading: statsLoading } = useQuery({
         queryKey: ["business-stats"],
         queryFn: async () => {
-            const [sellersRes, productsRes] = await Promise.all([
-                fetch("/api/admin/sellers", { credentials: "include" }),
-                fetch("/api/products", { credentials: "include" }),
-            ]);
-
-            const sellers = sellersRes.ok ? await sellersRes.json() : [];
-            const products = productsRes.ok ? await productsRes.json() : [];
+            const res = await fetch("/api/admin/business/stats", { credentials: "include" });
+            if (!res.ok) throw new Error("Failed to fetch stats");
+            const data = await res.json();
 
             return {
-                totalSellers: Array.isArray(sellers) ? sellers.length : 0,
-                pendingSellers: Array.isArray(sellers) ? sellers.filter((s: any) => s.isApproved === false).length : 0,
-                totalProducts: Array.isArray(products) ? products.length : 0,
-                pendingModeration: 5, // Mock - would come from moderation API
+                totalSellers: data.sellers.total,
+                pendingSellers: data.moderation.pendingSellers,
+                totalProducts: data.products.total,
+                pendingModeration: data.moderation.pendingProducts,
             };
         },
     });

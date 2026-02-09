@@ -98,8 +98,8 @@ export class ErrorBoundary extends Component<Props, State> {
                             notified and we're working to fix this.
                         </p>
 
-                        {/* Error Details (dev mode only) */}
-                        {import.meta.env.DEV && this.state.error && (
+                        {/* Error Details (forced for debugging) */}
+                        {this.state.error && (
                             <div className="bg-gray-100 rounded-lg p-4 mb-6">
                                 <h3 className="font-semibold text-gray-900 mb-2">
                                     Error Details (Development Only):

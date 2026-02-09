@@ -37,6 +37,14 @@ export class WebSocketService {
                         // Subscribe user for targeted order updates
                         ws.userId = Number(data.userId);
                         logger.info(`User ${ws.userId} subscribed to personal events`);
+                    } else if (data.type === 'TYPING_START' && data.ticketId) {
+                        // Broadcast typing indicator to all relevant parties
+                        this.broadcastTyping(data.ticketId, data.userId, data.userName, true);
+                    } else if (data.type === 'TYPING_STOP' && data.ticketId) {
+                        this.broadcastTyping(data.ticketId, data.userId, data.userName, false);
+                    } else if (data.type === 'READ_RECEIPT' && data.ticketId && data.messageId) {
+                        // Broadcast read receipt
+                        this.broadcastReadReceipt(data.ticketId, data.messageId, data.userId);
                     }
                 } catch (e) {
                     logger.error('WS Message error', e);
@@ -99,6 +107,44 @@ export class WebSocketService {
             if (ws.readyState === WebSocket.OPEN && ws.userId === userId) {
                 ws.send(message);
                 logger.debug(`Sent ${event} to user ${userId}`);
+            }
+        });
+    }
+
+    /**
+     * Broadcast typing indicator for a ticket
+     */
+    broadcastTyping(ticketId: number, userId: number, userName: string, isTyping: boolean) {
+        if (!this.wss) return;
+        const event = isTyping ? 'TYPING_START' : 'TYPING_STOP';
+        const message = JSON.stringify({
+            event,
+            payload: { ticketId, userId, userName }
+        });
+
+        this.wss.clients.forEach((client) => {
+            const ws = client as WebSocketClient;
+            // Send to admins or the ticket owner (if they have a different client)
+            if (ws.readyState === WebSocket.OPEN && (ws.isAdmin || ws.userId !== userId)) {
+                ws.send(message);
+            }
+        });
+    }
+
+    /**
+     * Broadcast read receipt for a message in a ticket
+     */
+    broadcastReadReceipt(ticketId: number, messageId: number, readByUserId: number) {
+        if (!this.wss) return;
+        const message = JSON.stringify({
+            event: 'READ_RECEIPT',
+            payload: { ticketId, messageId, readByUserId }
+        });
+
+        this.wss.clients.forEach((client) => {
+            const ws = client as WebSocketClient;
+            if (ws.readyState === WebSocket.OPEN && ws.isAdmin) {
+                ws.send(message);
             }
         });
     }

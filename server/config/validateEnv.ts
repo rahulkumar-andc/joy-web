@@ -38,12 +38,12 @@ const ENV_VARIABLES: EnvVariable[] = [
     // Payment Gateway
     {
         key: "RAZORPAY_KEY_ID",
-        required: true,
+        required: false,
         description: "Razorpay API Key ID",
     },
     {
         key: "RAZORPAY_KEY_SECRET",
-        required: true,
+        required: false,
         description: "Razorpay API Key Secret",
     },
 

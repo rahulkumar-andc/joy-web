@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { supportRepository } from "../repositories/supportRepository";
 import { catchAsync } from "../utils/catchAsync";
 import { AppError } from "../utils/AppError";
+import { isAdminOrManager } from "../utils/rbacHelper";
+import xss from "xss";
 
 export class SupportController {
 
@@ -18,13 +20,17 @@ export class SupportController {
             throw new AppError("Missing required fields: issueType, subject, description", 400);
         }
 
+        // Sanitize user inputs to prevent XSS
+        const sanitizedSubject = xss(subject);
+        const sanitizedDescription = xss(description);
+
         const ticket = await supportRepository.createTicket({
             userId,
             orderId: orderId || null,
             productId: productId || null,
             issueType,
-            subject,
-            description,
+            subject: sanitizedSubject,
+            description: sanitizedDescription,
             attachments: attachments || [],
         });
 
@@ -58,28 +64,33 @@ export class SupportController {
         if (!ticket) throw new AppError("Ticket not found", 404);
 
         // Users can only view their own tickets (unless admin)
-        const userRole = (req as any).user?.role;
-        if (ticket.userId !== userId && !["admin", "manager"].includes(userRole)) {
+        const user = (req as any).user;
+        if (ticket.userId !== userId && !isAdminOrManager(user)) {
             throw new AppError("Not authorized to view this ticket", 403);
         }
 
-        const messages = await supportRepository.getMessages(ticketId);
+        // Support cursor-based pagination for messages
+        const cursor = req.query.cursor ? parseInt(String(req.query.cursor)) : undefined;
+        const limit = req.query.limit ? parseInt(String(req.query.limit)) : 50;
 
-        res.json({ success: true, data: { ...ticket, messages } });
+        const { messages, nextCursor } = await supportRepository.getMessages(ticketId, !isAdminOrManager(user), { cursor, limit });
+
+        res.json({ success: true, data: { ...ticket, messages, nextCursor } });
     });
 
     // POST /api/support/tickets/:id/reply - Add a reply
     static addReply = catchAsync(async (req: Request, res: Response) => {
         const userId = (req as any).user?.id;
-        const userRole = (req as any).user?.role;
         const ticketId = parseInt(String(req.params.id));
 
         const ticket = await supportRepository.getTicketById(ticketId);
         if (!ticket) throw new AppError("Ticket not found", 404);
 
-        // Determine sender type
+        // Determine sender type using RBAC
+        const user = (req as any).user;
+
         let senderType: "user" | "agent" | "admin" = "user";
-        if (["admin", "manager"].includes(userRole)) {
+        if (isAdminOrManager(user)) {
             senderType = "admin";
         } else if (ticket.assignedTo === userId) {
             senderType = "agent";
@@ -90,11 +101,14 @@ export class SupportController {
         const { message, attachments, isInternal } = req.body;
         if (!message) throw new AppError("Message is required", 400);
 
+        // Sanitize message to prevent XSS
+        const sanitizedMessage = xss(message);
+
         const reply = await supportRepository.addMessage({
             ticketId,
             senderType,
             senderId: userId,
-            message,
+            message: sanitizedMessage,
             attachments: attachments || [],
             isInternal: isInternal && senderType !== "user" ? true : false,
         });
@@ -111,6 +125,27 @@ export class SupportController {
                     ticketId,
                     message: reply
                 });
+
+                // Send email notification to ticket owner if not an internal note
+                if (!isInternal) {
+                    try {
+                        const { emailService } = await import("../services/emailService");
+                        const { userRepository } = await import("../repositories/userRepository");
+
+                        const ticketOwner = await userRepository.findById(ticket.userId);
+                        if (ticketOwner?.email) {
+                            emailService.sendTicketReplyEmail(
+                                ticketOwner.email,
+                                ticket.ticketId,
+                                ticket.subject,
+                                sanitizedMessage,
+                                senderType as "agent" | "admin"
+                            );
+                        }
+                    } catch (emailError) {
+                        console.error("Failed to send ticket reply email:", emailError);
+                    }
+                }
             }
 
             // Notify Admins (always)
@@ -123,10 +158,30 @@ export class SupportController {
             console.error("Failed to broadcast ticket update:", wsError);
         }
 
+        // Handle @mentions in internal notes
+        if (isInternal && senderType !== "user") {
+            // Match @username (alphanumeric)
+            const mentions = sanitizedMessage.match(/@(\w+)/g);
+            if (mentions && mentions.length > 0) {
+                try {
+                    const { NotificationService } = await import("../services/notificationService");
+                    NotificationService.notifyMentions(mentions, ticketId, reply, user.name);
+                } catch (err) {
+                    console.error("Failed to process mentions:", err);
+                }
+            }
+        }
+
         res.status(201).json({ success: true, data: reply });
     });
 
     // === AGENT/ADMIN ENDPOINTS ===
+
+    // GET /api/admin/support/stats - Get dashboard overview
+    static getDashboardStats = catchAsync(async (req: Request, res: Response) => {
+        const stats = await supportRepository.getDashboardStats();
+        res.json({ success: true, data: stats });
+    });
 
     // GET /api/admin/support/tickets - Get all tickets (with filters)
     static getAllTickets = catchAsync(async (req: Request, res: Response) => {

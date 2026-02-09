@@ -68,7 +68,7 @@ export async function registerRoutes(
       resave: false,
       saveUninitialized: false,
       cookie: {
-        secure: config.NODE_ENV === "production",
+        secure: config.NODE_ENV === "production" && process.env.ALLOW_INSECURE_COOKIES !== "true",
         sameSite: "lax",
         httpOnly: true,
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
@@ -253,6 +253,10 @@ export async function registerRoutes(
   // In-House Delivery System Routes (Courier)
   const courierRouter = (await import("./routes/courier.routes")).default;
   app.use(courierRouter);
+
+  // Agent Productivity: Canned Responses
+  const { cannedResponseRouter } = await import("./routes/canned-responses");
+  app.use("/api/admin/canned-responses", cannedResponseRouter);
 
   // === SEED DATA ===
   // Move seeding to background or manual script to avoid blocking startup

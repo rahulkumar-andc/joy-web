@@ -28,3 +28,27 @@ export function requireSeller(req: Request, res: Response, next: NextFunction) {
         code: "SELLER_ACCESS_REQUIRED"
     });
 }
+
+/**
+ * Middleware that allows specific roles
+ */
+export function requireRole(allowedRoles: string[]) {
+    return (req: Request, res: Response, next: NextFunction) => {
+        const user = req.user as any;
+
+        if (!req.isAuthenticated()) {
+            return res.status(401).json({ message: "Authentication required" });
+        }
+
+        if (allowedRoles.includes(user?.role)) {
+            return next();
+        }
+
+        // Check RBAC roles if available (fallback/advanced)
+        if (user?.rbacRoles && user.rbacRoles.some((r: string) => allowedRoles.includes(r))) {
+            return next();
+        }
+
+        res.status(403).json({ message: "Forbidden: Insufficient permissions" });
+    };
+}

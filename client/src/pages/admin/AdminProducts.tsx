@@ -1,4 +1,4 @@
-import { useProducts, useCreateProduct, useDeleteProduct, useUpdateProduct } from "@/hooks/use-products";
+import { useProducts, useCreateProduct, useDeleteProduct, useUpdateProduct, useBulkImportProducts, getProductExportUrl } from "@/hooks/use-products";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Trash2, Plus, Pencil, Upload, Download, Package, Layers, Image as ImageIcon, Shirt, Tag, Truck } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
@@ -85,6 +85,25 @@ export function ProductManagement() {
   const deleteMutation = useDeleteProduct();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
+  const [importResult, setImportResult] = useState<{ total: number; success: number; failed: number; errors: string[] } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const importMutation = useBulkImportProducts();
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    importMutation.mutate(file, {
+      onSuccess: (data) => {
+        setImportResult(data);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      },
+      onError: (error) => {
+        toast({ title: "Import Failed", description: error.message, variant: "destructive" });
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    });
+  };
 
   // Form setup
   const form = useForm<ProductFormValues>({
@@ -186,6 +205,27 @@ export function ProductManagement() {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold tracking-tight">Product Management</h2>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => window.open(getProductExportUrl(), "_blank")}>
+            <Download className="mr-2 w-4 h-4" /> Export
+          </Button>
+          <Button variant="outline" onClick={() => window.open("/api/products/template", "_blank")}>
+            <Download className="mr-2 w-4 h-4" /> Template
+          </Button>
+
+          <div className="relative">
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept=".csv"
+              onChange={handleFileUpload}
+            />
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importMutation.isPending}>
+              <Upload className="mr-2 w-4 h-4" />
+              {importMutation.isPending ? "Importing..." : "Import CSV"}
+            </Button>
+          </div>
+
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <Button className="bg-primary text-white"><Plus className="mr-2 w-4 h-4" /> Add Product</Button>
@@ -452,8 +492,54 @@ export function ProductManagement() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Import Result Modal */}
+      <Dialog open={!!importResult} onOpenChange={() => setImportResult(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Import Complete</DialogTitle>
+            <DialogDescription>
+              Summary of your CSV import
+            </DialogDescription>
+          </DialogHeader>
+          {importResult && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="bg-muted rounded-lg p-3">
+                  <div className="text-2xl font-bold">{importResult.total}</div>
+                  <div className="text-xs text-muted-foreground">Total Rows</div>
+                </div>
+                <div className="bg-green-100 rounded-lg p-3">
+                  <div className="text-2xl font-bold text-green-600">{importResult.success}</div>
+                  <div className="text-xs text-green-600">Imported</div>
+                </div>
+                <div className="bg-red-100 rounded-lg p-3">
+                  <div className="text-2xl font-bold text-red-600">{importResult.failed}</div>
+                  <div className="text-xs text-red-600">Failed</div>
+                </div>
+              </div>
+
+              {importResult.errors.length > 0 && (
+                <div className="max-h-48 overflow-y-auto border rounded-md p-3 bg-red-50">
+                  <h4 className="font-medium text-red-800 mb-2">Errors:</h4>
+                  <ul className="text-sm text-red-700 space-y-1">
+                    {importResult.errors.map((err, i) => (
+                      <li key={i} className="border-b border-red-100 pb-1 last:border-0">{err}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <Button onClick={() => setImportResult(null)}>Close</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 export default ProductManagement;
+

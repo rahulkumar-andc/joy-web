@@ -111,6 +111,22 @@ export function useAdminTickets(filters?: any) {
     });
 }
 
+export function useAdminTicketStats() {
+    return useQuery<{
+        openTickets: number;
+        slaBreaches: number;
+        resolvedToday: number;
+        pendingAssignment: number;
+    }>({
+        queryKey: ["admin-ticket-stats"],
+        queryFn: async () => {
+            const res = await apiRequest("GET", "/api/admin/support/stats");
+            return res.json().then((d) => d.data);
+        },
+        refetchInterval: 30000,
+    });
+}
+
 export function useAdminTicketAudit(id: number) {
     return useQuery<any[]>({
         queryKey: ["ticket-audit", id],

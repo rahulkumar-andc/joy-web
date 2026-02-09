@@ -15,7 +15,72 @@ export interface ImportResult {
 export class ImportExportService {
 
     /**
-     * Import products from CSV buffer
+     * Check if string is a valid URL
+     */
+    private isValidUrl(str: string): boolean {
+        try {
+            new URL(str);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * Simple Levenshtein distance for fuzzy matching
+     */
+    private levenshteinDistance(a: string, b: string): number {
+        const matrix: number[][] = [];
+        for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+        for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+        for (let i = 1; i <= b.length; i++) {
+            for (let j = 1; j <= a.length; j++) {
+                if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1,
+                        matrix[i][j - 1] + 1,
+                        matrix[i - 1][j] + 1
+                    );
+                }
+            }
+        }
+        return matrix[b.length][a.length];
+    }
+
+    /**
+     * Find best matching category using fuzzy match
+     */
+    private findBestCategoryMatch(input: string, categories: Map<string, number>): { id: number | null; matched: string | null } {
+        const inputLower = input.trim().toLowerCase();
+
+        // Exact match first
+        if (categories.has(inputLower)) {
+            return { id: categories.get(inputLower)!, matched: input };
+        }
+
+        // Fuzzy match (threshold: 2 edits)
+        let bestMatch: string | null = null;
+        let bestDistance = Infinity;
+
+        for (const [catName] of categories.entries()) {
+            const distance = this.levenshteinDistance(inputLower, catName);
+            if (distance < bestDistance && distance <= 2) {
+                bestDistance = distance;
+                bestMatch = catName;
+            }
+        }
+
+        if (bestMatch) {
+            return { id: categories.get(bestMatch)!, matched: bestMatch };
+        }
+
+        return { id: null, matched: null };
+    }
+
+    /**
+     * Import products from CSV buffer with enhanced validation
      */
     async importProductsFromCSV(buffer: Buffer): Promise<ImportResult> {
         const result: ImportResult = {
@@ -59,21 +124,77 @@ export class ImportExportService {
             for (let i = 0; i < records.length; i++) {
                 const row = records[i] as CSVRow;
                 const rowNum = i + 2; // +1 for 0-index, +1 for header
+                const rowErrors: string[] = [];
 
                 try {
-                    // Validate required fields
-                    if (!row.Name || !row.Price || !row.Description) {
-                        throw new Error("Missing required fields (Name, Price, Description)");
+                    // === ENHANCED VALIDATION ===
+
+                    // Required fields
+                    if (!row.Name || row.Name.trim().length === 0) {
+                        rowErrors.push("Name is required");
+                    }
+                    if (!row.Description || row.Description.trim().length < 10) {
+                        rowErrors.push("Description must be at least 10 characters");
                     }
 
-                    // Handle Category
-                    let categoryId = null;
-                    if (row.Category) {
-                        const catLower = row.Category.trim().toLowerCase();
-                        if (categoryMap.has(catLower)) {
-                            categoryId = categoryMap.get(catLower)!;
+                    // Price validation
+                    const priceNum = parseFloat(row.Price);
+                    if (!row.Price || isNaN(priceNum) || priceNum <= 0) {
+                        rowErrors.push(`Invalid Price "${row.Price}" - must be a positive number`);
+                    }
+
+                    // Discount price validation (optional)
+                    let discountPrice: string | null = null;
+                    if (row.DiscountPrice && row.DiscountPrice.trim() !== '') {
+                        const discountNum = parseFloat(row.DiscountPrice);
+                        if (isNaN(discountNum) || discountNum <= 0) {
+                            rowErrors.push(`Invalid DiscountPrice "${row.DiscountPrice}"`);
+                        } else if (discountNum >= priceNum) {
+                            rowErrors.push(`DiscountPrice (${discountNum}) must be less than Price (${priceNum})`);
                         } else {
-                            // Create new category on the fly
+                            discountPrice = row.DiscountPrice;
+                        }
+                    }
+
+                    // Stock validation
+                    let stockQty = 0;
+                    if (row.Stock && row.Stock.trim() !== '') {
+                        stockQty = parseInt(row.Stock, 10);
+                        if (isNaN(stockQty) || stockQty < 0) {
+                            rowErrors.push(`Invalid Stock "${row.Stock}" - must be a non-negative integer`);
+                            stockQty = 0;
+                        }
+                    }
+
+                    // Image URL validation
+                    const images: string[] = [];
+                    if (row.Images) {
+                        const imgList = row.Images.split('|').map((s: string) => s.trim()).filter(Boolean);
+                        for (const imgUrl of imgList) {
+                            if (!this.isValidUrl(imgUrl)) {
+                                rowErrors.push(`Invalid image URL: "${imgUrl.substring(0, 50)}..."`);
+                            } else {
+                                images.push(imgUrl);
+                            }
+                        }
+                    }
+                    if (images.length === 0) {
+                        images.push("https://placehold.co/600x400?text=No+Image");
+                    }
+
+                    // === SMART CATEGORY MATCHING ===
+                    let categoryId: number | null = null;
+                    if (row.Category && row.Category.trim() !== '') {
+                        const match = this.findBestCategoryMatch(row.Category, categoryMap);
+
+                        if (match.id) {
+                            categoryId = match.id;
+                            if (match.matched !== row.Category.trim().toLowerCase()) {
+                                // Fuzzy matched - log info
+                                logger.info(`Category fuzzy matched: "${row.Category}" -> "${match.matched}" (Row ${rowNum})`);
+                            }
+                        } else {
+                            // Create new category
                             const slug = row.Category.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
                             const newCat = await productRepository.createCategory({
                                 name: row.Category.trim(),
@@ -82,36 +203,37 @@ export class ImportExportService {
                                 imageUrl: null
                             } as InsertCategory);
                             categoryId = newCat.id;
-                            categoryMap.set(catLower, categoryId);
+                            categoryMap.set(row.Category.trim().toLowerCase(), categoryId);
                             logger.info(`Created new category during import: ${row.Category}`);
                         }
                     }
 
-                    // Parse Arrays (pipe separated)
-                    const images = row.Images ? row.Images.split('|').map((s: string) => s.trim()) : [];
-                    if (images.length === 0) {
-                        // Default placeholder if no image
-                        images.push("https://placehold.co/600x400?text=No+Image");
+                    // If there are validation errors, skip this row
+                    if (rowErrors.length > 0) {
+                        result.failed++;
+                        result.errors.push(`Row ${rowNum}: ${rowErrors.join('; ')}`);
+                        continue;
                     }
 
-                    const sizes = row.Sizes ? row.Sizes.split('|').map((s: string) => s.trim()) : [];
-                    const colors = row.Colors ? row.Colors.split('|').map((s: string) => s.trim()) : [];
-                    const tags = row.Tags ? row.Tags.split('|').map((s: string) => s.trim()) : [];
+                    // Parse other arrays
+                    const sizes = row.Sizes ? row.Sizes.split('|').map((s: string) => s.trim()).filter(Boolean) : [];
+                    const colors = row.Colors ? row.Colors.split('|').map((s: string) => s.trim()).filter(Boolean) : [];
+                    const tags = row.Tags ? row.Tags.split('|').map((s: string) => s.trim()).filter(Boolean) : [];
 
                     const product: InsertProduct = {
-                        name: row.Name,
-                        description: row.Description,
-                        mrp: row.Price, // string/decimal is fine
-                        stockQuantity: row.Stock ? parseInt(row.Stock, 10) : 0,
+                        name: row.Name.trim(),
+                        description: row.Description.trim(),
+                        mrp: row.Price,
+                        stockQuantity: stockQty,
                         categoryId: categoryId,
-                        brand: row.Brand || null,
+                        brand: row.Brand?.trim() || null,
                         images: images,
                         sizes: sizes.length ? sizes : null,
                         colors: colors.length ? colors : null,
                         tags: tags.length ? tags : null,
-                        salePrice: row.DiscountPrice || null,
-                        isFeatured: row.IsFeatured === 'true',
-                        showOnHomepage: true // Default to true
+                        salePrice: discountPrice,
+                        isFeatured: row.IsFeatured?.toLowerCase() === 'true',
+                        showOnHomepage: true
                     };
 
                     productsTocreate.push(product);
@@ -170,6 +292,33 @@ export class ImportExportService {
         }
 
         return csvRows.join("\n");
+    }
+
+    /**
+     * Generate empty template CSV for import
+     */
+    getTemplateCSV(): string {
+        const header = [
+            "Name", "Description", "Price", "DiscountPrice",
+            "Category", "Stock", "Brand", "Images", "Sizes", "Colors", "Tags", "IsFeatured"
+        ];
+
+        const exampleRow = [
+            "Example T-Shirt",
+            "A comfortable cotton t-shirt for everyday wear.",
+            "999",
+            "799",
+            "Men",
+            "50",
+            "BrandName",
+            "https://example.com/image1.jpg|https://example.com/image2.jpg",
+            "S|M|L|XL",
+            "Red|Blue|Black",
+            "summer|casual",
+            "true"
+        ];
+
+        return [header.join(","), exampleRow.join(",")].join("\n");
     }
 
     /**

@@ -14,6 +14,7 @@ import { promisify } from "util";
 import { emailService } from "../emailService";
 import { smsService } from "../smsService";
 import { logger } from "../../logger";
+import { measureAsync } from "../../utils/performance";
 
 const scryptAsync = promisify(scrypt);
 
@@ -533,42 +534,44 @@ class SellerOnboardingService {
         page: number = 1,
         limit: number = 20
     ): Promise<{ sellers: SellerProfile[]; total: number; stats: Record<string, number> }> {
-        const offset = (page - 1) * limit;
+        return measureAsync("SellerOnboarding.getAllSellers", async () => {
+            const offset = (page - 1) * limit;
 
-        let whereClause = undefined;
+            let whereClause = undefined;
 
-        if (filters.status) {
-            whereClause = eq(sellerProfiles.status, filters.status);
-        }
+            if (filters.status) {
+                whereClause = eq(sellerProfiles.status, filters.status);
+            }
 
-        const sellers = await db.query.sellerProfiles.findMany({
-            where: whereClause,
-            orderBy: [desc(sellerProfiles.createdAt)],
-            limit,
-            offset,
+            const sellers = await db.query.sellerProfiles.findMany({
+                where: whereClause,
+                orderBy: [desc(sellerProfiles.createdAt)],
+                limit,
+                offset,
+            });
+
+            // Get total count for pagination
+            const [{ count }] = await db
+                .select({ count: sql<number>`count(*)` })
+                .from(sellerProfiles)
+                .where(whereClause);
+
+            // Get overall stats (independent of filters)
+            const statsRows = await db
+                .select({
+                    status: sellerProfiles.status,
+                    count: sql<number>`count(*)`
+                })
+                .from(sellerProfiles)
+                .groupBy(sellerProfiles.status);
+
+            const stats = statsRows.reduce((acc, curr) => {
+                acc[curr.status || "unknown"] = Number(curr.count);
+                return acc;
+            }, {} as Record<string, number>);
+
+            return { sellers, total: Number(count), stats };
         });
-
-        // Get total count for pagination
-        const [{ count }] = await db
-            .select({ count: sql<number>`count(*)` })
-            .from(sellerProfiles)
-            .where(whereClause);
-
-        // Get overall stats (independent of filters)
-        const statsRows = await db
-            .select({
-                status: sellerProfiles.status,
-                count: sql<number>`count(*)`
-            })
-            .from(sellerProfiles)
-            .groupBy(sellerProfiles.status);
-
-        const stats = statsRows.reduce((acc, curr) => {
-            acc[curr.status || "unknown"] = Number(curr.count);
-            return acc;
-        }, {} as Record<string, number>);
-
-        return { sellers, total: Number(count), stats };
     }
 
     /**

@@ -72,7 +72,7 @@ export default function CheckoutPage() {
 
   const { createPaymentOrder, verifyPayment } = usePayment();
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"upi" | "card" | "netbanking">("upi");
-  const [paymentMode, setPaymentMode] = useState<"online" | "cod">("online");
+  const [paymentMode, setPaymentMode] = useState<"online" | "cod">("cod"); // Default to COD
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [couponCode, setCouponCode] = useState("");
@@ -204,6 +204,16 @@ export default function CheckoutPage() {
     }
 
     // Online Payment Flow
+    if (paymentMode === 'online') {
+      toast({
+        title: "Online Payment Disabled",
+        description: "Online payments are currently unavailable. Please use Cash on Delivery.",
+        variant: "destructive"
+      });
+      setIsProcessing(false);
+      return;
+    }
+
     createOrderMutation.mutate({ shippingAddress: data, couponCode: appliedCoupon || undefined }, {
       onSuccess: async (orderData) => {
         try {
@@ -448,10 +458,16 @@ export default function CheckoutPage() {
                 </h2>
 
                 <div className="space-y-4">
-                  {/* Online Payment */}
+                  {/* Online Payment (Disabled) */}
                   <div
-                    onClick={() => setPaymentMode('online')}
-                    className={`p-4 rounded-lg border cursor-pointer transition-all ${paymentMode === 'online' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/50'}`}
+                    onClick={() => {
+                      toast({
+                        title: "Online Payment Disabled",
+                        description: "Please use Cash on Delivery (COD) for now.",
+                        variant: "destructive"
+                      });
+                    }}
+                    className={`p-4 rounded-lg border cursor-not-allowed opacity-60 bg-gray-50 border-border`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -584,7 +600,7 @@ export default function CheckoutPage() {
                           ? "Processing..."
                           : paymentMode === 'cod'
                             ? finalTotal > 10000 ? "COD Not Available" : `Place COD Order (₹${finalTotal})`
-                            : finalTotal > 0 ? `Pay ₹${finalTotal}` : "Place Order"}
+                            : "Place Order (COD Only)"}
                       </Button>
                     )}
                   </form>

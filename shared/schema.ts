@@ -6,6 +6,20 @@ import { relations } from "drizzle-orm";
 // === SHARED SCHEMAS ===
 // Moved to bottom to avoid hoisting issues
 
+// === CANNED RESPONSES ===
+export const cannedResponses = pgTable("canned_responses", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  createdBy: integer("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCannedResponseSchema = createInsertSchema(cannedResponses).omit({ id: true, createdAt: true, updatedAt: true, createdBy: true });
+export type CannedResponse = typeof cannedResponses.$inferSelect;
+export type InsertCannedResponse = z.infer<typeof insertCannedResponseSchema>;
+
 // === USERS ===
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -15,7 +29,7 @@ export const users = pgTable("users", {
   phone: text("phone"),
   address: text("address"),
   avatarUrl: text("avatar_url"),
-  role: text("role", { enum: ["admin", "manager", "seller", "user"] }).default("user").notNull(),
+  role: text("role", { enum: ["admin", "manager", "seller", "user", "courier"] }).default("user").notNull(),
   walletBalance: decimal("wallet_balance").default("0").notNull(),
   isVerified: boolean("is_verified").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),

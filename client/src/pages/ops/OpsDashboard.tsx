@@ -120,8 +120,8 @@ function OpsSidebar() {
                     return (
                         <Link key={item.href} href={item.href}>
                             <a className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'hover:bg-muted text-muted-foreground hover:text-foreground'
                                 }`}>
                                 <item.icon className="h-5 w-5" />
                                 <span className="font-medium">{item.label}</span>
@@ -158,20 +158,15 @@ export default function OpsDashboard() {
     const { data: stats, isLoading: statsLoading } = useQuery({
         queryKey: ["ops-stats"],
         queryFn: async () => {
-            // Aggregate from multiple endpoints
-            const [ordersRes, couriersRes] = await Promise.all([
-                fetch("/api/admin/orders?status=packed,shipped", { credentials: "include" }),
-                fetch("/api/admin/deliveries/couriers", { credentials: "include" }),
-            ]);
-
-            const orders = ordersRes.ok ? await ordersRes.json() : [];
-            const couriersData = couriersRes.ok ? await couriersRes.json() : { couriers: [] };
+            const res = await fetch("/api/admin/ops/stats", { credentials: "include" });
+            if (!res.ok) throw new Error("Failed to fetch stats");
+            const data = await res.json();
 
             return {
-                pendingOrders: Array.isArray(orders) ? orders.filter((o: any) => o.status === "packed").length : 0,
-                shippedOrders: Array.isArray(orders) ? orders.filter((o: any) => o.status === "shipped").length : 0,
-                activeCouriers: couriersData.couriers?.length || 0,
-                todayDeliveries: 0, // Would need additional API
+                pendingOrders: data.pendingOrders,
+                shippedOrders: data.activeDeliveries,
+                activeCouriers: data.activeCouriers,
+                todayDeliveries: data.completedToday,
             };
         },
     });

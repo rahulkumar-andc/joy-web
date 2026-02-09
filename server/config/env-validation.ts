@@ -42,16 +42,23 @@ const ENV_VARS: EnvVarConfig[] = [
     // Payment - Razorpay
     {
         name: "RAZORPAY_KEY_ID",
-        required: true,
+        required: false,
         description: "Razorpay API Key ID",
-        validator: (v) => v.startsWith("rzp_"),
+        validator: (v) => {
+            // Ignore placeholders or effectively empty strings
+            if (!v || v === "null" || v === "undefined") return true;
+            return v.startsWith("rzp_");
+        },
         validatorMessage: "Must start with 'rzp_'",
     },
     {
         name: "RAZORPAY_KEY_SECRET",
-        required: true,
+        required: false,
         description: "Razorpay API Key Secret",
-        validator: (v) => v.length >= 10,
+        validator: (v) => {
+            if (!v || v === "null" || v === "undefined") return true;
+            return v.length >= 10;
+        },
         validatorMessage: "Must be a valid secret key",
     },
     {

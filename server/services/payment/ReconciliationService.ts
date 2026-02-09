@@ -19,12 +19,7 @@ import { logger } from "../../logger";
 // We need to import the Razorpay instance from payments.ts service
 // However, circular imports might be an issue if we import paymentService.
 // Let's assume we can import the razorpay instance or initiate a new one for recon.
-import Razorpay from "razorpay";
-
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID || "",
-    key_secret: process.env.RAZORPAY_KEY_SECRET || "",
-});
+import { razorpay } from "../../lib/razorpay";
 
 export class ReconciliationService {
 

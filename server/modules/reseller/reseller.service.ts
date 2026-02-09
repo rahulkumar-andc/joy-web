@@ -17,6 +17,7 @@ import {
     type ResellerTier,
 } from "@shared/schema";
 import { nanoid } from "nanoid";
+import { measureAsync } from "../../utils/performance";
 
 // === RESELLER SERVICE ===
 
@@ -613,72 +614,85 @@ class ResellerService {
     // ==================
 
     async getResellerDashboard(resellerId: number) {
-        const reseller = await this.getResellerById(resellerId);
-        if (!reseller) throw new Error("Reseller not found");
+        return measureAsync("Reseller.getDashboard", async () => {
+            const reseller = await this.getResellerById(resellerId);
+            if (!reseller) throw new Error("Reseller not found");
 
-        // Get today's stats
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+            // Get today's stats
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
 
-        const [todayStats] = await db
-            .select({
-                clicks: sql<number>`COALESCE(SUM(${resellerLinks.clicks}), 0)`,
-                orders: sql<number>`COALESCE(COUNT(${resellerCommissions.id}), 0)`,
-                earnings: sql<string>`COALESCE(SUM(${resellerCommissions.totalAmount}), '0')`,
-            })
-            .from(resellerLinks)
-            .leftJoin(resellerCommissions, eq(resellerLinks.id, resellerCommissions.linkId))
-            .where(and(
-                eq(resellerLinks.resellerId, resellerId),
-                gte(resellerCommissions.createdAt, today)
-            ));
+            // 1. Get today's clicks from resellerClicks table
+            const [todayClicks] = await db
+                .select({
+                    count: count(),
+                })
+                .from(resellerClicks)
+                .leftJoin(resellerLinks, eq(resellerClicks.linkId, resellerLinks.id))
+                .where(and(
+                    eq(resellerLinks.resellerId, resellerId),
+                    gte(resellerClicks.clickedAt, today)
+                ));
 
-        // Get this month's stats
-        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-        const [monthStats] = await db
-            .select({
-                orders: sql<number>`COALESCE(COUNT(*), 0)`,
-                earnings: sql<string>`COALESCE(SUM(${resellerCommissions.totalAmount}), '0')`,
-            })
-            .from(resellerCommissions)
-            .where(and(
-                eq(resellerCommissions.resellerId, resellerId),
-                gte(resellerCommissions.createdAt, monthStart)
-            ));
+            // 2. Get today's orders and earnings from resellerCommissions
+            const [todayOrders] = await db
+                .select({
+                    orders: count(),
+                    earnings: sql<string>`COALESCE(SUM(${resellerCommissions.totalAmount}), '0')`,
+                })
+                .from(resellerCommissions)
+                .where(and(
+                    eq(resellerCommissions.resellerId, resellerId),
+                    gte(resellerCommissions.createdAt, today)
+                ));
 
-        // Get top performing links
-        const topLinks = await db.query.resellerLinks.findMany({
-            where: eq(resellerLinks.resellerId, resellerId),
-            orderBy: desc(resellerLinks.conversions),
-            limit: 5,
-            with: {
-                product: true,
-            },
+            // Get this month's stats
+            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+            const [monthStats] = await db
+                .select({
+                    orders: count(),
+                    earnings: sql<string>`COALESCE(SUM(${resellerCommissions.totalAmount}), '0')`,
+                })
+                .from(resellerCommissions)
+                .where(and(
+                    eq(resellerCommissions.resellerId, resellerId),
+                    gte(resellerCommissions.createdAt, monthStart)
+                ));
+
+            // Get top performing links
+            const topLinks = await db.query.resellerLinks.findMany({
+                where: eq(resellerLinks.resellerId, resellerId),
+                orderBy: desc(resellerLinks.conversions),
+                limit: 5,
+                with: {
+                    product: true,
+                },
+            });
+
+            return {
+                reseller,
+                tier: reseller.tier,
+                tierConfig: RESELLER_TIERS[reseller.tier as ResellerTier],
+                balance: {
+                    pending: parseFloat(reseller.pendingPayout),
+                    total: parseFloat(reseller.totalEarnings),
+                },
+                today: {
+                    clicks: todayClicks?.count || 0,
+                    orders: todayOrders?.orders || 0,
+                    earnings: parseFloat(todayOrders?.earnings || "0"),
+                },
+                thisMonth: {
+                    orders: monthStats?.orders || 0,
+                    earnings: parseFloat(monthStats?.earnings || "0"),
+                },
+                lifetime: {
+                    orders: reseller.lifetimeOrders,
+                    sales: parseFloat(reseller.lifetimeSales.toString()),
+                },
+                topLinks,
+            };
         });
-
-        return {
-            reseller,
-            tier: reseller.tier,
-            tierConfig: RESELLER_TIERS[reseller.tier as ResellerTier],
-            balance: {
-                pending: parseFloat(reseller.pendingPayout),
-                total: parseFloat(reseller.totalEarnings),
-            },
-            today: {
-                clicks: todayStats?.clicks || 0,
-                orders: todayStats?.orders || 0,
-                earnings: parseFloat(todayStats?.earnings || "0"),
-            },
-            thisMonth: {
-                orders: monthStats?.orders || 0,
-                earnings: parseFloat(monthStats?.earnings || "0"),
-            },
-            lifetime: {
-                orders: reseller.lifetimeOrders,
-                sales: parseFloat(reseller.lifetimeSales.toString()),
-            },
-            topLinks,
-        };
     }
 }
 

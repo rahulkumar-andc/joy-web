@@ -61,6 +61,14 @@ interface DashboardStats {
         rate: number;
         type: string;
     };
+    salesHistory: {
+        date: string;
+        amount: number;
+    }[];
+    recentActivity: {
+        orders: any[];
+        transactions: any[];
+    };
 }
 
 export default function SellerDashboard() {
@@ -368,40 +376,49 @@ export default function SellerDashboard() {
                                     <CardDescription>Your revenue this month</CardDescription>
                                 </div>
                                 <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-0">
-                                    +12% vs last month
+                                    Last 30 Days
                                 </Badge>
                             </div>
                         </CardHeader>
                         <CardContent className="pt-4">
                             {/* Simple visual chart bars */}
                             <div className="flex items-end gap-2 h-32 mb-4">
-                                {[40, 65, 45, 80, 55, 90, 70].map((height, i) => (
-                                    <motion.div
-                                        key={i}
-                                        className="flex-1 bg-gradient-to-t from-accent/80 to-accent/40 rounded-t-md"
-                                        initial={{ height: 0 }}
-                                        animate={{ height: `${height}%` }}
-                                        transition={{ delay: i * 0.1, duration: 0.5, ease: "easeOut" }}
-                                    />
-                                ))}
+                                {dashboard?.salesHistory?.map((day: any, i: number) => {
+                                    const maxAmount = Math.max(...(dashboard?.salesHistory?.map((d: any) => d.amount) || [100]));
+                                    const heightPercentage = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
+                                    return (
+                                        <motion.div
+                                            key={i}
+                                            className="flex-1 bg-gradient-to-t from-accent/80 to-accent/40 rounded-t-md relative group"
+                                            initial={{ height: 0 }}
+                                            animate={{ height: `${Math.max(heightPercentage, 2)}%` }} // Min 2% height for visibility
+                                            transition={{ delay: i * 0.02, duration: 0.5, ease: "easeOut" }}
+                                        >
+                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-black text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                                ₹{day.amount.toLocaleString()}
+                                                <div className="text-gray-400">{day.date}</div>
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })}
                             </div>
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                                    <span key={day}>{day}</span>
+                            <div className="flex justify-between text-xs text-muted-foreground overflow-hidden">
+                                {dashboard?.salesHistory?.filter((_: any, i: number) => i % 5 === 0).map((day: any) => (
+                                    <span key={day.date}>{new Date(day.date).getDate()}</span>
                                 ))}
                             </div>
                             <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t">
                                 <div>
-                                    <p className="text-xs text-muted-foreground">This Week</p>
-                                    <p className="text-lg font-bold">₹{((dashboard?.orders.totalRevenue || 0) * 0.3).toLocaleString()}</p>
+                                    <p className="text-xs text-muted-foreground">Total Revenue</p>
+                                    <p className="text-lg font-bold">₹{(dashboard?.orders.totalRevenue || 0).toLocaleString()}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-muted-foreground">This Month</p>
-                                    <p className="text-lg font-bold">₹{((dashboard?.orders.totalRevenue || 0) * 0.8).toLocaleString()}</p>
+                                    <p className="text-xs text-muted-foreground">Pending Revenue</p>
+                                    <p className="text-lg font-bold">₹{(dashboard?.orders.pendingRevenue || 0).toLocaleString()}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-muted-foreground">Avg Order</p>
-                                    <p className="text-lg font-bold">₹{dashboard?.orders.totalOrders ? Math.round((dashboard.orders.totalRevenue || 0) / dashboard.orders.totalOrders) : 0}</p>
+                                    <p className="text-lg font-bold">₹{dashboard?.orders.totalOrders ? Math.round((dashboard.orders.totalRevenue || 0) / dashboard.orders.totalOrders).toLocaleString() : 0}</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -414,33 +431,40 @@ export default function SellerDashboard() {
                             <CardDescription>Latest updates</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
-                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            {(!dashboard?.recentActivity?.orders.length && !dashboard?.recentActivity?.transactions.length) && (
+                                <div className="text-center py-8 text-muted-foreground text-sm">
+                                    No recent activity
                                 </div>
-                                <div>
-                                    <p className="text-sm font-medium">Order Completed</p>
-                                    <p className="text-xs text-muted-foreground">Order #1234 delivered successfully</p>
+                            )}
+
+                            {dashboard?.recentActivity?.orders.slice(0, 3).map((order: any) => (
+                                <div key={`order-${order.id}`} className="flex items-start gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                                        <Package className="h-4 w-4 text-blue-500" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium">New Order #{order.sellerOrderNumber}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            ₹{Number(order.subtotal).toLocaleString()} • {order.status}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                                    <Package className="h-4 w-4 text-blue-500" />
+                            ))}
+
+                            {dashboard?.recentActivity?.transactions.slice(0, 3).map((tx: any) => (
+                                <div key={`tx-${tx.id}`} className="flex items-start gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                                        <Wallet className="h-4 w-4 text-green-500" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium">{tx.type === 'credit' ? 'Payment Received' : 'Payout Processed'}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {tx.type === 'credit' ? '+' : '-'}₹{Number(tx.amount).toLocaleString()} • {new Date(tx.createdAt).toLocaleDateString()}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-sm font-medium">New Order</p>
-                                    <p className="text-xs text-muted-foreground">You have a new order #1235</p>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                                    <Wallet className="h-4 w-4 text-purple-500" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium">Payment Received</p>
-                                    <p className="text-xs text-muted-foreground">₹2,500 added to wallet</p>
-                                </div>
-                            </div>
+                            ))}
+
                             <Link href="/seller/orders">
                                 <Button variant="ghost" size="sm" className="w-full mt-2 hover:bg-accent/10 hover:text-accent">
                                     View all activity →

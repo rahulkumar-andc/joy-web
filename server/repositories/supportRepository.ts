@@ -310,16 +310,36 @@ export class SupportRepository {
         return message;
     }
 
-    async getMessages(ticketId: number, includeInternal: boolean = true): Promise<TicketMessage[]> {
+    async getMessages(
+        ticketId: number,
+        includeInternal: boolean = true,
+        options: { limit?: number; cursor?: number } = {}
+    ): Promise<{ messages: TicketMessage[]; nextCursor: number | null }> {
+        const { limit = 50, cursor } = options;
         const conditions = [eq(ticketMessages.ticketId, ticketId)];
+
         if (!includeInternal) {
             conditions.push(eq(ticketMessages.isInternal, false));
         }
-        return await db.query.ticketMessages.findMany({
+
+        // Cursor is the ID of the last message seen; fetch messages with ID > cursor
+        if (cursor) {
+            conditions.push(sql`${ticketMessages.id} > ${cursor}`);
+        }
+
+        const messages = await db.query.ticketMessages.findMany({
             where: and(...conditions),
-            orderBy: ticketMessages.createdAt,
+            orderBy: asc(ticketMessages.id),
+            limit: limit + 1, // Fetch one extra to determine if there are more
             with: { sender: true },
         });
+
+        // If we fetched more than limit, there's a next page
+        const hasMore = messages.length > limit;
+        const resultMessages = hasMore ? messages.slice(0, limit) : messages;
+        const nextCursor = hasMore ? resultMessages[resultMessages.length - 1]?.id ?? null : null;
+
+        return { messages: resultMessages, nextCursor };
     }
 
     // === WORKLOAD BALANCING ===
@@ -410,6 +430,26 @@ export class SupportRepository {
             where: eq(supportTicketLogs.ticketId, ticketId),
             orderBy: desc(supportTicketLogs.createdAt),
         });
+    }
+
+    // === DASHBOARD STATS ===
+    async getDashboardStats() {
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        const [results] = await db.select({
+            openTickets: sql<number>`count(*) filter (where status not in ('RESOLVED', 'CLOSED'))`,
+            slaBreaches: sql<number>`count(*) filter (where sla_breached = true)`,
+            resolvedToday: sql<number>`count(*) filter (where status in ('RESOLVED', 'CLOSED') and resolved_at >= ${startOfDay})`,
+            pendingAssignment: sql<number>`count(*) filter (where status = 'OPEN' and assigned_to is null)`,
+        }).from(supportTickets);
+
+        return {
+            openTickets: Number(results.openTickets),
+            slaBreaches: Number(results.slaBreaches),
+            resolvedToday: Number(results.resolvedToday),
+            pendingAssignment: Number(results.pendingAssignment),
+        };
     }
 }
 

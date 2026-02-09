@@ -40,3 +40,4 @@ productsRouter.post("/api/products/upload", requireAuth, restrictTo("admin", "ma
 // === BULK IMPORT/EXPORT ===
 productsRouter.post("/api/products/bulk", requireAuth, restrictTo("admin", "manager"), upload.single("file"), ProductController.bulkImport);
 productsRouter.get("/api/products/export", requireAuth, restrictTo("admin", "manager"), ProductController.exportProducts);
+productsRouter.get("/api/products/template", requireAuth, restrictTo("admin", "manager"), ProductController.getTemplate);

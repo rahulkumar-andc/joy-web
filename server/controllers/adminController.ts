@@ -6,6 +6,7 @@ import { sellerProductService } from "../services/seller/sellerProductService";
 import { sellerOnboardingService } from "../services/seller/sellerOnboardingService";
 import { sellerPayoutService } from "../services/seller/sellerPayoutService";
 import { userService } from "../services/userService";
+import { measureAsync } from "../utils/performance";
 
 export class AdminController {
 
@@ -128,49 +129,52 @@ export class AdminController {
     });
 
     static getDashboardStats = catchAsync(async (req: Request, res: Response) => {
-        const [orderStats, productStats, userStats, dailySales] = await Promise.all([
-            analyticsService.getOrderStats(),
-            analyticsService.getProductStats(),
-            analyticsService.getUserStats(),
-            analyticsService.getDailySales(30)
-        ]);
+        const stats = await measureAsync("Admin.getDashboardStats", async () => {
+            const [orderStats, productStats, userStats, dailySales] = await Promise.all([
+                analyticsService.getOrderStats(),
+                analyticsService.getProductStats(),
+                analyticsService.getUserStats(),
+                analyticsService.getDailySales(30)
+            ]);
 
-        // Transform results
-        const ordersByStatus = orderStats.reduce((acc: any, curr: { status: string | null; count: number }) => {
-            acc[curr.status || "unknown"] = Number(curr.count);
-            return acc;
-        }, {});
+            // Transform results
+            const ordersByStatus = orderStats.reduce((acc: any, curr: { status: string | null; count: number }) => {
+                acc[curr.status || "unknown"] = Number(curr.count);
+                return acc;
+            }, {});
 
-        const productsByStatus = productStats.reduce((acc: any, curr: { status: string | null; count: number }) => {
-            acc[curr.status || "unknown"] = Number(curr.count);
-            return acc;
-        }, {});
+            const productsByStatus = productStats.reduce((acc: any, curr: { status: string | null; count: number }) => {
+                acc[curr.status || "unknown"] = Number(curr.count);
+                return acc;
+            }, {});
 
-        const usersByRole = userStats.reduce((acc: any, curr: { role: string | null; count: number }) => {
-            acc[curr.role || "unknown"] = Number(curr.count);
-            return acc;
-        }, {});
+            const usersByRole = userStats.reduce((acc: any, curr: { role: string | null; count: number }) => {
+                acc[curr.role || "unknown"] = Number(curr.count);
+                return acc;
+            }, {});
 
-        // Calculate derived stats
-        const totalRevenue = (dailySales as any[]).reduce((sum: number, day: { total: number }) => sum + Number(day.total), 0);
-        const totalOrders = Object.values(ordersByStatus).reduce((a: any, b: any) => Number(a) + Number(b), 0);
+            // Calculate derived stats
+            const totalRevenue = (dailySales as any[]).reduce((sum: number, day: { total: number }) => sum + Number(day.total), 0);
+            const totalOrders = Object.values(ordersByStatus).reduce((a: any, b: any) => Number(a) + Number(b), 0);
 
-        res.json({
-            orders: ordersByStatus,
-            products: productsByStatus,
-            users: usersByRole,
-            revenue: {
-                total: totalRevenue,
-                daily: dailySales
-            },
-            overview: {
-                totalOrders,
-                activeProducts: productsByStatus['approved'] || 0,
-                pendingProducts: productsByStatus['pending'] || 0,
-                totalSellers: usersByRole['seller'] || 0,
-                totalUsers: usersByRole['user'] || 0
-            }
+            return {
+                orders: ordersByStatus,
+                products: productsByStatus,
+                users: usersByRole,
+                revenue: {
+                    total: totalRevenue,
+                    daily: dailySales
+                },
+                overview: {
+                    totalOrders,
+                    activeProducts: productsByStatus['approved'] || 0,
+                    pendingProducts: productsByStatus['pending'] || 0,
+                    totalSellers: usersByRole['seller'] || 0,
+                    totalUsers: usersByRole['user'] || 0
+                }
+            };
         });
+        res.json(stats);
     });
 
     static getDailySales = catchAsync(async (req: Request, res: Response) => {
@@ -190,5 +194,63 @@ export class AdminController {
         const days = req.query.days ? parseInt(req.query.days as string) : 30;
         const revenue = await analyticsService.getDailySales(days);
         res.json(revenue);
+    });
+
+    static getBusinessStats = catchAsync(async (req: Request, res: Response) => {
+        const result = await measureAsync("Admin.getBusinessStats", async () => {
+            const [userStats, productStats, sellerStats] = await Promise.all([
+                analyticsService.getUserStats(),
+                analyticsService.getProductStats(),
+                sellerOnboardingService.getAllSellers({})
+            ]);
+
+            const productsByStatus = productStats.reduce((acc: any, curr) => {
+                acc[curr.status || "unknown"] = Number(curr.count);
+                return acc;
+            }, {});
+
+            return {
+                sellers: {
+                    total: sellerStats.total,
+                    active: sellerStats.stats['approved'] || 0,
+                    pending: sellerStats.stats['pending'] || 0,
+                    suspended: sellerStats.stats['suspended'] || 0
+                },
+                products: {
+                    total: Object.values(productsByStatus).reduce((a: any, b: any) => a + b, 0),
+                    live: productsByStatus['approved'] || 0,
+                    pending: productsByStatus['pending'] || 0,
+                    rejected: productsByStatus['rejected'] || 0
+                },
+                moderation: {
+                    pendingProducts: productsByStatus['pending'] || 0,
+                    pendingSellers: sellerStats.stats['pending'] || 0
+                }
+            };
+        });
+        res.json(result);
+    });
+
+    static getOpsStats = catchAsync(async (req: Request, res: Response) => {
+        const result = await measureAsync("Admin.getOpsStats", async () => {
+            const stats = await analyticsService.getOpsStats();
+
+            // Aggregate order counts
+            const pendingOrders = stats.orders
+                .filter(o => ['pending', 'processing', 'packed', 'payment_pending'].includes(o.status))
+                .reduce((sum, o) => sum + Number(o.count), 0);
+
+            const activeDeliveries = stats.orders
+                .filter(o => ['shipped', 'out_for_delivery'].includes(o.status) || ['in_transit', 'out_for_delivery'].includes(o.deliveryStatus || ''))
+                .reduce((sum, o) => sum + Number(o.count), 0);
+
+            return {
+                pendingOrders,
+                activeCouriers: stats.couriers, // Total couriers for now. "Active" would require tracking online status/assignments
+                activeDeliveries,
+                completedToday: stats.completedToday
+            };
+        });
+        res.json(result);
     });
 }

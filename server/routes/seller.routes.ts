@@ -320,6 +320,13 @@ sellerRouter.get("/api/seller/dashboard", requireAuth, getSellerProfile, require
                 }
                 : null,
             commission: commissionRate,
+            salesHistory: await sellerOrderService.getDailySales(seller.id, 30),
+            recentActivity: {
+                orders: (await sellerOrderService.getSellerOrders(seller.id, {}, 1, 5)).orders,
+                transactions: wallet
+                    ? (await sellerWalletService.getTransactionHistory(seller.id, {}, 1, 5)).transactions
+                    : []
+            }
         });
     } catch (error) {
         console.error("[Seller Routes] Dashboard error:", error);

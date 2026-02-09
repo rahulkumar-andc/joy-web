@@ -9,6 +9,7 @@ const router = Router();
 router.use(requireAuth);
 router.use(requireAdmin());
 
+router.get("/stats", SupportController.getDashboardStats);
 router.get("/tickets", SupportController.getAllTickets);
 router.get("/my-tickets", SupportController.getMyAssignedTickets);
 router.get("/tickets/:id", SupportController.getTicketDetails);

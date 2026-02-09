@@ -14,6 +14,7 @@ import { AuditService } from "../services/auditService";
 import { sanitizeHtml } from "../utils/sanitize";
 import { imagekitService } from "../services/imagekitService";
 import { boughtTogetherService } from "../services/boughtTogetherService";
+import { importExportService } from "../services/importExportService";
 
 export class ProductController {
 
@@ -252,7 +253,7 @@ export class ProductController {
         res.json(distribution);
     });
 
-    // Bulk Import
+    // Bulk Import using enhanced service
     static bulkImport = catchAsync(async (req: Request, res: Response) => {
         if (!req.file) {
             throw new AppError("No CSV file uploaded", 400);
@@ -260,50 +261,35 @@ export class ProductController {
 
         try {
             const buffer = await fs.promises.readFile(req.file.path);
-            const rows = await parseCsv(buffer);
 
-            const successful = [];
-            const failed = [];
+            // Use the enhanced import service
+            const result = await importExportService.importProductsFromCSV(buffer);
 
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                try {
-                    // Normalization
-                    const productData = {
-                        ...row,
-                        price: row.price?.toString(),
-                        stockQuantity: Number(row.stockQuantity) || 0,
-                        images: typeof row.images === 'string' ? row.images.split(',').map((s: string) => s.trim()) : row.images,
-                        categoryId: Number(row.categoryId) || undefined,
-                        id: undefined,
-                        createdAt: undefined
-                    };
-
-                    const validated = insertProductSchema.parse(productData);
-                    successful.push(validated);
-                } catch (err: any) {
-                    failed.push({ row: i + 2, error: err.issues?.[0]?.message || err.message, data: row });
-                }
-            }
-
-            if (successful.length > 0) {
-                await productRepository.bulkCreate(successful);
-                await cacheService.invalidateProducts();
-            }
-
-            // Cleanup
+            // Cleanup uploaded file
             await fs.promises.unlink(req.file.path);
 
-            res.json({
-                importedCount: successful.length,
-                failedCount: failed.length,
-                failedDetails: failed
-            });
+            // Invalidate cache
+            await cacheService.invalidateProducts();
 
+            res.json({
+                total: result.total,
+                success: result.success,
+                failed: result.failed,
+                errors: result.errors
+            });
         } catch (err) {
             logger.error("Bulk import failed: " + err);
             throw new AppError("Failed to process CSV file", 500);
         }
+    });
+
+    // Download CSV Template
+    static getTemplate = catchAsync(async (_req: Request, res: Response) => {
+        const csvContent = importExportService.getTemplateCSV();
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="product_import_template.csv"');
+        res.status(200).send(csvContent);
     });
 
     static exportProducts = catchAsync(async (req: Request, res: Response) => {

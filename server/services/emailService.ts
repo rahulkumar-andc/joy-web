@@ -250,6 +250,85 @@ class EmailService {
             </html>
         `;
     }
+
+    /**
+     * Send email notification when support ticket receives a reply
+     */
+    async sendTicketReplyEmail(
+        email: string,
+        ticketId: string,
+        subject: string,
+        messagePreview: string,
+        senderType: "agent" | "admin"
+    ) {
+        if (!this.transporter) {
+            logger.warn(`Email not sent to ${email} - SMTP not configured`);
+            return { success: false, message: "Email service not configured" };
+        }
+
+        const senderLabel = senderType === "admin" ? "Support Admin" : "Support Agent";
+
+        try {
+            const html = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+                        .message-box { background: white; border-left: 4px solid #667eea; padding: 15px; margin: 20px 0; }
+                        .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+                        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>📨 New Reply to Your Ticket</h1>
+                        </div>
+                        <div class="content">
+                            <p>Hi,</p>
+                            <p>Your support ticket <strong>${ticketId}</strong> has received a reply from our ${senderLabel}.</p>
+                            
+                            <p><strong>Ticket Subject:</strong> ${subject}</p>
+                            
+                            <div class="message-box">
+                                <strong>Message Preview:</strong><br>
+                                ${messagePreview.substring(0, 200)}${messagePreview.length > 200 ? '...' : ''}
+                            </div>
+
+                            <div style="text-align: center;">
+                                <a href="${process.env.CLIENT_URL || 'http://localhost:5000'}/support/tickets/${ticketId}" class="button">
+                                    View Full Conversation
+                                </a>
+                            </div>
+
+                            <p>Thank you for contacting our support team!</p>
+                        </div>
+                        <div class="footer">
+                            <p>&copy; 2026 Steal the Deal. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `;
+
+            await this.transporter.sendMail({
+                from: `"Steal the Deal Support" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+                to: email,
+                subject: `Re: ${subject} [${ticketId}]`,
+                html,
+            });
+
+            logger.info(`✅ Ticket reply email sent to ${email} for ${ticketId}`);
+            return { success: true };
+        } catch (error) {
+            logger.error(`❌ Failed to send ticket reply email to ${email}:`, error);
+            return { success: false };
+        }
+    }
 }
 
 export const emailService = new EmailService();

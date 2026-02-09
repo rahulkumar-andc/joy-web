@@ -170,3 +170,37 @@ export function useUpdateProduct() {
     },
   });
 }
+
+// Bulk Import Products (Admin)
+export function useBulkImportProducts() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/products/bulk", {
+        method: "POST",
+        headers: {
+          "X-CSRF-Token": getCookie("CSRF-TOKEN") || ""
+        },
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to import products");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.products.list.path] });
+    },
+  });
+}
+
+// Export Products URL Helper
+export function getProductExportUrl() {
+  return "/api/products/export";
+}

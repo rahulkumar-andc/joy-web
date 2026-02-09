@@ -17,6 +17,7 @@ import {
 } from "@shared/seller-schema";
 import { orders, orderItems, products, categories } from "@shared/schema";
 import { sellerWalletService } from "./sellerWalletService";
+import { measureAsync } from "../../utils/performance";
 
 // ============================================================================
 // SELLER ORDER SERVICE
@@ -463,6 +464,9 @@ class SellerOrderService {
     /**
      * Get order statistics for seller dashboard
      */
+    /**
+     * Get order statistics for seller dashboard
+     */
     async getSellerOrderStats(sellerId: number): Promise<{
         totalOrders: number;
         pendingOrders: number;
@@ -473,58 +477,101 @@ class SellerOrderService {
         totalRevenue: number;
         pendingRevenue: number;
     }> {
-        const stats = await db
-            .select({
-                status: sellerOrders.status,
-                count: sql<number>`count(*)`,
-                revenue: sql<number>`sum(seller_earnings::numeric)`,
-            })
-            .from(sellerOrders)
-            .where(eq(sellerOrders.sellerId, sellerId))
-            .groupBy(sellerOrders.status);
+        return measureAsync("SellerOrder.getStats", async () => {
+            const stats = await db
+                .select({
+                    status: sellerOrders.status,
+                    count: sql<number>`count(*)`,
+                    revenue: sql<number>`sum(seller_earnings::numeric)`,
+                })
+                .from(sellerOrders)
+                .where(eq(sellerOrders.sellerId, sellerId))
+                .groupBy(sellerOrders.status);
 
-        const result = {
-            totalOrders: 0,
-            pendingOrders: 0,
-            confirmedOrders: 0,
-            shippedOrders: 0,
-            deliveredOrders: 0,
-            cancelledOrders: 0,
-            totalRevenue: 0,
-            pendingRevenue: 0,
-        };
+            const result = {
+                totalOrders: 0,
+                pendingOrders: 0,
+                confirmedOrders: 0,
+                shippedOrders: 0,
+                deliveredOrders: 0,
+                cancelledOrders: 0,
+                totalRevenue: 0,
+                pendingRevenue: 0,
+            };
 
-        for (const row of stats) {
-            const count = Number(row.count);
-            const revenue = Number(row.revenue) || 0;
-            result.totalOrders += count;
-            result.totalRevenue += revenue;
+            for (const row of stats) {
+                const count = Number(row.count);
+                const revenue = Number(row.revenue) || 0;
+                result.totalOrders += count;
+                result.totalRevenue += revenue;
 
-            switch (row.status) {
-                case "pending":
-                    result.pendingOrders = count;
-                    result.pendingRevenue += revenue;
-                    break;
-                case "confirmed":
-                    result.confirmedOrders = count;
-                    result.pendingRevenue += revenue;
-                    break;
-                case "shipped":
-                case "out_for_delivery":
-                    result.shippedOrders += count;
-                    result.pendingRevenue += revenue;
-                    break;
-                case "delivered":
-                    result.deliveredOrders += count;
-                    break;
-                case "cancelled":
-                case "returned":
-                    result.cancelledOrders += count;
-                    break;
+                switch (row.status) {
+                    case "pending":
+                        result.pendingOrders = count;
+                        result.pendingRevenue += revenue;
+                        break;
+                    case "confirmed":
+                        result.confirmedOrders = count;
+                        result.pendingRevenue += revenue;
+                        break;
+                    case "shipped":
+                    case "out_for_delivery":
+                        result.shippedOrders += count;
+                        result.pendingRevenue += revenue;
+                        break;
+                    case "delivered":
+                        result.deliveredOrders += count;
+                        break;
+                    case "cancelled":
+                    case "returned":
+                        result.cancelledOrders += count;
+                        break;
+                }
             }
-        }
 
-        return result;
+            return result;
+        });
+    }
+
+    /**
+     * Get daily sales for seller (for chart)
+     */
+    async getDailySales(sellerId: number, days: number = 30): Promise<{ date: string; amount: number }[]> {
+        return measureAsync("SellerOrder.getDailySales", async () => {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - days);
+
+            const sales = await db
+                .select({
+                    date: sql<string>`DATE(created_at)::text`,
+                    amount: sql<number>`SUM(seller_earnings::numeric)`,
+                })
+                .from(sellerOrders)
+                .where(and(
+                    eq(sellerOrders.sellerId, sellerId),
+                    sql`created_at >= ${startDate.toISOString()}`,
+                    sql`status NOT IN ('cancelled', 'returned')`
+                ))
+                .groupBy(sql`DATE(created_at)`)
+                .orderBy(sql`DATE(created_at)`);
+
+            // Fill in missing days
+            const result: { date: string; amount: number }[] = [];
+            const map = new Map(sales.map(s => [s.date, Number(s.amount)]));
+
+            for (let i = 0; i < days; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                result.unshift({
+                    date: dateStr,
+                    amount: map.get(dateStr) || 0,
+                });
+            }
+
+            return result;
+        });
     }
 
     /**
@@ -538,44 +585,46 @@ class SellerOrderService {
         page: number = 1,
         limit: number = 20
     ): Promise<{ orders: SellerOrder[]; total: number }> {
-        const offset = (page - 1) * limit;
+        return measureAsync("SellerOrder.getAll", async () => {
+            const offset = (page - 1) * limit;
 
-        let whereConditions: any[] = [];
+            let whereConditions: any[] = [];
 
-        if (filters?.sellerId) {
-            whereConditions.push(eq(sellerOrders.sellerId, filters.sellerId));
-        }
-        if (filters?.status) {
-            whereConditions.push(eq(sellerOrders.status, filters.status));
-        }
+            if (filters?.sellerId) {
+                whereConditions.push(eq(sellerOrders.sellerId, filters.sellerId));
+            }
+            if (filters?.status) {
+                whereConditions.push(eq(sellerOrders.status, filters.status));
+            }
 
-        const whereClause = whereConditions.length > 0
-            ? and(...whereConditions)
-            : undefined;
+            const whereClause = whereConditions.length > 0
+                ? and(...whereConditions)
+                : undefined;
 
-        const orders = await db.query.sellerOrders.findMany({
-            where: whereClause,
-            with: {
-                seller: {
-                    columns: {
-                        id: true,
-                        shopName: true,
-                        status: true,
+            const orders = await db.query.sellerOrders.findMany({
+                where: whereClause,
+                with: {
+                    seller: {
+                        columns: {
+                            id: true,
+                            shopName: true,
+                            status: true,
+                        },
                     },
+                    items: true,
                 },
-                items: true,
-            },
-            orderBy: [desc(sellerOrders.createdAt)],
-            limit,
-            offset,
+                orderBy: [desc(sellerOrders.createdAt)],
+                limit,
+                offset,
+            });
+
+            const countQuery = await db
+                .select({ count: sql<number>`count(*)` })
+                .from(sellerOrders)
+                .where(whereClause);
+
+            return { orders, total: Number(countQuery[0].count) };
         });
-
-        const countQuery = await db
-            .select({ count: sql<number>`count(*)` })
-            .from(sellerOrders)
-            .where(whereClause);
-
-        return { orders, total: Number(countQuery[0].count) };
     }
 
     /**

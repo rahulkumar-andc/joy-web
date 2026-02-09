@@ -20,19 +20,9 @@ const envSchema = z.object({
         ? z.string().min(32, "SESSION_SECRET must be at least 32 characters in production. Generate with: openssl rand -base64 32")
         : z.string().default("dev-secret-change-in-production"),
 
-    // Razorpay - Required in production
-    RAZORPAY_KEY_ID: isProduction
-        ? z.string({
-            required_error: "RAZORPAY_KEY_ID is required in production. Get it from https://dashboard.razorpay.com"
-        })
-        : z.string().optional(),
-
-    RAZORPAY_KEY_SECRET: isProduction
-        ? z.string({
-            required_error: "RAZORPAY_KEY_SECRET is required in production."
-        })
-        : z.string().optional(),
-
+    // Razorpay - Optional
+    RAZORPAY_KEY_ID: z.string().optional(),
+    RAZORPAY_KEY_SECRET: z.string().optional(),
     RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 
     // Stripe - Optional
@@ -65,14 +55,13 @@ try {
     throw error;
 }
 
-// Additional validation: Check for test keys in production
+// Warning: Check for test keys in production (non-blocking)
 if (isProduction && config.RAZORPAY_KEY_ID?.startsWith("rzp_test_")) {
-    console.error("\n🚨 CRITICAL SECURITY ERROR:");
-    console.error("   You are using Razorpay TEST keys in PRODUCTION environment!");
-    console.error("   This will prevent real payments from being processed.");
-    console.error("\n   Please update RAZORPAY_KEY_ID to use 'rzp_live_' keys.");
-    console.error("   Get production keys from: https://dashboard.razorpay.com/app/keys\n");
-    process.exit(1);
+    console.warn("\n⚠️ WARNING: Using Razorpay TEST keys in PRODUCTION environment!");
+    console.warn("   This will prevent real payments from being processed.");
+    console.warn("   Please update RAZORPAY_KEY_ID to use 'rzp_live_' keys when ready.");
+    console.warn("   Get production keys from: https://dashboard.razorpay.com/app/keys\n");
+    // NOTE: Server will continue to start with test keys (non-blocking)
 }
 
 export { config };

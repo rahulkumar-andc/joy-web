@@ -4,11 +4,7 @@ import { logger } from "../logger";
 import { createCircuitBreaker, CIRCUIT_OPTIONS } from "../config/circuit-breakers";
 import CircuitBreaker from "opossum";
 
-// Initialize Razorpay instance
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID || "",
-    key_secret: process.env.RAZORPAY_KEY_SECRET || "",
-});
+import { razorpay } from "../lib/razorpay";
 
 export interface CreateOrderParams {
     amount: number; // Amount in rupees (will be converted to paise)

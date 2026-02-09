@@ -15,6 +15,8 @@ adminRouter.get("/api/admin/stats/dashboard", restrictTo("admin", "manager"), Ad
 adminRouter.get("/api/admin/stats/daily-sales", restrictTo("admin", "manager"), AdminController.getDailySales);
 adminRouter.get("/api/admin/stats/top-products", restrictTo("admin", "manager"), AdminController.getTopProducts);
 adminRouter.get("/api/admin/analytics/revenue", restrictTo("admin", "manager"), AdminController.getRevenueAnalytics);
+adminRouter.get("/api/admin/business/stats", restrictTo("admin", "manager"), AdminController.getBusinessStats);
+adminRouter.get("/api/admin/ops/stats", restrictTo("admin", "manager"), AdminController.getOpsStats);
 
 // === DATA MIGRATION ===
 adminRouter.post("/api/admin/products/import", restrictTo("admin"), upload.single("file"), async (req, res) => {

@@ -9,10 +9,17 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, User, ShieldCheck, ArrowLeft, Paperclip, Lock, History } from "lucide-react";
+import { Loader2, Send, User, ShieldCheck, ArrowLeft, Paperclip, Lock, History, MessageSquarePlus, Plus } from "lucide-react";
 import { useRoute, Link } from "wouter";
 import { useState, useRef, useEffect } from "react";
+import { useCannedResponses } from "@/hooks/use-canned-responses";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
+import { useUsers } from "@/hooks/use-users";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AdminTicketDetailPage() {
@@ -24,6 +31,9 @@ export default function AdminTicketDetailPage() {
     const updateStatus = useUpdateTicketStatus();
     const escalateTicket = useEscalateTicket();
     const queryClient = useQueryClient();
+    // Replaced by destructuring above
+    // Replaced by destructuring above
+    // const { responses: canResponses } = useCannedResponses();
 
     // Listen for real-time updates (Admin Side)
     useWebSocket({
@@ -39,6 +49,59 @@ export default function AdminTicketDetailPage() {
     const [replyMessage, setReplyMessage] = useState("");
     const [isInternal, setIsInternal] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [newTitle, setNewTitle] = useState("");
+    const [newContent, setNewContent] = useState("");
+    const { responses: canResponses, createResponse } = useCannedResponses();
+
+    // Mentions logic
+    const [mentionSearch, setMentionSearch] = useState("");
+    const [showMentions, setShowMentions] = useState(false);
+    const [cursorPosition, setCursorPosition] = useState(0);
+    const { data: usersData } = useUsers({ search: mentionSearch, limit: 5 });
+
+    // Filter users for mentions (exclude current user? maybe not needed)
+    // We only want to mention admins/agents/managers usually, or maybe customers?
+    // Let's filter by internal roles if isInternal check? 
+    // For now, simple search.
+
+    const checkForMention = (text: string, cursor: number) => {
+        const textBeforeCursor = text.slice(0, cursor);
+        const lastWord = textBeforeCursor.split(/\s+/).pop();
+
+        if (lastWord && lastWord.startsWith("@")) {
+            setMentionSearch(lastWord.slice(1));
+            setShowMentions(true);
+            setCursorPosition(cursor);
+        } else {
+            setShowMentions(false);
+        }
+    };
+
+    const insertMention = (username: string) => {
+        const textBeforeCursor = replyMessage.slice(0, cursorPosition);
+        const textAfterCursor = replyMessage.slice(cursorPosition);
+        const lastWord = textBeforeCursor.split(/\s+/).pop() || "";
+
+        // Remove the partial mention (e.g. "@ad")
+        const newTextBefore = textBeforeCursor.slice(0, -lastWord.length);
+
+        const newText = `${newTextBefore}@${username} ${textAfterCursor}`;
+        setReplyMessage(newText);
+        setShowMentions(false);
+        // Focus back? Textarea ref needed.
+    };
+
+    const handleCreateCanned = () => {
+        if (!newTitle.trim() || !newContent.trim()) return;
+        createResponse.mutate({ title: newTitle, content: newContent }, {
+            onSuccess: () => {
+                setIsCreateOpen(false);
+                setNewTitle("");
+                setNewContent("");
+            }
+        });
+    };
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -161,13 +224,105 @@ export default function AdminTicketDetailPage() {
                                     </TabsTrigger>
                                 </TabsList>
                             </Tabs>
+
+                            <div className="ml-auto flex items-center gap-2">
+                                <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <Plus className="h-4 w-4" />
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Create Canned Response</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="space-y-4 py-4">
+                                            <div className="space-y-2">
+                                                <Label>Title</Label>
+                                                <Input
+                                                    placeholder="e.g. Greeting"
+                                                    value={newTitle}
+                                                    onChange={(e) => setNewTitle(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Content</Label>
+                                                <Textarea
+                                                    placeholder="Response text..."
+                                                    value={newContent}
+                                                    onChange={(e) => setNewContent(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                        <DialogFooter>
+                                            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+                                            <Button onClick={handleCreateCanned} disabled={createResponse.isPending}>
+                                                {createResponse.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                Save
+                                            </Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
+
+                                <Select onValueChange={(v) => setReplyMessage(prev => prev + (prev ? "\n\n" : "") + v)}>
+                                    <SelectTrigger className="w-[200px] h-8 text-xs">
+                                        <MessageSquarePlus className="w-3 h-3 mr-2" />
+                                        <SelectValue placeholder="Canned Response" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {canResponses?.map((r) => (
+                                            <SelectItem key={r.id} value={r.content}>
+                                                {r.title}
+                                            </SelectItem>
+                                        ))}
+                                        {(!canResponses || canResponses.length === 0) && (
+                                            <div className="p-2 text-xs text-muted-foreground text-center">No responses found</div>
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
-                        <div className={`rounded-lg border p-2 ${isInternal ? "bg-amber-50/50 border-amber-200" : "bg-white"}`}>
+                        <div className={`rounded-lg border p-2 ${isInternal ? "bg-amber-50/50 border-amber-200" : "bg-white"} relative`}>
+                            {showMentions && usersData && (
+                                <div className="absolute bottom-full left-0 w-64 bg-white border rounded-md shadow-lg z-50 mb-2">
+                                    <Command>
+                                        <CommandList>
+                                            <CommandGroup heading="Mention User">
+                                                {usersData.data?.map((u: any) => (
+                                                    <CommandItem
+                                                        key={u.id}
+                                                        onSelect={() => insertMention(u.username)}
+                                                        className="cursor-pointer"
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs">
+                                                                {u.name?.charAt(0) || u.username.charAt(0)}
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-medium">{u.name || u.username}</span>
+                                                                <span className="text-xs text-muted-foreground">@{u.username}</span>
+                                                            </div>
+                                                        </div>
+                                                    </CommandItem>
+                                                ))}
+                                                {(!usersData.data || usersData.data.length === 0) && (
+                                                    <div className="p-2 text-xs text-muted-foreground">No users found</div>
+                                                )}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </div>
+                            )}
                             <Textarea
-                                placeholder={isInternal ? "Add a private note for other agents..." : "Type reply to customer..."}
+                                placeholder={isInternal ? "Add a private note for other agents... (Type @ to mention)" : "Type reply to customer..."}
                                 className="min-h-[80px] resize-none border-0 focus-visible:ring-0 bg-transparent shadow-none"
                                 value={replyMessage}
-                                onChange={(e) => setReplyMessage(e.target.value)}
+                                onChange={(e) => {
+                                    setReplyMessage(e.target.value);
+                                    checkForMention(e.target.value, e.target.selectionStart);
+                                }}
+                                onKeyUp={(e) => checkForMention(e.currentTarget.value, e.currentTarget.selectionStart)}
+                                onClick={(e) => checkForMention(e.currentTarget.value, e.currentTarget.selectionStart)}
                             />
                             <div className="flex justify-between items-center pt-2 px-1">
                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">

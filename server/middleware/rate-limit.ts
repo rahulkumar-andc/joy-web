@@ -29,12 +29,25 @@ export const paymentLimiter = rateLimit({
     legacyHeaders: true,
     message: { message: "Too many payment requests, please try again later." },
 });
-// Webhook Rate Limiter
-// Allow higher burst for legitimate heavy traffic, but protect against flooding
 export const webhookLimiter = rateLimit({
     windowMs: 1 * 60 * 1000,
     max: 60, // 60 requests per minute
     standardHeaders: true,
     legacyHeaders: false, // Strict headers
     message: { message: "Too many webhook requests" },
+});
+
+// Ticket creation rate limiter
+// Allow 5 tickets per hour per user (prevents support spam)
+export const ticketLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many support tickets created. Please wait before creating more." },
+    keyGenerator: (req) => {
+        // Use user ID if authenticated, otherwise fall back to IP
+        const user = (req as any).user;
+        return user?.id ? `user-${user.id}` : req.ip || 'unknown';
+    },
 });

@@ -18,13 +18,14 @@ export const csrfMiddleware = (req: Request, res: Response, next: NextFunction) 
     // Using a different name for the cookie to distinguish from session
     res.cookie("CSRF-TOKEN", req.session.csrfToken, {
         httpOnly: false, // Allow JS to read it
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        secure: process.env.NODE_ENV === "production" && process.env.ALLOW_INSECURE_COOKIES !== "true",
+        sameSite: "lax", // Lax is better for navigation
         path: "/"
     });
 
-    // 3. Skip check for safe methods (GET, HEAD, OPTIONS)
-    if (["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+    // 3. Skip check for safe methods or excluded paths
+    const excludedPaths = ["/api/payments/webhook"];
+    if (["GET", "HEAD", "OPTIONS"].includes(req.method) || excludedPaths.some(path => req.originalUrl.includes(path))) {
         return next();
     }
 
