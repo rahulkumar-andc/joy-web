@@ -1,6 +1,7 @@
-import { useHero } from "../hooks/use-hero";
+import { useHeroWithFallback } from "../hooks/use-hero";
 import { HeroMedia } from "./HeroMedia";
 import { HeroOverlay } from "./HeroOverlay";
+<<<<<<< HEAD
 import { Skeleton } from "@/components/ui/skeleton";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
@@ -135,10 +136,26 @@ export function HeroSystem() {
                     <Skeleton className="h-8 w-1/2 mb-8" />
                     <Skeleton className="h-12 w-32 rounded-full" />
                 </div>
+=======
+
+export function HeroSystem() {
+    // Use the fallback hook to ensure we always have something to show
+    // or handle the loading state gracefully.
+    const { config, isLoading } = useHeroWithFallback();
+
+    // While loading, we could show a skeleton, but for now we'll rely on the
+    // HeroMedia's internal loading state if we had a config, or just render nothing/skeleton.
+    // However, useHeroWithFallback returns null config only if loading is true.
+    if (isLoading || !config) {
+        return (
+            <div className="relative w-full h-[600px] bg-muted animate-pulse overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-muted to-muted/50" />
+>>>>>>> 9197ee2 (vivek-showcase)
             </div>
         );
     }
 
+<<<<<<< HEAD
 
 
     return (
@@ -190,38 +207,46 @@ export function HeroSystem() {
                     />
                 </motion.div>
             </AnimatePresence>
+=======
+    const { media, content, ui } = config;
 
-            {/* Carousel Indicators */}
-            {heroes.length > 1 && (
-                <div className="absolute bottom-20 left-0 right-0 z-30 flex justify-center gap-2">
-                    {heroes.map((_, idx) => (
-                        <button
-                            key={idx}
-                            onClick={() => setCurrentIndex(idx)}
-                            className={`h-2 w-2 rounded-full transition-all ${idx === currentIndex ? "bg-white w-6" : "bg-white/50 hover:bg-white/80"}`}
-                            aria-label={`Go to slide ${idx + 1}`}
-                        />
-                    ))}
-                </div>
-            )}
+    return (
+        <section className="relative w-full h-[600px] md:h-[700px] overflow-hidden bg-background">
+            {/* Background Media Layer */}
+            <HeroMedia
+                type={media.type}
+                url={media.url}
+                alt={content.title}
+            // If we support carousel in the future, media.images would be passed here
+            />
+>>>>>>> 9197ee2 (vivek-showcase)
 
-            {/* Scroll Indicator */}
-            <div className="absolute bottom-8 left-0 right-0 z-30 flex flex-col items-center animate-bounce">
-                <span className="text-xs uppercase tracking-widest mb-2 text-white/60">Scroll</span>
-                <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-white/60"
-                >
-                    <path d="M12 5v14M19 12l-7 7-7-7" />
-                </svg>
-            </div>
+            {/* Overlay/Content Layer */}
+            <HeroOverlay
+                title={content.title}
+                subtitle={content.subtitle}
+                cta={content.cta}
+                // secondaryCta can be added to the schema later if needed
+
+                // Positioning
+                titlePosX={ui.titlePosX}
+                titlePosY={ui.titlePosY}
+                subtitlePosX={ui.subtitlePosX}
+                subtitlePosY={ui.subtitlePosY}
+                ctaPosX={ui.ctaPosX}
+                ctaPosY={ui.ctaPosY}
+                countdownPosX={ui.countdownPosX}
+                countdownPosY={ui.countdownPosY}
+
+                // Styling
+                alignment={ui.alignment}
+                opacity={ui.overlay_opacity}
+                textColor={ui.text_color}
+
+                // Metadata
+                endTime={content.endTime}
+                campaignId={ui.id}
+            />
         </section>
     );
 }
